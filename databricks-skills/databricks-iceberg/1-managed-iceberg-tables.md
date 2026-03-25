@@ -1,17 +1,17 @@
-# Managed Iceberg Tables
+# 受管 Iceberg 資料表
 
-Managed Iceberg tables are native Apache Iceberg tables created and stored within Unity Catalog. They support full read/write operations in Databricks and are accessible to external engines via the UC Iceberg REST Catalog (IRC) endpoint.
+受管 Iceberg 資料表是建立並儲存在 Unity Catalog 中的原生 Apache Iceberg 資料表。它們支援在 Databricks 中完整讀寫，並可透過 UC Iceberg REST Catalog（IRC）端點供外部引擎存取。
 
-**Requirements**: Unity Catalog, DBR 16.4 LTS+ (Managed Iceberg v2), DBR 17.3+ (Managed Iceberg v3 Beta)
+**需求**：Unity Catalog、DBR 16.4 LTS+（Managed Iceberg v2）、DBR 17.3+（Managed Iceberg v3 Beta）
 
 ---
 
-## Creating Tables
+## 建立資料表
 
-### Basic DDL
+### 基本 DDL
 
 ```sql
--- Create an empty Iceberg table (no clustering)
+-- 建立空的 Iceberg 資料表（不使用 clustering）
 CREATE TABLE my_catalog.my_schema.events (
   event_id BIGINT,
   event_type STRING,
@@ -21,10 +21,10 @@ CREATE TABLE my_catalog.my_schema.events (
 USING ICEBERG;
 ```
 
-### Create Table As Select (CTAS)
+### Create Table As Select（CTAS）
 
 ```sql
--- Create from existing data (no clustering)
+-- 從現有資料建立（不使用 clustering）
 CREATE TABLE my_catalog.my_schema.events_archive
 USING ICEBERG
 AS SELECT * FROM my_catalog.my_schema.events
@@ -33,23 +33,23 @@ WHERE event_date < '2025-01-01';
 
 ### Liquid Clustering
 
-Managed Iceberg tables use **Liquid Clustering** for data layout optimization. Both `PARTITIONED BY` and `CLUSTER BY` produce a Liquid Clustered table — **no traditional Hive-style partitions are created**. Unity Catalog interprets the partition clause as clustering keys.
+受管 Iceberg 資料表使用 **Liquid Clustering** 進行資料版面配置最佳化。`PARTITIONED BY` 與 `CLUSTER BY` 都會產生 Liquid Clustered 資料表 —— **不會建立傳統的 Hive-style partitions**。Unity Catalog 會將 partition 子句解讀為 clustering keys。
 
-| Syntax | DDL (create table) | Reads via IRC | Iceberg partition fields visible to external engines | DV/row-tracking handling |
+| 語法 | DDL（建立資料表） | 透過 IRC 讀取 | 外部引擎可見的 Iceberg partition fields | DV/row-tracking 處理方式 |
 |--------|--------------------|---------------|------------------------------------------------------|--------------------------|
-| `PARTITIONED BY (col)` | DBR + EMR, OSS Spark, Trino, Flink | Yes | Yes — UC exposes Iceberg partition fields corresponding to clustering keys; external engines can prune | **Auto-handled** |
-| `CLUSTER BY (col)` | DBR only | Yes | Yes — same; UC maintains Iceberg partition spec from clustering keys regardless of DDL used | Manual on v2, auto on v3 |
+| `PARTITIONED BY (col)` | DBR + EMR、OSS Spark、Trino、Flink | 是 | 是 —— UC 會公開對應 clustering keys 的 Iceberg partition fields；外部引擎可進行 pruning | **自動處理** |
+| `CLUSTER BY (col)` | 僅限 DBR | 是 | 是 —— 相同；不論使用哪種 DDL，UC 都會根據 clustering keys 維護 Iceberg partition spec | v2 需手動，v3 自動 |
 
-> **Both syntaxes produce the same Iceberg metadata for external engines.** UC maintains an Iceberg partition spec (partition fields corresponding to the clustering keys) that external engines read via IRC. This is Iceberg-style partitioning — not legacy Hive-style directory partitions. External engines see a partitioned Iceberg table and benefit from partition pruning. Internally, UC uses those partition fields as liquid clustering keys.
+> **兩種語法都會為外部引擎產生相同的 Iceberg metadata。** UC 會維護一份 Iceberg partition spec（partition fields 對應到 clustering keys），供外部引擎透過 IRC 讀取。這是 Iceberg 風格的 partitioning —— 不是舊式 Hive-style 目錄分割。外部引擎會看到一個已分割的 Iceberg 資料表，並受益於 partition pruning。在內部，UC 會將這些 partition fields 作為 liquid clustering keys 使用。
 
-> **`PARTITIONED BY` limitation**: Only plain column references are supported. Expression transforms (`bucket()`, `years()`, `months()`, `days()`, `hours()`) are **not** supported and will error.
+> **`PARTITIONED BY` 的限制**：僅支援純欄位參照。不支援 expression transforms（`bucket()`, `years()`, `months()`, `days()`, `hours()`），否則會報錯。
 
-> **`CLUSTER BY` on Iceberg v2**: requires explicitly setting `'delta.enableDeletionVectors' = false` and `'delta.enableRowTracking' = false`, otherwise you get: `[MANAGED_ICEBERG_ATTEMPTED_TO_ENABLE_CLUSTERING_WITHOUT_DISABLING_DVS_OR_ROW_TRACKING]`
+> **Iceberg v2 上的 `CLUSTER BY`**：必須明確設定 `'delta.enableDeletionVectors' = false` 與 `'delta.enableRowTracking' = false`，否則會出現：`[MANAGED_ICEBERG_ATTEMPTED_TO_ENABLE_CLUSTERING_WITHOUT_DISABLING_DVS_OR_ROW_TRACKING]`
 
-**`PARTITIONED BY` — recommended for cross-platform** (auto-handles all required properties):
+**`PARTITIONED BY` —— 建議用於跨平台**（會自動處理所有必要屬性）：
 
 ```sql
--- Single column (v2 or v3 — no TBLPROPERTIES needed)
+-- 單欄位（v2 或 v3 —— 不需要 TBLPROPERTIES）
 CREATE TABLE orders (
   order_id BIGINT,
   order_date DATE
@@ -57,7 +57,7 @@ CREATE TABLE orders (
 USING ICEBERG
 PARTITIONED BY (order_date);
 
--- Multi-column
+-- 多欄位
 CREATE TABLE orders (
   order_id BIGINT,
   region STRING,
@@ -67,10 +67,10 @@ USING ICEBERG
 PARTITIONED BY (region, order_date);
 ```
 
-**`CLUSTER BY` on Iceberg v2** (DBR-only; must disable DVs and row tracking manually):
+**Iceberg v2 上的 `CLUSTER BY`**（僅限 DBR；必須手動停用 DVs 和 row tracking）：
 
 ```sql
--- Single column clustering (v2)
+-- 單欄位 clustering（v2）
 CREATE TABLE orders (
   order_id BIGINT,
   order_date DATE
@@ -83,7 +83,7 @@ TBLPROPERTIES (
 CLUSTER BY (order_date);
 ```
 
-**`CLUSTER BY` on Iceberg v3** (no extra TBLPROPERTIES needed):
+**Iceberg v3 上的 `CLUSTER BY`**（不需要額外的 TBLPROPERTIES）：
 
 ```sql
 CREATE TABLE orders (
@@ -97,16 +97,16 @@ CLUSTER BY (order_date);
 
 ---
 
-## DML Operations
+## DML 操作
 
-Managed Iceberg tables support all standard DML operations:
+受管 Iceberg 資料表支援所有標準 DML 操作：
 
 ```sql
 -- INSERT
 INSERT INTO my_catalog.my_schema.events
 VALUES (1, 'click', '2025-06-01', '{"page": "home"}');
 
--- INSERT from query
+-- 從查詢結果 INSERT
 INSERT INTO my_catalog.my_schema.events
 SELECT * FROM staging_events WHERE event_date = current_date();
 
@@ -119,7 +119,7 @@ WHERE event_id = 1;
 DELETE FROM my_catalog.my_schema.events
 WHERE event_date < '2024-01-01';
 
--- MERGE (upsert)
+-- MERGE（upsert）
 MERGE INTO my_catalog.my_schema.events AS target
 USING staging_events AS source
 ON target.event_id = source.event_id
@@ -129,59 +129,59 @@ WHEN NOT MATCHED THEN INSERT *;
 
 ---
 
-## Time Travel
+## 時間旅行（查詢）
 
-Query historical snapshots using timestamp or snapshot ID:
+可透過 timestamp 或 snapshot ID 查詢歷史快照：
 
 ```sql
--- Query by timestamp
+-- 依 timestamp 查詢
 SELECT * FROM my_catalog.my_schema.events TIMESTAMP AS OF '2025-06-01T00:00:00Z';
 
--- Query by snapshot ID
+-- 依 snapshot ID 查詢
 SELECT * FROM my_catalog.my_schema.events VERSION AS OF 1234567890;
 
--- Only for external engines: View snapshot history
+-- 僅限外部引擎：檢視 snapshot 歷程
 SELECT * FROM my_catalog.my_schema.events.snapshots;
 ```
 
 ---
 
-## Predictive Optimization
+## 預測性最佳化
 
-Predictive Optimization is **recommended** for managed Iceberg tables — it is not auto-enabled and must be turned on explicitly. Once enabled, it automatically runs:
+對受管 Iceberg 資料表而言，**建議**啟用 Predictive Optimization —— 它不會自動啟用，必須明確開啟。啟用後會自動執行：
 
-- **Compaction** — consolidates small files
-- **Vacuum** — removes expired snapshots and orphan files
-- **Statistics collection** — keeps column statistics up to date for query optimization
+- **Compaction** —— 合併小檔案
+- **Vacuum** —— 移除過期 snapshots 與孤兒檔案
+- **統計資料收集** —— 讓欄位統計維持最新，以利查詢最佳化
 
-Enable at the catalog or schema level. Manual operations are still available if needed:
+可在 catalog 或 schema 層級啟用。若有需要，仍可手動執行相關作業：
 
 ```sql
--- Manual compaction
+-- 手動執行 Compaction
 OPTIMIZE my_catalog.my_schema.events;
 
--- Manual vacuum
+-- 手動執行 VACUUM
 VACUUM my_catalog.my_schema.events;
 
--- Manual statistics collection
+-- 手動收集統計資料
 ANALYZE TABLE my_catalog.my_schema.events COMPUTE STATISTICS FOR ALL COLUMNS;
 ```
 
 ---
 
-## Iceberg v3 (Beta)
+## Iceberg v3（Beta）
 
-**Requires**: DBR 17.3+
+**需求**：DBR 17.3+
 
-Iceberg v3 introduces new capabilities on top of v2:
+Iceberg v3 在 v2 之上引入了新的能力：
 
-| Feature | Description |
+| 功能 | 說明 |
 |---------|-------------|
-| **Deletion Vectors** | Row-level deletes without rewriting data files — faster UPDATE/DELETE/MERGE |
-| **VARIANT Type** | Semi-structured data column (like Delta's VARIANT) |
-| **Row Lineage** | Track row-level provenance across transformations |
+| **Deletion Vectors** | 無需重寫資料檔即可執行列層級刪除 —— 可更快速地進行 UPDATE/DELETE/MERGE |
+| **VARIANT 型別** | 半結構化資料欄位（類似 Delta 的 VARIANT） |
+| **Row Lineage** | 追蹤轉換過程中的列層級來源關係 |
 
-### Creating an Iceberg v3 Table
+### 建立 Iceberg v3 資料表
 
 ```sql
 CREATE TABLE my_catalog.my_schema.events_v3 (
@@ -194,43 +194,43 @@ TBLPROPERTIES ('format-version' = '3')
 CLUSTER BY (event_date);
 ```
 
-### Important Notes
+### 重要注意事項
 
-- **Cannot downgrade**: Once a table is upgraded to v3, it cannot be downgraded back to v2
-- **External engine compatibility**: External engines must use Iceberg library 1.9.0+ to read v3 tables
-- **Deletion vectors**: Enabled by default on v3 tables. External readers must support deletion vectors
-- **Beta status**: Iceberg v3 is in Beta — not recommended for production workloads yet
+- **無法降版**：資料表一旦升級到 v3，就無法再降回 v2
+- **外部引擎相容性**：外部引擎必須使用 Iceberg library 1.9.0+ 才能讀取 v3 資料表
+- **Deletion vectors**：v3 資料表預設啟用。外部 reader 必須支援 deletion vectors
+- **Beta 狀態**：Iceberg v3 目前仍為 Beta，尚不建議用於正式工作負載
 
-### Upgrading an Existing Table to v3
+### 將現有資料表升級到 v3
 
 ```sql
 ALTER TABLE my_catalog.my_schema.events
 SET TBLPROPERTIES ('format-version' = '3');
 ```
 
-> **Warning**: This is irreversible. Test with non-production data first.
+> **警告**：此操作無法還原。請先使用非正式環境資料測試。
 
 ---
 
-## Limitations
+## 限制事項
 
-| Limitation | Details |
+| 限制事項 | 詳細說明 |
 |------------|---------|
-| **No Vector Search** | Vector Search indexes are not supported on Iceberg tables |
-| **No Change Data Feed (CDF)** | CDF is a Delta-only feature; use Delta + UniForm if CDF is required |
-| **Parquet only** | Iceberg tables on Databricks use Parquet as the underlying file format |
-| **No shallow clone** | `SHALLOW CLONE` is not supported; use `DEEP CLONE` or CTAS |
-| **`PARTITIONED BY` maps to Liquid Clustering** | `PARTITIONED BY` is supported and recommended for cross-platform scenarios — it maps to Liquid Clustering, not traditional partitions. Only plain column references work; expression transforms (`bucket()`, `years()`, etc.) are not supported. |
-| **No Structured Streaming sink** | Cannot use `writeStream` to write to Iceberg tables directly; use `INSERT INTO` or `MERGE` in batch or SDP |
-| **Compression** | Default compression is `zstd`; older readers may need `snappy` — set `write.parquet.compression-codec` if needed |
-| **Do not set metadata path** | Never set `write.metadata.path` or `write.metadata.previous-versions-max` |
-| **Do not install Iceberg library** | DBR includes built-in support; installing an Iceberg JAR causes conflicts |
+| **不支援 Vector Search** | Iceberg 資料表不支援 Vector Search 索引 |
+| **不支援 CDF（Change Data Feed）** | CDF 是 Delta 專屬功能；若需要 CDF，請使用 Delta + UniForm |
+| **僅支援 Parquet** | Databricks 上的 Iceberg 資料表以 Parquet 作為底層檔案格式 |
+| **不支援 shallow clone** | 不支援 `SHALLOW CLONE`；請使用 `DEEP CLONE` 或 CTAS |
+| **`PARTITIONED BY` 會對應到 Liquid Clustering** | 支援 `PARTITIONED BY`，且建議用於跨平台情境 —— 它會對應到 Liquid Clustering，而不是傳統分割。僅支援純欄位參照；不支援 expression transforms（`bucket()`, `years()`, 等）。 |
+| **沒有 Structured Streaming sink** | 無法使用 `writeStream` 直接寫入 Iceberg 資料表；請在 batch 或 SDP 中使用 `INSERT INTO` 或 `MERGE` |
+| **壓縮** | 預設壓縮為 `zstd`；較舊的 reader 可能需要 `snappy` —— 若有需要，請設定 `write.parquet.compression-codec` |
+| **不要設定 metadata path** | 絕對不要設定 `write.metadata.path` 或 `write.metadata.previous-versions-max` |
+| **不要安裝 Iceberg library** | DBR 已內建支援；安裝 Iceberg JAR 會造成衝突 |
 
 ---
 
-## Converting From Other Formats
+## 從其他格式轉換
 
-### Delta to Iceberg (via DEEP CLONE)
+### 從 Delta 轉成 Iceberg（透過 DEEP CLONE）
 
 ```sql
 CREATE TABLE my_catalog.my_schema.events_iceberg
@@ -238,10 +238,10 @@ USING ICEBERG
 DEEP CLONE my_catalog.my_schema.events_delta;
 ```
 
-### Foreign Iceberg to Managed Iceberg
+### 從 Foreign Iceberg 轉成受管 Iceberg
 
 ```sql
--- With Liquid Clustering (v2 — must disable DVs and row tracking)
+-- 搭配 Liquid Clustering（v2 —— 必須停用 DVs 和 row tracking）
 CREATE TABLE my_catalog.my_schema.events_managed
 USING ICEBERG
 TBLPROPERTIES (
@@ -251,7 +251,7 @@ TBLPROPERTIES (
 CLUSTER BY (event_date)
 AS SELECT * FROM foreign_catalog.foreign_schema.events;
 
--- With Liquid Clustering (v3 — no extra TBLPROPERTIES needed)
+-- 搭配 Liquid Clustering（v3 —— 不需要額外的 TBLPROPERTIES）
 CREATE TABLE my_catalog.my_schema.events_managed
 USING ICEBERG
 TBLPROPERTIES ('format-version' = '3')

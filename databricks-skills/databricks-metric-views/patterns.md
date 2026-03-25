@@ -1,12 +1,12 @@
-# Metric View Patterns & Examples
+# Metric View 模式與範例
 
-Common patterns for creating and querying metric views.
+建立與查詢 Metric Views 的常見模式。
 
-## Pattern 1: Simple Metrics from a Single Table
+## 模式 1：單一資料表的簡單指標
 
-The most basic pattern with direct column dimensions and standard aggregations.
+最基本的模式，使用直接欄位維度與標準聚合。
 
-### Create
+### 建立
 
 ```sql
 CREATE OR REPLACE VIEW catalog.schema.product_metrics
@@ -14,48 +14,48 @@ WITH METRICS
 LANGUAGE YAML
 AS $$
   version: 1.1
-  comment: "Product sales metrics"
+  comment: "產品銷售指標"
   source: catalog.schema.sales
   dimensions:
-    - name: Product Name
+    - name: 產品名稱
       expr: product_name
-    - name: Sale Date
+    - name: 銷售日期
       expr: sale_date
   measures:
-    - name: Units Sold
+    - name: 售出件數
       expr: COUNT(1)
-    - name: Total Revenue
+    - name: 總營收
       expr: SUM(price * quantity)
-    - name: Average Price
+    - name: 平均價格
       expr: AVG(price)
 $$
 ```
 
-### Query
+### 查詢
 
 ```sql
--- Revenue by product
+-- 依產品統計營收
 SELECT
-  `Product Name`,
-  MEASURE(`Total Revenue`) AS revenue,
-  MEASURE(`Units Sold`) AS units
+  `產品名稱`,
+  MEASURE(`總營收`) AS revenue,
+  MEASURE(`售出件數`) AS units
 FROM catalog.schema.product_metrics
 GROUP BY ALL
 ORDER BY revenue DESC
 LIMIT 10
 
--- Monthly trend
+-- 每月趨勢
 SELECT
-  DATE_TRUNC('MONTH', `Sale Date`) AS month,
-  MEASURE(`Total Revenue`) AS revenue
+  DATE_TRUNC('MONTH', `銷售日期`) AS month,
+  MEASURE(`總營收`) AS revenue
 FROM catalog.schema.product_metrics
 GROUP BY ALL
 ORDER BY month
 ```
 
-## Pattern 2: Derived Dimensions with CASE
+## 模式 2：使用 CASE 的衍生維度
 
-Transform raw values into business-friendly categories.
+將原始值轉換成較符合業務需求的類別。
 
 ```sql
 CREATE OR REPLACE VIEW catalog.schema.order_kpis
@@ -65,32 +65,32 @@ AS $$
   version: 1.1
   source: catalog.schema.orders
   dimensions:
-    - name: Order Month
+    - name: 訂單月份
       expr: DATE_TRUNC('MONTH', order_date)
-    - name: Priority Level
+    - name: 優先等級
       expr: CASE
-        WHEN priority <= 2 THEN 'High'
-        WHEN priority <= 4 THEN 'Medium'
-        ELSE 'Low'
+        WHEN priority <= 2 THEN '高'
+        WHEN priority <= 4 THEN '中'
+        ELSE '低'
         END
-      comment: "Bucketed priority: High (1-2), Medium (3-4), Low (5)"
-    - name: Size Category
+      comment: "已分桶的優先順序：高（1-2）、中（3-4）、低（5）"
+    - name: 規模類別
       expr: CASE
-        WHEN total_amount > 10000 THEN 'Large'
-        WHEN total_amount > 1000 THEN 'Medium'
-        ELSE 'Small'
+        WHEN total_amount > 10000 THEN '大'
+        WHEN total_amount > 1000 THEN '中'
+        ELSE '小'
         END
   measures:
-    - name: Order Count
+    - name: 訂單數
       expr: COUNT(1)
-    - name: Total Amount
+    - name: 總金額
       expr: SUM(total_amount)
 $$
 ```
 
-## Pattern 3: Ratio Measures
+## 模式 3：比率量值
 
-Ratios and per-unit metrics that safely handle re-aggregation.
+比率與單位化指標，可安全進行重新聚合。
 
 ```sql
 CREATE OR REPLACE VIEW catalog.schema.efficiency_metrics
@@ -98,31 +98,31 @@ WITH METRICS
 LANGUAGE YAML
 AS $$
   version: 1.1
-  comment: "Efficiency and per-unit metrics"
+  comment: "效率與單位化指標"
   source: catalog.schema.transactions
   dimensions:
-    - name: Department
+    - name: 部門
       expr: department_name
-    - name: Quarter
+    - name: 季度
       expr: DATE_TRUNC('QUARTER', transaction_date)
   measures:
-    - name: Total Revenue
+    - name: 總營收
       expr: SUM(revenue)
-    - name: Total Cost
+    - name: 總成本
       expr: SUM(cost)
-    - name: Profit Margin
+    - name: 利潤率
       expr: (SUM(revenue) - SUM(cost)) / SUM(revenue)
-      comment: "Profit as percentage of revenue"
-    - name: Revenue per Employee
+      comment: "利潤占營收的百分比"
+    - name: 每位員工營收
       expr: SUM(revenue) / COUNT(DISTINCT employee_id)
-    - name: Average Transaction Size
+    - name: 平均交易金額
       expr: SUM(revenue) / COUNT(1)
 $$
 ```
 
-## Pattern 4: Filtered Measures (FILTER clause)
+## 模式 4：篩選量值（FILTER 子句）
 
-Create measures that only count a subset of rows.
+建立只計算部分資料列的量值。
 
 ```sql
 CREATE OR REPLACE VIEW catalog.schema.order_status_metrics
@@ -132,43 +132,43 @@ AS $$
   version: 1.1
   source: catalog.schema.orders
   dimensions:
-    - name: Order Month
+    - name: 訂單月份
       expr: DATE_TRUNC('MONTH', order_date)
-    - name: Region
+    - name: 區域
       expr: region
   measures:
-    - name: Total Orders
+    - name: 訂單總數
       expr: COUNT(1)
-    - name: Open Orders
+    - name: 未完成訂單數
       expr: COUNT(1) FILTER (WHERE status = 'OPEN')
-    - name: Fulfilled Orders
+    - name: 已履約訂單數
       expr: COUNT(1) FILTER (WHERE status = 'FULFILLED')
-    - name: Open Revenue
+    - name: 未完成訂單營收
       expr: SUM(amount) FILTER (WHERE status = 'OPEN')
-      comment: "Revenue at risk from unfulfilled orders"
-    - name: Fulfillment Rate
+      comment: "未履約訂單的風險營收"
+    - name: 履約率
       expr: COUNT(1) FILTER (WHERE status = 'FULFILLED') * 1.0 / COUNT(1)
-      comment: "Percentage of orders fulfilled"
+      comment: "已履約訂單的百分比"
 $$
 ```
 
-### Query filtered measures
+### 查詢篩選量值
 
 ```sql
 SELECT
-  `Order Month`,
-  MEASURE(`Total Orders`) AS total,
-  MEASURE(`Open Orders`) AS open_orders,
-  MEASURE(`Fulfillment Rate`) AS fulfillment_rate
+  `訂單月份`,
+  MEASURE(`訂單總數`) AS total,
+  MEASURE(`未完成訂單數`) AS open_orders,
+  MEASURE(`履約率`) AS fulfillment_rate
 FROM catalog.schema.order_status_metrics
-WHERE `Region` = 'EMEA'
+WHERE `區域` = 'EMEA'
 GROUP BY ALL
 ORDER BY ALL
 ```
 
-## Pattern 5: Star Schema with Joins
+## 模式 5：使用 Joins 的 Star Schema
 
-Join a fact table to dimension tables.
+將 fact table 與 dimension tables 連接。
 
 ```sql
 CREATE OR REPLACE VIEW catalog.schema.sales_analytics
@@ -176,7 +176,7 @@ WITH METRICS
 LANGUAGE YAML
 AS $$
   version: 1.1
-  comment: "Sales analytics with customer and product dimensions"
+  comment: "包含客戶與產品維度的銷售分析"
   source: catalog.schema.fact_sales
 
   joins:
@@ -191,28 +191,28 @@ AS $$
       on: source.store_id = store.store_id
 
   dimensions:
-    - name: Customer Segment
+    - name: 客戶區隔
       expr: customer.segment
-    - name: Product Category
+    - name: 產品類別
       expr: product.category
-    - name: Store City
+    - name: 門市城市
       expr: store.city
-    - name: Sale Month
+    - name: 銷售月份
       expr: DATE_TRUNC('MONTH', source.sale_date)
 
   measures:
-    - name: Total Revenue
+    - name: 總營收
       expr: SUM(source.amount)
-    - name: Unique Customers
+    - name: 不重複客戶數
       expr: COUNT(DISTINCT source.customer_id)
-    - name: Average Basket Size
+    - name: 平均客單價
       expr: SUM(source.amount) / COUNT(DISTINCT source.transaction_id)
 $$
 ```
 
-## Pattern 6: Snowflake Schema (Nested Joins)
+## 模式 6：Snowflake Schema（巢狀 Joins）
 
-Multi-level dimension hierarchies. Requires DBR 17.1+.
+多層級維度階層。需要 DBR 17.1+。
 
 ```sql
 CREATE OR REPLACE VIEW catalog.schema.geo_sales
@@ -236,47 +236,47 @@ AS $$
               on: nation.region_key = region.region_key
 
   dimensions:
-    - name: Customer Name
+    - name: 客戶名稱
       expr: customer.name
-    - name: Nation
+    - name: 國家
       expr: nation.name
-    - name: Region
+    - name: 區域
       expr: region.name
-    - name: Order Year
+    - name: 訂單年份
       expr: EXTRACT(YEAR FROM source.order_date)
 
   measures:
-    - name: Total Revenue
+    - name: 總營收
       expr: SUM(source.total_price)
-    - name: Order Count
+    - name: 訂單數
       expr: COUNT(1)
 $$
 ```
 
-### Query across hierarchy levels
+### 跨階層層級查詢
 
 ```sql
--- Revenue by region (rolls up across nations and customers)
+-- 依區域統計營收（跨國家與客戶向上彙總）
 SELECT
-  `Region`,
-  MEASURE(`Total Revenue`) AS revenue
+  `區域`,
+  MEASURE(`總營收`) AS revenue
 FROM catalog.schema.geo_sales
 GROUP BY ALL
 
--- Revenue by nation within a specific region
+-- 特定區域內依國家統計營收
 SELECT
-  `Nation`,
-  MEASURE(`Total Revenue`) AS revenue,
-  MEASURE(`Order Count`) AS orders
+  `國家`,
+  MEASURE(`總營收`) AS revenue,
+  MEASURE(`訂單數`) AS orders
 FROM catalog.schema.geo_sales
-WHERE `Region` = 'EUROPE'
+WHERE `區域` = 'EUROPE'
 GROUP BY ALL
 ORDER BY revenue DESC
 ```
 
-## Pattern 7: Materialized Metric View
+## 模式 7：Materialized Metric View
 
-Pre-compute common aggregations for faster queries.
+預先計算常用聚合以加快查詢。
 
 ```sql
 CREATE OR REPLACE VIEW catalog.schema.ecommerce_metrics
@@ -287,19 +287,19 @@ AS $$
   source: catalog.schema.transactions
 
   dimensions:
-    - name: Category
+    - name: 類別
       expr: product_category
-    - name: Day
+    - name: 日期
       expr: DATE_TRUNC('DAY', transaction_date)
-    - name: Channel
+    - name: 通路
       expr: sales_channel
 
   measures:
-    - name: Revenue
+    - name: 營收
       expr: SUM(amount)
-    - name: Transactions
+    - name: 交易數
       expr: COUNT(1)
-    - name: Unique Buyers
+    - name: 不重複買家數
       expr: COUNT(DISTINCT customer_id)
 
   materialization:
@@ -309,19 +309,19 @@ AS $$
       - name: daily_category
         type: aggregated
         dimensions:
-          - Category
-          - Day
+          - 類別
+          - 日期
         measures:
-          - Revenue
-          - Transactions
+          - 營收
+          - 交易數
       - name: full_model
         type: unaggregated
 $$
 ```
 
-## Pattern 8: Using samples.tpch for Quick Demos
+## 模式 8：使用 samples.tpch 快速示範
 
-The TPC-H sample dataset is available on all Databricks workspaces.
+所有 Databricks workspace 都提供 TPC-H 範例資料集。
 
 ```sql
 CREATE OR REPLACE VIEW catalog.schema.tpch_orders_metrics
@@ -329,87 +329,87 @@ WITH METRICS
 LANGUAGE YAML
 AS $$
   version: 1.1
-  comment: "TPC-H Orders KPIs - demo metric view"
+  comment: "TPC-H 訂單 KPI - 示範用 Metric View"
   source: samples.tpch.orders
   filter: o_orderdate > '1990-01-01'
 
   dimensions:
-    - name: Order Month
+    - name: 訂單月份
       expr: DATE_TRUNC('MONTH', o_orderdate)
-      comment: "Month of order"
-    - name: Order Status
+      comment: "訂單月份"
+    - name: 訂單狀態
       expr: CASE
-        WHEN o_orderstatus = 'O' THEN 'Open'
-        WHEN o_orderstatus = 'P' THEN 'Processing'
-        WHEN o_orderstatus = 'F' THEN 'Fulfilled'
+        WHEN o_orderstatus = 'O' THEN '開啟'
+        WHEN o_orderstatus = 'P' THEN '處理中'
+        WHEN o_orderstatus = 'F' THEN '已履約'
         END
-      comment: "Status: Open, Processing, or Fulfilled"
-    - name: Order Priority
+      comment: "狀態：開啟、處理中或已履約"
+    - name: 訂單優先順序
       expr: SPLIT(o_orderpriority, '-')[1]
-      comment: "Numeric priority 1-5; 1 is highest"
+      comment: "數字優先順序 1-5；1 最高"
 
   measures:
-    - name: Order Count
+    - name: 訂單數
       expr: COUNT(1)
-    - name: Total Revenue
+    - name: 總營收
       expr: SUM(o_totalprice)
-      comment: "Sum of total price"
-    - name: Revenue per Customer
+      comment: "總價格加總"
+    - name: 每位客戶營收
       expr: SUM(o_totalprice) / COUNT(DISTINCT o_custkey)
-      comment: "Average revenue per distinct customer"
-    - name: Open Order Revenue
+      comment: "每位不重複客戶的平均營收"
+    - name: 未完成訂單營收
       expr: SUM(o_totalprice) FILTER (WHERE o_orderstatus = 'O')
-      comment: "Potential revenue from open orders"
+      comment: "來自未完成訂單的潛在營收"
 $$
 ```
 
-### Demo queries
+### 示範查詢
 
 ```sql
--- Monthly revenue trend
+-- 每月營收趨勢
 SELECT
-  `Order Month`,
-  MEASURE(`Total Revenue`)::BIGINT AS revenue,
-  MEASURE(`Order Count`) AS orders
+  `訂單月份`,
+  MEASURE(`總營收`)::BIGINT AS revenue,
+  MEASURE(`訂單數`) AS orders
 FROM catalog.schema.tpch_orders_metrics
-WHERE extract(year FROM `Order Month`) = 1995
+WHERE extract(year FROM `訂單月份`) = 1995
 GROUP BY ALL
 ORDER BY ALL
 
--- Revenue by status
+-- 依狀態統計營收
 SELECT
-  `Order Status`,
-  MEASURE(`Total Revenue`)::BIGINT AS revenue,
-  MEASURE(`Revenue per Customer`)::BIGINT AS rev_per_customer
+  `訂單狀態`,
+  MEASURE(`總營收`)::BIGINT AS revenue,
+  MEASURE(`每位客戶營收`)::BIGINT AS rev_per_customer
 FROM catalog.schema.tpch_orders_metrics
 GROUP BY ALL
 
--- Open orders risk assessment
+-- 未完成訂單風險評估
 SELECT
-  `Order Month`,
-  MEASURE(`Open Order Revenue`)::BIGINT AS at_risk_revenue,
-  MEASURE(`Total Revenue`)::BIGINT AS total_revenue
+  `訂單月份`,
+  MEASURE(`未完成訂單營收`)::BIGINT AS at_risk_revenue,
+  MEASURE(`總營收`)::BIGINT AS total_revenue
 FROM catalog.schema.tpch_orders_metrics
-WHERE extract(year FROM `Order Month`) >= 1995
+WHERE extract(year FROM `訂單月份`) >= 1995
 GROUP BY ALL
 ORDER BY ALL
 ```
 
-## Pattern 9: Window Measures (Experimental)
+## 模式 9：Window Measures（實驗性）
 
-Window measures enable moving averages, running totals, period-over-period changes, and semiadditive measures. Add a `window` block to any measure definition. See [Window Measures Documentation](https://docs.databricks.com/aws/en/metric-views/data-modeling/window-measures).
+Window measures 可支援移動平均、累計總額、期比變化與 semiadditive measures。將 `window` 區塊加到任何 measure 定義中。請參閱 [Window Measures 文件](https://docs.databricks.com/aws/en/metric-views/data-modeling/window-measures)。
 
-### Window Range Values
+### Window Range 值
 
-| Range | Description |
+| 範圍 | 說明 |
 |-------|-------------|
-| `current` | Only rows where the window ordering value equals the current row |
-| `cumulative` | All rows up to and including the current row |
-| `trailing <N> <unit>` | N units before the current row (**excludes** current) |
-| `leading <N> <unit>` | N units after the current row |
-| `all` | All rows regardless of ordering |
+| `current` | 僅包含 window 排序值等於目前資料列的資料 |
+| `cumulative` | 從起始到目前資料列（含目前列）的所有資料 |
+| `trailing <N> <unit>` | 目前資料列之前 N 個單位的範圍（**不含**目前列） |
+| `leading <N> <unit>` | 目前資料列之後 N 個單位的範圍 |
+| `all` | 無論排序為何都包含所有資料列 |
 
-### Trailing Window: 7-Day Distinct Customers
+### Trailing Window：7 日不重複客戶數
 
 ```sql
 CREATE OR REPLACE VIEW catalog.schema.customer_activity
@@ -434,9 +434,9 @@ AS $$
 $$
 ```
 
-**Key:** `trailing 7 day` includes the 7 days **before** each date, **excluding** the current date. `semiadditive: last` returns the last value when the `date` dimension is not in the GROUP BY.
+**重點：** `trailing 7 day` 會包含每個日期**之前**的 7 天，**不含**當天。當 `date` 維度不在 GROUP BY 中時，`semiadditive: last` 會回傳最後一個值。
 
-### Running Total (Cumulative)
+### 累計總額（Cumulative）
 
 ```sql
 CREATE OR REPLACE VIEW catalog.schema.cumulative_sales
@@ -461,9 +461,9 @@ AS $$
 $$
 ```
 
-### Period-Over-Period: Day-Over-Day Growth
+### 期比：日增長率
 
-Compose window measures using `MEASURE()` references in derived measures.
+使用衍生 measures 中的 `MEASURE()` 參照來組合 window measures。
 
 ```sql
 CREATE OR REPLACE VIEW catalog.schema.daily_growth
@@ -498,11 +498,11 @@ AS $$
 $$
 ```
 
-**Key:** The derived `day_over_day_growth` measure uses `MEASURE()` to reference other window measures. It does NOT need its own `window` block.
+**重點：** 衍生的 `day_over_day_growth` measure 會使用 `MEASURE()` 參照其他 window measures。它**不需要**自己的 `window` 區塊。
 
-### Year-to-Date (Composing Multiple Windows)
+### 年初至今（組合多個 Windows）
 
-A single measure can have multiple window specs to create period-to-date calculations.
+單一 measure 可以有多個 window spec，用來建立 period-to-date 計算。
 
 ```sql
 CREATE OR REPLACE VIEW catalog.schema.ytd_metrics
@@ -532,11 +532,11 @@ AS $$
 $$
 ```
 
-**Key:** The first window does a cumulative sum over `date`. The second window restricts scope to the `current` year. Together they produce year-to-date.
+**重點：** 第一個 window 會在 `date` 上做累積加總。第二個 window 會把範圍限制在 `current` 年。兩者結合後即可得到年初至今的結果。
 
-### Semiadditive Measure: Bank Balance
+### Semiadditive Measure：銀行餘額
 
-For measures like balances that should not be summed across time.
+適用於像餘額這類不應跨時間相加的量值。
 
 ```sql
 CREATE OR REPLACE VIEW catalog.schema.account_balances
@@ -562,11 +562,11 @@ AS $$
 $$
 ```
 
-**Key:** `semiadditive: last` prevents summing across dates (returns the last date's value instead), but the measure **still aggregates across other dimensions** like `customer`. When grouped by date, you get total balance across all customers for that day. When not grouped by date, you get the balance from the most recent date.
+**重點：** `semiadditive: last` 可避免跨日期相加（改為回傳最後日期的值），但此量值**仍會跨其他維度聚合**，例如 `customer`。依日期分組時，你會得到該日所有客戶的總餘額；未依日期分組時，你會得到最近日期的餘額。
 
-### Query window measures
+### 查詢 window measures
 
-Window measures are queried with the same `MEASURE()` syntax:
+Window measures 使用相同的 `MEASURE()` 語法查詢：
 
 ```sql
 SELECT
@@ -579,9 +579,9 @@ GROUP BY ALL
 ORDER BY ALL
 ```
 
-## MCP Tool Examples
+## MCP 工具範例
 
-### Create with joins
+### 建立含 joins 的 Metric View
 
 ```python
 manage_metric_views(
@@ -602,19 +602,19 @@ manage_metric_views(
         }
     ],
     dimensions=[
-        {"name": "Customer Segment", "expr": "customer.segment"},
-        {"name": "Product Category", "expr": "product.category"},
-        {"name": "Sale Month", "expr": "DATE_TRUNC('MONTH', source.sale_date)"},
+        {"name": "客戶區隔", "expr": "customer.segment"},
+        {"name": "產品類別", "expr": "product.category"},
+        {"name": "銷售月份", "expr": "DATE_TRUNC('MONTH', source.sale_date)"},
     ],
     measures=[
-        {"name": "Total Revenue", "expr": "SUM(source.amount)"},
-        {"name": "Order Count", "expr": "COUNT(1)"},
-        {"name": "Unique Customers", "expr": "COUNT(DISTINCT source.customer_id)"},
+        {"name": "總營收", "expr": "SUM(source.amount)"},
+        {"name": "訂單數", "expr": "COUNT(1)"},
+        {"name": "不重複客戶數", "expr": "COUNT(DISTINCT source.customer_id)"},
     ],
 )
 ```
 
-### Alter to add a new measure
+### 修改以新增新 measure
 
 ```python
 manage_metric_views(
@@ -625,26 +625,26 @@ manage_metric_views(
         {"name": "customer", "source": "catalog.schema.dim_customer", "on": "source.customer_id = customer.id"},
     ],
     dimensions=[
-        {"name": "Customer Segment", "expr": "customer.segment"},
-        {"name": "Sale Month", "expr": "DATE_TRUNC('MONTH', source.sale_date)"},
+        {"name": "客戶區隔", "expr": "customer.segment"},
+        {"name": "銷售月份", "expr": "DATE_TRUNC('MONTH', source.sale_date)"},
     ],
     measures=[
-        {"name": "Total Revenue", "expr": "SUM(source.amount)"},
-        {"name": "Order Count", "expr": "COUNT(1)"},
-        {"name": "Average Order Value", "expr": "AVG(source.amount)"},  # New measure
+        {"name": "總營收", "expr": "SUM(source.amount)"},
+        {"name": "訂單數", "expr": "COUNT(1)"},
+        {"name": "平均訂單金額", "expr": "AVG(source.amount)"},  # 新量值
     ],
 )
 ```
 
-### Query with filters
+### 搭配篩選條件查詢
 
 ```python
 manage_metric_views(
     action="query",
     full_name="catalog.schema.sales_metrics",
-    query_measures=["Total Revenue", "Order Count"],
-    query_dimensions=["Customer Segment", "Sale Month"],
-    where="`Customer Segment` = 'Enterprise'",
+    query_measures=["總營收", "訂單數"],
+    query_dimensions=["客戶區隔", "銷售月份"],
+    where="`客戶區隔` = 'Enterprise'",
     order_by="ALL",
     limit=50,
 )

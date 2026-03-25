@@ -1,8 +1,8 @@
 """
 Databricks MCP Server
 
-A FastMCP server that exposes Databricks operations as MCP tools.
-Simply wraps functions from databricks-tools-core.
+將 Databricks 操作公開為 MCP 工具的 FastMCP 伺服器。
+僅包裝 databricks-tools-core 中的函式。
 """
 
 import asyncio
@@ -18,23 +18,23 @@ from .middleware import TimeoutHandlingMiddleware
 
 
 # ---------------------------------------------------------------------------
-# Windows fixes — must run BEFORE FastMCP init and tool registration
+# Windows 修補——必須在 FastMCP 初始化與工具註冊之前執行
 # ---------------------------------------------------------------------------
 
 
 def _patch_subprocess_stdin():
-    """Monkey-patch subprocess so stdin defaults to DEVNULL on Windows.
+    """在 Windows 上對 subprocess 進行 monkey-patch，讓 stdin 預設為 DEVNULL。
 
-    When the MCP server runs in stdio mode, stdin IS the JSON-RPC pipe.
-    Any subprocess call without explicit stdin lets child processes inherit
-    this pipe handle. On Windows the Databricks SDK refreshes auth tokens
-    via ``subprocess.run(["databricks", "auth", "token", ...], shell=True)``
-    without setting stdin — the spawned ``databricks.exe`` blocks reading
-    from the shared pipe, hanging every MCP tool call.
+    當 MCP 伺服器以 stdio 模式執行時，stdin 就是 JSON-RPC pipe。
+    任何未明確指定 stdin 的 subprocess 呼叫，都會讓子行程繼承
+    這個 pipe handle。在 Windows 上，Databricks SDK 會透過
+    ``subprocess.run(["databricks", "auth", "token", ...], shell=True)``
+    重新整理 auth token，卻未設定 stdin——因此啟動的 ``databricks.exe``
+    會阻塞等待讀取共用 pipe，導致所有 MCP 工具呼叫卡住。
 
-    Fix: default stdin to DEVNULL so child processes never touch the pipe.
+    修正方式：將 stdin 預設為 DEVNULL，讓子行程永遠不會碰到該 pipe。
 
-    See: https://github.com/modelcontextprotocol/python-sdk/issues/671
+    參見: https://github.com/modelcontextprotocol/python-sdk/issues/671
     """
     _original_run = subprocess.run
 
@@ -56,22 +56,22 @@ def _patch_subprocess_stdin():
 
 
 def _patch_tool_decorator_for_windows():
-    """Wrap sync tool functions in asyncio.to_thread() on Windows.
+    """在 Windows 上以 asyncio.to_thread() 包裝同步工具函式。
 
-    FastMCP's FunctionTool.run() calls sync functions directly on the asyncio
-    event loop thread, which blocks the stdio transport's I/O tasks. On Windows
-    (ProactorEventLoop), this causes a deadlock — all MCP tools hang indefinitely.
+    FastMCP 的 FunctionTool.run() 會直接在 asyncio 事件迴圈執行緒上
+    呼叫同步函式，這會阻塞 stdio transport 的 I/O 工作。在 Windows
+    （ProactorEventLoop）上，這會造成 deadlock——所有 MCP 工具都會無限期卡住。
 
-    This patch intercepts @mcp.tool registration to wrap sync functions so they
-    run in a thread pool, yielding control back to the event loop for I/O.
+    此修補會攔截 @mcp.tool 的註冊流程，包裝同步函式，使其在
+    執行緒集區中執行，把 I/O 所需的控制權交還給事件迴圈。
 
-    See: https://github.com/modelcontextprotocol/python-sdk/issues/671
+    參見: https://github.com/modelcontextprotocol/python-sdk/issues/671
     """
     original_tool = mcp.tool
 
     @functools.wraps(original_tool)
     def patched_tool(fn=None, *args, **kwargs):
-        # Handle @mcp.tool("name") — returns a decorator
+        # 處理 @mcp.tool("name")——會回傳一個 decorator
         if fn is None or isinstance(fn, str):
             decorator = original_tool(fn, *args, **kwargs)
 
@@ -83,7 +83,7 @@ def _patch_tool_decorator_for_windows():
 
             return wrapper
 
-        # Handle @mcp.tool (bare decorator, fn is the function)
+        # 處理 @mcp.tool（裸 decorator，fn 就是函式本身）
         if not inspect.iscoroutinefunction(fn):
             fn = _wrap_sync_in_thread(fn)
         return original_tool(fn, *args, **kwargs)
@@ -92,7 +92,7 @@ def _patch_tool_decorator_for_windows():
 
 
 def _wrap_sync_in_thread(fn):
-    """Wrap a sync function to run in asyncio.to_thread(), preserving metadata."""
+    """包裝同步函式，使其在 asyncio.to_thread() 中執行，並保留中繼資料。"""
 
     @functools.wraps(fn)
     async def async_wrapper(**kwargs):
@@ -101,19 +101,19 @@ def _wrap_sync_in_thread(fn):
     return async_wrapper
 
 
-# Apply subprocess patch early — before any Databricks SDK import
+# 及早套用 subprocess 修補——在任何 Databricks SDK 匯入之前
 if sys.platform == "win32":
     _patch_subprocess_stdin()
 
 # ---------------------------------------------------------------------------
-# Server initialisation
+# 伺服器初始化
 # ---------------------------------------------------------------------------
 
-# Disable FastMCP's built-in task worker on Windows.
-# The docket worker uses fakeredis XREADGROUP BLOCK which deadlocks
-# the ProactorEventLoop, preventing asyncio.to_thread() callbacks.
-# Belt-and-suspenders: pass tasks=False AND override _docket_lifespan,
-# because tasks=False alone does not prevent the worker from starting.
+# 在 Windows 上停用 FastMCP 內建的 task worker。
+# docket worker 使用 fakeredis XREADGROUP BLOCK，會讓
+# ProactorEventLoop 發生 deadlock，導致 asyncio.to_thread() callback 無法執行。
+# 雙重保險：傳入 tasks=False，並覆寫 _docket_lifespan，
+# 因為單靠 tasks=False 並無法阻止 worker 啟動。
 _fastmcp_kwargs = {}
 if sys.platform == "win32":
     _fastmcp_kwargs["tasks"] = False
@@ -129,13 +129,13 @@ if sys.platform == "win32":
     if hasattr(mcp, "_docket_lifespan"):
         mcp._docket_lifespan = _noop_lifespan
 
-# Register middleware (see middleware.py for details on each)
+# 註冊 middleware（各項細節請見 middleware.py）
 mcp.add_middleware(TimeoutHandlingMiddleware())
 
 if sys.platform == "win32":
     _patch_tool_decorator_for_windows()
 
-# Import and register all tools (side-effect imports: each module registers @mcp.tool decorators)
+# 匯入並註冊所有工具（具副作用的匯入：各模組都會註冊 @mcp.tool decorator）
 from .tools import (  # noqa: F401, E402
     sql,
     compute,

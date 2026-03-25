@@ -1,8 +1,7 @@
 """
-Lakebase Autoscaling Credential Operations
+Lakebase Autoscaling 認證操作
 
-Functions for generating OAuth tokens for connecting to
-Lakebase Autoscaling PostgreSQL databases.
+用於產生連線至 Lakebase Autoscaling PostgreSQL 資料庫所需 OAuth Token 的函式。
 """
 
 import logging
@@ -15,23 +14,24 @@ logger = logging.getLogger(__name__)
 
 def generate_credential(endpoint: str) -> Dict[str, Any]:
     """
-    Generate an OAuth token for connecting to Lakebase Autoscaling databases.
+    產生用於連線 Lakebase Autoscaling 資料庫的 OAuth Token。
 
-    The token is valid for ~1 hour. Use it as the password in PostgreSQL
-    connection strings with sslmode=require.
+    注意：
+        此 Token 約可使用 1 小時。請在 PostgreSQL 連線字串中搭配
+        sslmode=require 作為密碼使用。
 
-    Args:
-        endpoint: Endpoint resource name to scope the credential to
-            (e.g., "projects/my-app/branches/production/endpoints/ep-primary").
+    參數:
+        endpoint: 要限定認證範圍的端點資源名稱
+            （例如："projects/my-app/branches/production/endpoints/ep-primary"）。
 
-    Returns:
-        Dictionary with:
-        - token: OAuth token (use as password in connection string)
-        - expiration_time: Token expiration time
-        - message: Usage instructions
+    回傳:
+        包含以下欄位的字典：
+        - token: OAuth Token（作為連線字串中的密碼使用）
+        - expiration_time: Token 到期時間
+        - message: 使用說明
 
-    Raises:
-        Exception: If credential generation fails
+    引發:
+        Exception: 當認證產生失敗時
     """
     client = get_workspace_client()
 
@@ -46,8 +46,8 @@ def generate_credential(endpoint: str) -> Dict[str, Any]:
         if hasattr(cred, "expiration_time") and cred.expiration_time:
             result["expiration_time"] = str(cred.expiration_time)
 
-        result["message"] = "Token generated. Valid for ~1 hour. Use as password with sslmode=require."
+        result["message"] = "已產生 Token。約可使用 1 小時。請搭配 sslmode=require 作為密碼使用。"
 
         return result
     except Exception as e:
-        raise Exception(f"Failed to generate Lakebase Autoscaling credentials: {str(e)}")
+        raise Exception(f"產生 Lakebase Autoscaling 認證失敗：{str(e)}")

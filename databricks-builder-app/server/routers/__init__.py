@@ -1,4 +1,4 @@
-"""API routers module."""
+"""API 路由模組。"""
 
 from .agent import router as agent_router
 from .clusters import router as clusters_router

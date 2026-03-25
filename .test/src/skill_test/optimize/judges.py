@@ -1,34 +1,34 @@
-"""MLflow judge factories for skill evaluation.
+"""用於技能評估的 MLflow 評判器工廠。
 
-Focused single-question judges that each make 1 LLM call:
+聚焦的單一問題評判器，每個只會進行 1 次 LLM 呼叫：
 
-    correctness_judge       — Is the response factually and technically correct?
-    completeness_judge      — Does the response fully address the question?
-    guideline_adherence_judge — Does the response follow Databricks conventions?
-    regression_judge        — Does the skill harm the response?
+    correctness_judge         — 回應在事實與技術上是否正確？
+    completeness_judge        — 回應是否完整處理了問題？
+    guideline_adherence_judge — 回應是否遵循 Databricks 慣例？
+    regression_judge          — 技能是否傷害了回應？
 
-Each judge uses binary ``Literal["yes", "no"]`` feedback for unambiguous verdicts
-(Anthropic best practice: "two domain experts would reach the same verdict").
-Scores are converted to floats via ``_safe_parse_score``.
+每個評判器都使用二元 ``Literal["yes", "no"]`` 回饋，以產生明確判決
+（Anthropic 最佳實務：「兩位領域專家會得到相同判決」）。
+分數會透過 ``_safe_parse_score`` 轉換為 float。
 
-Eval criteria are loaded on-demand via ``skills=`` parameter on ``make_judge()``
-(MLflow PR #21725). When ``skills=`` is not yet supported, judges operate without
-criteria — the deterministic scorers and assertions provide the static spine.
+eval criteria 會透過 ``make_judge()`` 上的 ``skills=`` 參數按需載入
+（MLflow PR #21725）。當 ``skills=`` 尚未受支援時，評判器會在沒有
+criteria 的情況下運作——決定性評分器與斷言會提供靜態骨幹。
 
-Judge model resolution (highest priority first):
-    1. Explicit ``judge_model`` argument to factory functions
-    2. ``GEPA_JUDGE_LM`` environment variable
-    3. ``databricks:/databricks-claude-sonnet-4-6`` (default)
+評判器 model 解析（優先順序由高到低）：
+    1. 傳給工廠函式的明確 ``judge_model`` 引數
+    2. ``GEPA_JUDGE_LM`` 環境變數
+    3. ``databricks:/databricks-claude-sonnet-4-6``（預設）
 
-Model fallback:
-    On rate limit errors (REQUEST_LIMIT_EXCEEDED), automatically retries with
-    fallback models. Configure via ``GEPA_FALLBACK_MODELS`` env var (comma-separated)
-    or use the built-in Databricks fallback chain.
+model 回退：
+    遇到 rate limit 錯誤（REQUEST_LIMIT_EXCEEDED）時，會自動以
+    fallback models 重試。可透過 ``GEPA_FALLBACK_MODELS`` 環境變數（逗號分隔）
+    配置，或使用內建的 Databricks fallback chain。
 
-AI Gateway support:
-    Set ``DATABRICKS_AI_GATEWAY_URL`` to route calls through Databricks AI Gateway.
-    Example: https://1444828305810485.ai-gateway.cloud.databricks.com/mlflow/v1
-    Works alongside the standard serving endpoint approach.
+AI Gateway 支援：
+    設定 ``DATABRICKS_AI_GATEWAY_URL`` 以透過 Databricks AI Gateway 路由呼叫。
+    範例：https://1444828305810485.ai-gateway.cloud.databricks.com/mlflow/v1
+    可與標準 serving endpoint 方法一同使用。
 """
 
 from __future__ import annotations
@@ -50,7 +50,7 @@ logger = logging.getLogger(__name__)
 DEFAULT_JUDGE_LM = os.environ.get("GEPA_JUDGE_LM", "databricks:/databricks-claude-sonnet-4-6")
 
 # ---------------------------------------------------------------------------
-# Fallback model chain for rate limit errors
+# rate limit 錯誤用的 fallback model chain
 # ---------------------------------------------------------------------------
 
 _DEFAULT_FALLBACK_MODELS = [
@@ -64,7 +64,7 @@ _DEFAULT_FALLBACK_MODELS = [
 
 
 def _get_fallback_models() -> list[str]:
-    """Get fallback model chain from env or defaults."""
+    """從環境變數或預設值取得 fallback model chain。"""
     custom = os.environ.get("GEPA_FALLBACK_MODELS", "")
     if custom.strip():
         return [m.strip() for m in custom.split(",") if m.strip()]
@@ -72,7 +72,7 @@ def _get_fallback_models() -> list[str]:
 
 
 def _is_rate_limit_error(exc: Exception) -> bool:
-    """Check if an exception is a rate limit / request limit exceeded error."""
+    """檢查例外是否為 rate limit / request limit exceeded 錯誤。"""
     msg = str(exc).lower()
     return any(
         phrase in msg
@@ -89,10 +89,10 @@ def _is_rate_limit_error(exc: Exception) -> bool:
 
 
 def _is_workspace_error(exc: Exception) -> bool:
-    """Detect workspace-level errors where retrying or falling back is pointless.
+    """偵測工作區層級錯誤，此時重試或回退都沒有意義。
 
-    Catches 403/IP ACL blocks, auth failures, and network errors that indicate
-    the entire workspace is unreachable — not just a single model rate limit.
+    會攔截 403/IP ACL 封鎖、驗證失敗，以及表示
+    整個工作區無法連線的網路錯誤——而不只是單一 model 的 rate limit。
     """
     msg = str(exc).lower()
     return any(
@@ -119,15 +119,15 @@ def _is_workspace_error(exc: Exception) -> bool:
 
 
 # ---------------------------------------------------------------------------
-# Global LLM call budget
+# 全域 LLM 呼叫預算
 # ---------------------------------------------------------------------------
 
 
 class _LLMCallBudget:
-    """Thread-safe counter that enforces a global cap on LLM API calls.
+    """對 LLM API 呼叫施加全域上限的執行緒安全計數器。
 
-    Configurable via GEPA_MAX_LLM_CALLS env var.  When unset or 0 the budget
-    is unlimited.
+    可透過 GEPA_MAX_LLM_CALLS 環境變數配置。未設定或為 0 時，
+    預算不限。
     """
 
     def __init__(self):
@@ -151,7 +151,7 @@ class _LLMCallBudget:
             return self._count
 
     def acquire(self) -> bool:
-        """Increment counter. Returns False if budget exhausted."""
+        """遞增計數器。若預算耗盡則回傳 False。"""
         with self._lock:
             if self._max > 0 and self._count >= self._max:
                 return False
@@ -167,25 +167,24 @@ _llm_budget = _LLMCallBudget()
 
 
 # ---------------------------------------------------------------------------
-# AI Gateway support
+# AI Gateway 支援
 # ---------------------------------------------------------------------------
 
 
 def _get_gateway_base_url() -> str | None:
-    """Return the AI Gateway base URL if configured, else None.
+    """若已配置則回傳 AI Gateway base URL，否則回傳 None。
 
-    Reads os.environ at call time (not import time) so that env vars
-    set by runner.py's early config loading are picked up before judges
-    are created.
+    會在呼叫時（而非 import 時）讀取 os.environ，讓
+    runner.py 早期載入的環境變數能在建立評判器前生效。
 
-    Strips common API path suffixes (e.g. ``/chat/completions``) that users
-    might include by mistake — litellm appends its own path to the base URL.
+    會移除使用者可能誤加的常見 API path 後綴（例如 ``/chat/completions``）——
+    litellm 會自行將路徑附加到 base URL。
     """
     url = os.environ.get("DATABRICKS_AI_GATEWAY_URL", "").strip()
     if not url:
         return None
     url = url.rstrip("/")
-    # Strip API path suffixes users might include by mistake
+    # 移除使用者可能誤加的 API path 後綴
     for suffix in ("/chat/completions", "/completions", "/embeddings"):
         if url.endswith(suffix):
             url = url[: -len(suffix)]
@@ -193,19 +192,19 @@ def _get_gateway_base_url() -> str | None:
 
 
 def _to_litellm_model(model: str) -> tuple[str, str | None, str | None]:
-    """Convert a model string to (litellm_model, base_url, api_key) for completion calls.
+    """將 model 字串轉換為供 completion 呼叫使用的 (litellm_model, base_url, api_key)。
 
-    If AI Gateway is configured and model is a databricks/ model, routes
-    through the gateway as an OpenAI-compatible endpoint.  The OpenAI
-    provider in litellm does not auto-read ``DATABRICKS_TOKEN``, so we
-    pass it explicitly as ``api_key``.
+    若已配置 AI Gateway，且 model 是 databricks/ model，則會
+    透過 gateway 作為與 OpenAI 相容的 endpoint 進行路由。litellm 中的 OpenAI
+    provider 不會自動讀取 ``DATABRICKS_TOKEN``，因此我們會明確
+    將它作為 ``api_key`` 傳入。
 
-    Returns:
+    回傳:
         (model_string, base_url_or_None, api_key_or_None)
     """
     gateway = _get_gateway_base_url()
     if gateway and model.startswith("databricks/"):
-        # Route through AI Gateway as OpenAI-compatible endpoint
+        # 透過 AI Gateway 以 OpenAI 相容 endpoint 路由
         endpoint_name = model.split("/", 1)[1]
         api_key = os.environ.get("DATABRICKS_TOKEN") or os.environ.get("DATABRICKS_API_KEY", "")
         return f"openai/{endpoint_name}", gateway, api_key or None
@@ -213,15 +212,15 @@ def _to_litellm_model(model: str) -> tuple[str, str | None, str | None]:
 
 
 # ---------------------------------------------------------------------------
-# URI conversion
+# URI 轉換
 # ---------------------------------------------------------------------------
 
 
 def _to_judge_uri(model: str) -> str:
-    """Convert litellm-style model strings to MLflow judge URI format.
+    """將 litellm 風格的 model 字串轉換為 MLflow 評判器 URI 格式。
 
-    litellm uses ``provider/model`` (e.g. ``databricks/databricks-claude-sonnet-4-6``).
-    MLflow judges use ``provider:/model`` (e.g. ``databricks:/databricks-claude-sonnet-4-6``).
+    litellm 使用 ``provider/model``（例如 ``databricks/databricks-claude-sonnet-4-6``）。
+    MLflow 評判器使用 ``provider:/model``（例如 ``databricks:/databricks-claude-sonnet-4-6``）。
     """
     if ":/" in model:
         return model
@@ -232,7 +231,7 @@ def _to_judge_uri(model: str) -> str:
 
 
 def _judge_inference_params() -> dict[str, Any] | None:
-    """Build inference_params for make_judge if AI Gateway is configured."""
+    """若已配置 AI Gateway，則為 make_judge 建立 inference_params。"""
     gateway = _get_gateway_base_url()
     if gateway:
         api_key = os.environ.get("DATABRICKS_TOKEN") or os.environ.get("DATABRICKS_API_KEY", "")
@@ -244,15 +243,15 @@ def _judge_inference_params() -> dict[str, Any] | None:
 
 
 def _to_judge_model_and_params(model: str) -> tuple[str, dict[str, Any] | None]:
-    """Convert a model string to (judge_uri, inference_params) for make_judge.
+    """將 model 字串轉換為供 make_judge 使用的 (judge_uri, inference_params)。
 
-    If AI Gateway is configured, uses ``openai:/endpoint-name`` with
-    ``inference_params.base_url`` pointing to the gateway. Otherwise
-    uses standard ``provider:/model`` format.
+    若已配置 AI Gateway，則會使用 ``openai:/endpoint-name``，並讓
+    ``inference_params.base_url`` 指向 gateway。否則
+    使用標準 ``provider:/model`` 格式。
     """
     gateway = _get_gateway_base_url()
     if gateway and model.startswith(("databricks/", "databricks:/")):
-        # Extract the endpoint name
+        # 擷取 endpoint 名稱
         if ":/" in model:
             endpoint_name = model.split(":/", 1)[1]
         else:
@@ -266,24 +265,24 @@ def _to_judge_model_and_params(model: str) -> tuple[str, dict[str, Any] | None]:
 
 
 # ---------------------------------------------------------------------------
-# Completion with fallback
+# 使用 fallback 的 completion
 # ---------------------------------------------------------------------------
 
 
 def completion_with_fallback(*, model: str, max_retries: int = 3, **kwargs) -> Any:
-    """Call litellm.completion with model fallback on rate limit errors.
+    """在 rate limit 錯誤時，以 model fallback 呼叫 litellm.completion。
 
-    Tries the primary model first. On rate limit errors, cycles through
-    the fallback chain. Each model gets ``max_retries`` attempts with
-    exponential backoff before moving to the next.
+    會先嘗試主要 model。遇到 rate limit 錯誤時，會輪流使用
+    fallback chain。每個 model 在切換到下一個之前都會以
+    指數退避重試 ``max_retries`` 次。
 
-    Workspace-level errors (403/IP ACL/auth) are raised immediately —
-    fallback models hit the same blocked workspace and would all fail.
+    工作區層級錯誤（403/IP ACL/驗證）會立即拋出——
+    fallback models 會打到相同被封鎖的工作區，因此同樣會失敗。
 
-    Respects the global LLM call budget (``GEPA_MAX_LLM_CALLS``).
+    會遵守全域 LLM 呼叫預算（``GEPA_MAX_LLM_CALLS``）。
 
-    Also supports AI Gateway: if DATABRICKS_AI_GATEWAY_URL is set,
-    databricks/ models are routed through the gateway.
+    也支援 AI Gateway：若設定了 DATABRICKS_AI_GATEWAY_URL，
+    databricks/ models 會透過 gateway 路由。
     """
     import litellm
 
@@ -314,7 +313,7 @@ def completion_with_fallback(*, model: str, max_retries: int = 3, **kwargs) -> A
                 return litellm.completion(**call_kwargs)
             except Exception as e:
                 last_err = e
-                # Workspace-level errors: fail fast, no fallback
+                # 工作區層級錯誤：快速失敗，不進行 fallback
                 if _is_workspace_error(e):
                     logger.error(
                         "Workspace error (fail-fast): %s — not trying fallback models",
@@ -329,7 +328,7 @@ def completion_with_fallback(*, model: str, max_retries: int = 3, **kwargs) -> A
                             max_retries,
                         )
                     continue
-                # Non-rate-limit error: don't retry, try next model
+                # 非 rate-limit 錯誤：不要重試，改試下一個 model
                 logger.warning("Model '%s' failed (non-rate-limit): %s", model_str, e)
                 break
 
@@ -337,13 +336,13 @@ def completion_with_fallback(*, model: str, max_retries: int = 3, **kwargs) -> A
 
 
 # ---------------------------------------------------------------------------
-# Data types
+# 資料型別
 # ---------------------------------------------------------------------------
 
 
 @dataclass
 class JudgeFeedback:
-    """Structured feedback from a judge call."""
+    """來自評判器呼叫的結構化回饋。"""
 
     value: float | str
     rationale: str
@@ -351,9 +350,9 @@ class JudgeFeedback:
 
 
 def _safe_parse_score(raw_value: Any) -> float:
-    """Convert judge output to a float score in [0.0, 1.0].
+    """將評判器輸出轉換為 [0.0, 1.0] 範圍內的 float 分數。
 
-    Handles: bool, "yes"/"no", numeric, float-as-string.
+    可處理：bool、"yes"/"no"、numeric、float-as-string。
     """
     if isinstance(raw_value, (int, float)):
         return max(0.0, min(1.0, float(raw_value)))
@@ -373,19 +372,18 @@ def _safe_parse_score(raw_value: Any) -> float:
 
 
 # ---------------------------------------------------------------------------
-# Skill discovery (static spine + adaptive layer from Issue #21255)
+# 技能探索（靜態骨幹 + 來自 Issue #21255 的自適應層）
 # ---------------------------------------------------------------------------
 
 
 def discover_skill_paths(criteria_dir: str = ".test/eval-criteria", tool_modules: list[str] | None = None) -> list[str]:
-    """Return skill directory paths, optionally filtered by applies_to metadata.
+    """回傳技能目錄路徑，可選擇依 applies_to metadata 篩選。
 
-    Static spine: criteria with empty ``applies_to`` are always included.
-    Adaptive layer: criteria with ``applies_to`` only included when matching
-    ``tool_modules``.
+    靜態骨幹：``applies_to`` 為空的 criteria 一律納入。
+    自適應層：只有在符合 ``tool_modules`` 時，才納入具有 ``applies_to`` 的 criteria。
 
-    These paths are passed to ``make_judge(skills=[...])`` when the native
-    MLflow skills= parameter is available (PR #21725).
+    這些路徑會傳入 ``make_judge(skills=[...])``，當原生
+    MLflow ``skills=`` 參數可用時使用（PR #21725）。
     """
     base = Path(criteria_dir)
     if not base.is_dir():
@@ -427,11 +425,11 @@ def _make_judge_with_skills(
     inference_params: dict[str, Any] | None = None,
     skill_paths: list[str] | None = None,
 ) -> Any:
-    """Create a judge, passing skills= if supported by the installed MLflow.
+    """建立評判器；若已安裝的 MLflow 支援，則傳入 skills=。
 
-    Forward-compatible: when MLflow gains ``skills=`` support (PR #21725),
-    the eval criteria will be loaded on-demand by the judge. Until then,
-    judges operate without criteria and rely on the instructions alone.
+    向前相容：當 MLflow 取得 ``skills=`` 支援（PR #21725）後，
+    eval criteria 將由評判器按需載入。在此之前，
+    評判器會在沒有 criteria 的情況下運作，僅依賴指令本身。
     """
     kwargs: dict[str, Any] = {
         "name": name,
@@ -442,12 +440,12 @@ def _make_judge_with_skills(
     if inference_params:
         kwargs["inference_params"] = inference_params
 
-    # Pass skills= if make_judge supports it (native path, PR #21725)
+    # 若 make_judge 支援則傳入 skills=（原生路徑，PR #21725）
     if skill_paths:
         if "skills" in inspect.signature(make_judge).parameters:
             kwargs["skills"] = skill_paths
         else:
-            # Local injection for MLflow versions without skills= support
+            # 針對不支援 skills= 的 MLflow 版本進行本地注入
             from .eval_criteria import SkillSet
 
             skill_set = SkillSet(skill_paths)
@@ -459,7 +457,7 @@ def _make_judge_with_skills(
 
 
 # ---------------------------------------------------------------------------
-# Correctness judge — facts, API references, code syntax accuracy (1 LLM call)
+# Correctness 評判器——事實、API 參照、程式碼語法正確性（1 次 LLM 呼叫）
 # ---------------------------------------------------------------------------
 
 _CORRECTNESS_INSTRUCTIONS = """\
@@ -484,10 +482,10 @@ def create_correctness_judge(
     skill_paths: list[str] | None = None,
     judge_model: str | None = None,
 ) -> Any:
-    """Create a focused correctness judge with binary yes/no feedback.
+    """建立聚焦的 correctness 評判器，使用二元 yes/no 回饋。
 
-    Uses ``{{ inputs }}/{{ outputs }}`` (field-based) — 1 LLM call, no
-    agentic tool-calling loop.
+    使用 ``{{ inputs }}/{{ outputs }}``（欄位式）——1 次 LLM 呼叫，沒有
+    agentic tool-calling loop。
     """
     model_uri, inference_params = _to_judge_model_and_params(judge_model or DEFAULT_JUDGE_LM)
     return _make_judge_with_skills(
@@ -501,7 +499,7 @@ def create_correctness_judge(
 
 
 # ---------------------------------------------------------------------------
-# Completeness judge — all parts addressed, expected info present (1 LLM call)
+# Completeness 評判器——涵蓋所有部分、包含預期資訊（1 次 LLM 呼叫）
 # ---------------------------------------------------------------------------
 
 _COMPLETENESS_INSTRUCTIONS = """\
@@ -526,10 +524,10 @@ def create_completeness_judge(
     skill_paths: list[str] | None = None,
     judge_model: str | None = None,
 ) -> Any:
-    """Create a focused completeness judge with binary yes/no feedback.
+    """建立聚焦的 completeness 評判器，使用二元 yes/no 回饋。
 
-    Uses ``{{ inputs }}/{{ outputs }}`` (field-based) — 1 LLM call, no
-    agentic tool-calling loop.
+    使用 ``{{ inputs }}/{{ outputs }}``（欄位式）——1 次 LLM 呼叫，沒有
+    agentic tool-calling loop。
     """
     model_uri, inference_params = _to_judge_model_and_params(judge_model or DEFAULT_JUDGE_LM)
     return _make_judge_with_skills(
@@ -543,7 +541,7 @@ def create_completeness_judge(
 
 
 # ---------------------------------------------------------------------------
-# Guideline adherence judge — Databricks patterns and practices (1 LLM call)
+# 準則遵循評判器——Databricks 模式與實務（1 次 LLM 呼叫）
 # ---------------------------------------------------------------------------
 
 _GUIDELINE_ADHERENCE_INSTRUCTIONS = """\
@@ -568,10 +566,10 @@ def create_guideline_adherence_judge(
     skill_guidelines: list[str] | None = None,
     judge_model: str | None = None,
 ) -> Any:
-    """Create a focused guideline adherence judge with binary yes/no feedback.
+    """建立聚焦的 guideline adherence 評判器，使用二元 yes/no 回饋。
 
-    Receives ALL guidelines (default_guidelines + per-test guidelines +
-    [FOCUS] guidelines from ``--focus``), making focus areas directly evaluable.
+    會接收所有 guidelines（default_guidelines + 每個測試的 guidelines +
+    來自 ``--focus`` 的 [FOCUS] guidelines），讓聚焦區域可直接評估。
     """
     instructions = _GUIDELINE_ADHERENCE_INSTRUCTIONS
     if skill_guidelines:
@@ -590,7 +588,7 @@ def create_guideline_adherence_judge(
 
 
 # ---------------------------------------------------------------------------
-# Regression judge — identifies how a skill harms responses (1 LLM call)
+# Regression 評判器——識別技能如何傷害回應（1 次 LLM 呼叫）
 # ---------------------------------------------------------------------------
 
 _REGRESSION_INSTRUCTIONS = """\
@@ -626,11 +624,11 @@ For each regression found, explain:
 
 
 def create_regression_judge(judge_model: str | None = None) -> Any:
-    """Create a regression detection judge.
+    """建立 regression 偵測評判器。
 
-    Args:
-        judge_model: LLM model for the judge. Defaults to GEPA_JUDGE_LM env
-            or databricks/databricks-claude-sonnet-4-6.
+    參數:
+        judge_model: 評判器使用的 LLM model。預設為 GEPA_JUDGE_LM 環境變數，
+            或 databricks/databricks-claude-sonnet-4-6。
     """
     model_uri, inference_params = _to_judge_model_and_params(judge_model or DEFAULT_JUDGE_LM)
     return make_judge(
@@ -643,7 +641,7 @@ def create_regression_judge(judge_model: str | None = None) -> Any:
 
 
 # ---------------------------------------------------------------------------
-# Helper: run a judge safely with fallback on rate limit
+# 輔助函式：在 rate limit 下以 fallback 安全執行評判器
 # ---------------------------------------------------------------------------
 
 
@@ -656,14 +654,14 @@ def run_judge_safe(
     name: str = "judge",
     timeout: int = 90,
 ) -> JudgeFeedback:
-    """Run a judge with error handling, timeout, and model fallback.
+    """以錯誤處理、timeout 與 model fallback 執行評判器。
 
-    All judges are field-based (``inputs``/``outputs``/``expectations``),
-    each making exactly 1 LLM call.
+    所有評判器都是欄位式（``inputs``/``outputs``/``expectations``），
+    且每個恰好只會進行 1 次 LLM 呼叫。
 
-    On rate limit errors, recreates the judge with fallback models and
-    retries.  On other errors or timeouts, returns zero-score feedback so
-    evaluation never crashes from a judge failure.
+    遇到 rate limit 錯誤時，會以 fallback models 重新建立評判器並
+    重試。對於其他錯誤或 timeout，則回傳零分回饋，
+    讓評估不會因評判器失敗而崩潰。
     """
     kwargs: dict[str, Any] = {}
     if inputs is not None:
@@ -676,7 +674,7 @@ def run_judge_safe(
     def _call_judge(j):
         return j(**kwargs)
 
-    # Budget check — return zero-score gracefully when budget exhausted
+    # 預算檢查——預算耗盡時平順地回傳零分
     if _llm_budget.exhausted():
         return JudgeFeedback(
             value=0.0,
@@ -684,7 +682,7 @@ def run_judge_safe(
             name=name,
         )
 
-    # Try the primary judge first
+    # 先嘗試主要評判器
     pool = concurrent.futures.ThreadPoolExecutor(max_workers=1)
     try:
         future = pool.submit(_call_judge, judge)
@@ -694,7 +692,7 @@ def run_judge_safe(
             logger.warning("Judge '%s' timed out after %ds", name, timeout)
             return JudgeFeedback(value=0.0, rationale=f"Judge timed out after {timeout}s", name=name)
         finally:
-            # shutdown(wait=False) so a still-running judge thread doesn't block
+            # 使用 shutdown(wait=False)，讓仍在執行的評判器執行緒不會阻塞
             pool.shutdown(wait=False)
         return JudgeFeedback(
             value=fb.value,
@@ -702,11 +700,11 @@ def run_judge_safe(
             name=name,
         )
     except concurrent.futures.TimeoutError:
-        # Already handled above, but keep for safety
+        # 雖然上方已處理，但保留以策安全
         return JudgeFeedback(value=0.0, rationale=f"Judge timed out after {timeout}s", name=name)
     except Exception as e:
         pool.shutdown(wait=False)
-        # Workspace-level errors: return zero immediately, skip fallback chain
+        # 工作區層級錯誤：立即回傳零分，略過 fallback chain
         if _is_workspace_error(e):
             logger.error("Judge '%s' hit workspace error (fail-fast): %s", name, e)
             return JudgeFeedback(value=0.0, rationale=f"Workspace error: {e}", name=name)
@@ -714,7 +712,7 @@ def run_judge_safe(
             logger.debug("Judge '%s' failed: %s", name, e)
             return JudgeFeedback(value=0.0, rationale=f"Judge error: {e}", name=name)
 
-    # Rate limit hit — try fallback models
+    # 撞到 rate limit——嘗試 fallback models
     logger.warning("Judge '%s' rate limited, trying fallback models", name)
     fallbacks = _get_fallback_models()
 
@@ -749,7 +747,7 @@ def run_judge_safe(
                 name=name,
             )
         except Exception as fallback_err:
-            # Workspace errors in fallback: stop trying — same workspace
+            # fallback 中的工作區錯誤：停止嘗試——同一個工作區
             if _is_workspace_error(fallback_err):
                 logger.error("Fallback '%s' hit workspace error (fail-fast): %s", fallback_model, fallback_err)
                 break
@@ -759,7 +757,7 @@ def run_judge_safe(
             logger.warning("Fallback '%s' failed: %s", fallback_model, fallback_err)
             continue
 
-    # All fallbacks exhausted
+    # 所有 fallback 都已耗盡
     logger.error("Judge '%s': all models rate limited or timed out", name)
     return JudgeFeedback(
         value=0.0,

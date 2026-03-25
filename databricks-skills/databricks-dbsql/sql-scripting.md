@@ -1,61 +1,61 @@
-# SQL Scripting, Stored Procedures, Recursive CTEs, and Transactions
+# SQL 指令稿、預存程序、遞迴 CTE 和交易
 
-> Databricks SQL procedural extensions based on the SQL/PSM standard. Covers SQL scripting (compound statements, control flow, exception handling), stored procedures, recursive CTEs, and multi-statement transactions.
+> Databricks SQL 基於 SQL/PSM 標準的程序延伸。涵蓋 SQL 指令稿（複合陳述式、控制流、異常處理）、預存程序、遞迴 CTE 和多陳述式交易。
 
 ---
 
-## Table of Contents
+## 目錄
 
-- [SQL Scripting](#sql-scripting)
-  - [Compound Statements (BEGIN...END)](#compound-statements-beginend)
-  - [Variable Declaration (DECLARE)](#variable-declaration-declare)
-  - [Variable Assignment (SET)](#variable-assignment-set)
-  - [Control Flow](#control-flow)
+- [SQL 指令稿](#sql-指令稿)
+  - [複合陳述式 (BEGIN...END)](#複合陳述式-beginend)
+  - [變數宣告 (DECLARE)](#變數宣告-declare)
+  - [變數賦值 (SET)](#變數賦值-set)
+  - [控制流](#控制流)
     - [IF / ELSEIF / ELSE](#if--elseif--else)
-    - [CASE Statement](#case-statement)
-    - [WHILE Loop](#while-loop)
-    - [FOR Loop](#for-loop)
-    - [LOOP Statement](#loop-statement)
-    - [REPEAT Statement](#repeat-statement)
-    - [LEAVE and ITERATE](#leave-and-iterate)
-  - [Exception Handling](#exception-handling)
-    - [Condition Declaration](#condition-declaration)
-    - [Handler Declaration](#handler-declaration)
-    - [SIGNAL and RESIGNAL](#signal-and-resignal)
-  - [EXECUTE IMMEDIATE (Dynamic SQL)](#execute-immediate-dynamic-sql)
-- [Stored Procedures](#stored-procedures)
+    - [CASE 陳述式](#case-陳述式)
+    - [WHILE 迴圈](#while-迴圈)
+    - [FOR 迴圈](#for-迴圈)
+    - [LOOP 陳述式](#loop-陳述式)
+    - [REPEAT 陳述式](#repeat-陳述式)
+    - [LEAVE 和 ITERATE](#leave-和-iterate)
+  - [異常處理](#異常處理)
+    - [條件宣告](#條件宣告)
+    - [處理器宣告](#處理器宣告)
+    - [SIGNAL 和 RESIGNAL](#signal-和-resignal)
+  - [EXECUTE IMMEDIATE (動態 SQL)](#execute-immediate-動態-sql)
+- [預存程序](#預存程序)
   - [CREATE PROCEDURE](#create-procedure)
-  - [CALL (Invoke a Procedure)](#call-invoke-a-procedure)
+  - [CALL (叫用程序)](#call-叫用程序)
   - [DROP PROCEDURE](#drop-procedure)
   - [DESCRIBE PROCEDURE](#describe-procedure)
   - [SHOW PROCEDURES](#show-procedures)
-- [Recursive CTEs](#recursive-ctes)
-  - [WITH RECURSIVE Syntax](#with-recursive-syntax)
-  - [Anchor and Recursive Members](#anchor-and-recursive-members)
+- [遞迴 CTE](#遞迴-cte)
+  - [WITH RECURSIVE 語法](#with-recursive-語法)
+  - [基礎與遞迴成員](#基礎與遞迴成員)
   - [MAX RECURSION LEVEL](#max-recursion-level)
-  - [Use Cases and Examples](#use-cases-and-examples)
-  - [Limitations](#limitations)
-- [Multi-Statement Transactions](#multi-statement-transactions)
-  - [Overview and Current Status](#overview-and-current-status)
-  - [SQL Scripting Atomic Blocks](#sql-scripting-atomic-blocks)
-  - [Python Connector Transaction API](#python-connector-transaction-api)
-  - [Isolation Levels](#isolation-levels)
-  - [Write Conflicts and Concurrency](#write-conflicts-and-concurrency)
-  - [Best Practices](#best-practices)
+  - [使用案例和範例](#使用案例和範例)
+  - [限制](#限制)
+- [多陳述式交易](#多陳述式交易)
+  - [概述和現狀](#概述和現狀)
+  - [SQL 指令稿原子塊](#sql-指令稿原子塊)
+  - [Python 連接器交易 API](#python-連接器交易-api)
+  - [隔離層級](#隔離層級)
+  - [寫入衝突和並行處理](#寫入衝突和並行處理)
+  - [最佳實踐](#最佳實踐)
 
 ---
 
-## SQL Scripting
+## SQL 指令稿
 
-**Availability**: Databricks Runtime 16.3+ and Databricks SQL
+**可用性**：Databricks Runtime 16.3+ 和 Databricks SQL
 
-SQL scripting enables procedural logic using the SQL/PSM standard. Every SQL script starts with a compound statement block (`BEGIN...END`).
+SQL 指令稿使用 SQL/PSM 標準啟用程序邏輯。每個 SQL 指令稿以複合陳述式區塊 (`BEGIN...END`) 開始。
 
-### Compound Statements (BEGIN...END)
+### 複合陳述式 (BEGIN...END)
 
-A compound statement is the fundamental building block containing variable declarations, condition/handler declarations, and executable statements.
+複合陳述式是基本建構區塊，包含變數宣告、條件/處理器宣告和可執行陳述式。
 
-**Syntax**:
+**語法**：
 
 ```sql
 [ label : ] BEGIN
@@ -65,28 +65,28 @@ A compound statement is the fundamental building block containing variable decla
 END [ label ]
 ```
 
-**Key rules**:
+**關鍵規則**：
 
-- Declarations must appear before executable statements
-- Variable declarations come before condition declarations, which come before handler declarations
-- Top-level compound statements cannot specify labels
-- `NOT ATOMIC` is the default and only behavior (no automatic rollback on failure)
-- In notebooks, the compound statement must be the sole statement in the cell
+- 宣告必須在可執行陳述式之前出現
+- 變數宣告先於條件宣告，條件宣告先於處理器宣告
+- 頂層複合陳述式無法指定標籤
+- `NOT ATOMIC` 為預設且唯一行為（失敗時無自動回復）
+- 在筆記本中，複合陳述式必須為儲存格中的唯一陳述式
 
-**Supported statement types in body**:
+**主體中支援的陳述式類型**：
 
-| Category | Statements |
-|----------|-----------|
+| 類別 | 陳述式 |
+|------|--------|
 | DDL | ALTER, CREATE, DROP |
 | DCL | GRANT, REVOKE |
 | DML | INSERT, UPDATE, DELETE, MERGE |
-| Query | SELECT |
-| Assignment | SET |
-| Dynamic SQL | EXECUTE IMMEDIATE |
-| Control flow | IF, CASE, WHILE, FOR, LOOP, REPEAT, LEAVE, ITERATE |
-| Nesting | Nested BEGIN...END blocks |
+| 查詢 | SELECT |
+| 賦值 | SET |
+| 動態 SQL | EXECUTE IMMEDIATE |
+| 控制流 | IF, CASE, WHILE, FOR, LOOP, REPEAT, LEAVE, ITERATE |
+| 巢狀 | 巢狀 BEGIN...END 區塊 |
 
-**Minimal example**:
+**最小範例**：
 
 ```sql
 BEGIN
@@ -94,47 +94,47 @@ BEGIN
 END;
 ```
 
-### Variable Declaration (DECLARE)
+### 變數宣告 (DECLARE)
 
-**Syntax**:
+**語法**：
 
 ```sql
 DECLARE variable_name [, ...] data_type [ DEFAULT default_expr ];
 ```
 
-- Variables initialize to `NULL` if no `DEFAULT` is specified
-- Data type can be omitted when `DEFAULT` is provided (type inferred from expression)
-- Multiple variable names in a single `DECLARE` supported in Runtime 17.2+
-- Variables are scoped to their enclosing compound statement
-- Variable names resolve from the innermost scope outward; use labels to disambiguate
+- 若未指定 `DEFAULT`，變數初始化為 `NULL`
+- 提供 `DEFAULT` 時，資料類型可省略（從運算式推斷）
+- Runtime 17.2+ 支援單一 `DECLARE` 中的多個變數名稱
+- 變數範圍為其封閉複合陳述式
+- 變數名稱解析從最內部範圍向外；使用標籤消除歧義
 
-**Examples**:
+**範例**：
 
 ```sql
 BEGIN
   DECLARE counter INT DEFAULT 0;
   DECLARE name STRING DEFAULT 'unknown';
   DECLARE x, y, z DOUBLE DEFAULT 0.0;        -- Runtime 17.2+
-  DECLARE inferred DEFAULT current_date();    -- type inferred as DATE
+  DECLARE inferred DEFAULT current_date();    -- 型別從 current_date() 推斷為 DATE
 
   SET counter = counter + 1;
   VALUES (counter, name);
 END;
 ```
 
-### Variable Assignment (SET)
+### 變數賦值 (SET)
 
-**Syntax**:
+**語法**：
 
 ```sql
 SET variable_name = expression;
-SET VAR variable_name = expression;          -- explicit local variable
-SET (var1, var2, ...) = (expr1, expr2, ...); -- multi-assignment
+SET VAR variable_name = expression;          -- 明確指定本地變數
+SET (var1, var2, ...) = (expr1, expr2, ...); -- 多重賦值
 ```
 
-Use `SET VAR` to explicitly target a local variable when a session variable with the same name exists.
+當存在同名工作階段變數時，使用 `SET VAR` 明確指定本地變數。
 
-**Example**:
+**範例**：
 
 ```sql
 BEGIN
@@ -146,13 +146,13 @@ BEGIN
 END;
 ```
 
-### Control Flow
+### 控制流
 
 #### IF / ELSEIF / ELSE
 
-Executes statements based on the first condition evaluating to `TRUE`.
+根據第一個條件評估為 `TRUE` 來執行陳述式。
 
-**Syntax**:
+**語法**：
 
 ```sql
 IF condition THEN
@@ -164,7 +164,7 @@ IF condition THEN
 END IF;
 ```
 
-**Example**:
+**範例**：
 
 ```sql
 BEGIN
@@ -181,15 +181,15 @@ BEGIN
     SET grade = 'F';
   END IF;
 
-  VALUES (grade);  -- Returns 'B'
+  VALUES (grade);  -- 傳回 'B'
 END;
 ```
 
-#### CASE Statement
+#### CASE 陳述式
 
-Two forms: **simple CASE** (compare expression) and **searched CASE** (evaluate boolean conditions).
+兩種形式：**簡單 CASE**（比較運算式）和**搜尋 CASE**（評估布林條件）。
 
-**Simple CASE syntax**:
+**簡單 CASE 語法**：
 
 ```sql
 CASE expr
@@ -199,7 +199,7 @@ CASE expr
 END CASE;
 ```
 
-**Searched CASE syntax**:
+**搜尋 CASE 語法**：
 
 ```sql
 CASE
@@ -209,9 +209,9 @@ CASE
 END CASE;
 ```
 
-Only the first matching branch executes.
+僅第一個符合分支執行。
 
-**Example**:
+**範例**：
 
 ```sql
 BEGIN
@@ -226,11 +226,11 @@ BEGIN
 END;
 ```
 
-#### WHILE Loop
+#### WHILE 迴圈
 
-Repeats while a condition is `TRUE`.
+在條件為 `TRUE` 時重複。
 
-**Syntax**:
+**語法**：
 
 ```sql
 [ label : ] WHILE condition DO
@@ -238,7 +238,7 @@ Repeats while a condition is `TRUE`.
 END WHILE [ label ];
 ```
 
-**Example** -- sum odd numbers from 1 to 10:
+**範例** -- 求 1 至 10 的奇數和：
 
 ```sql
 BEGIN
@@ -248,20 +248,20 @@ BEGIN
   sum_odds: WHILE i < 10 DO
     SET i = i + 1;
     IF i % 2 = 0 THEN
-      ITERATE sum_odds;   -- skip even numbers
+      ITERATE sum_odds;   -- 跳過偶數
     END IF;
     SET total = total + i;
   END WHILE sum_odds;
 
-  VALUES (total);  -- Returns 25
+  VALUES (total);  -- 傳回 25
 END;
 ```
 
-#### FOR Loop
+#### FOR 迴圈
 
-Iterates over query result rows.
+在查詢結果列上反覆。
 
-**Syntax**:
+**語法**：
 
 ```sql
 [ label : ] FOR [ variable_name AS ] query DO
@@ -269,11 +269,11 @@ Iterates over query result rows.
 END FOR [ label ];
 ```
 
-- Use `variable_name` (not the label) to qualify column references from the cursor
-- For Delta tables, modifying the source during iteration does not affect cursor results
-- Loop may not fully execute the query if terminated early by `LEAVE` or an error
+- 使用 `variable_name`（非標籤）限定游標中的欄參考
+- 對於 Delta 表，在迭代期間修改來源不影響游標結果
+- 若提前由 `LEAVE` 或錯誤終止，迴圈可能不會完全執行查詢
 
-**Example** -- process each row from a query:
+**範例** -- 處理查詢中的每一行：
 
 ```sql
 BEGIN
@@ -292,11 +292,11 @@ BEGIN
 END;
 ```
 
-#### LOOP Statement
+#### LOOP 陳述式
 
-Unconditional loop; must use `LEAVE` to exit.
+無條件迴圈；必須使用 `LEAVE` 退出。
 
-**Syntax**:
+**語法**：
 
 ```sql
 [ label : ] LOOP
@@ -304,7 +304,7 @@ Unconditional loop; must use `LEAVE` to exit.
 END LOOP [ label ];
 ```
 
-**Example**:
+**範例**：
 
 ```sql
 BEGIN
@@ -317,15 +317,15 @@ BEGIN
     END IF;
   END LOOP count_up;
 
-  VALUES (counter);  -- Returns 5
+  VALUES (counter);  -- 傳回 5
 END;
 ```
 
-#### REPEAT Statement
+#### REPEAT 陳述式
 
-Executes at least once, then repeats until condition is `TRUE`.
+至少執行一次，然後在條件為 `TRUE` 時重複。
 
-**Syntax**:
+**語法**：
 
 ```sql
 [ label : ] REPEAT
@@ -334,7 +334,7 @@ Executes at least once, then repeats until condition is `TRUE`.
 END REPEAT [ label ];
 ```
 
-**Example**:
+**範例**：
 
 ```sql
 BEGIN
@@ -349,65 +349,65 @@ BEGIN
     UNTIL i >= 10
   END REPEAT sum_loop;
 
-  VALUES (total);  -- Returns 25
+  VALUES (total);  -- 傳回 25
 END;
 ```
 
-#### LEAVE and ITERATE
+#### LEAVE 和 ITERATE
 
-| Statement | Purpose | Equivalent |
-|-----------|---------|-----------|
-| `LEAVE label` | Exit the labeled loop or compound block | `BREAK` in other languages |
-| `ITERATE label` | Skip to the next iteration of the labeled loop | `CONTINUE` in other languages |
+| 陳述式 | 用途 | 對等 |
+|--------|------|------|
+| `LEAVE label` | 退出標籤迴圈或複合區塊 | 其他語言的 `BREAK` |
+| `ITERATE label` | 跳到標籤迴圈的下次反覆 | 其他語言的 `CONTINUE` |
 
-Both require a labeled loop to target.
+兩者都需要一個標籤迴圈作為目標。
 
-### Exception Handling
+### 異常處理
 
-#### Condition Declaration
+#### 條件宣告
 
-Define named conditions for specific SQLSTATE codes.
+定義特定 SQLSTATE 碼的具名條件。
 
-**Syntax**:
+**語法**：
 
 ```sql
 DECLARE condition_name CONDITION [ FOR SQLSTATE [ VALUE ] sqlstate ];
 ```
 
-- `sqlstate` is a 5-character alphanumeric string (A-Z, 0-9, case-insensitive)
-- Cannot start with `'00'`, `'01'`, or `'XX'`
-- Defaults to `'45000'` if not specified
+- `sqlstate` 為 5 字元英數字符串（A-Z, 0-9, 大小寫不敏感）
+- 不能以 `'00'`、`'01'` 或 `'XX'` 開始
+- 未指定時預設為 `'45000'`
 
-**Example**:
+**範例**：
 
 ```sql
 BEGIN
   DECLARE divide_by_zero CONDITION FOR SQLSTATE '22012';
-  -- Use in handler declarations below
+  -- 在下面的處理器宣告中使用
 END;
 ```
 
-#### Handler Declaration
+#### 處理器宣告
 
-Catch and handle exceptions within compound statements.
+在複合陳述式內捕捉並處理異常。
 
-**Syntax**:
+**語法**：
 
 ```sql
 DECLARE handler_type HANDLER FOR condition_value [, ...] handler_action;
 ```
 
-| Parameter | Options | Description |
-|-----------|---------|-------------|
-| `handler_type` | `EXIT` | Exits the enclosing compound after handling |
-| `condition_value` | `SQLSTATE 'xxxxx'`, `condition_name`, `SQLEXCEPTION`, `NOT FOUND` | What to catch |
-| `handler_action` | Single statement or nested `BEGIN...END` | What to execute |
+| 參數 | 選項 | 描述 |
+|------|------|------|
+| `handler_type` | `EXIT` | 處理後退出封閉複合陳述式 |
+| `condition_value` | `SQLSTATE 'xxxxx'`、`condition_name`、`SQLEXCEPTION`、`NOT FOUND` | 要捕捉的內容 |
+| `handler_action` | 單一陳述式或巢狀 `BEGIN...END` | 執行內容 |
 
-- `SQLEXCEPTION` catches all error states (SQLSTATE class not `'00'` or `'01'`)
-- `NOT FOUND` catches `'02xxx'` states (no data found)
-- A handler cannot apply to statements in its own body
+- `SQLEXCEPTION` 捕捉所有錯誤狀態（SQLSTATE 類別非 `'00'` 或 `'01'`）
+- `NOT FOUND` 捕捉 `'02xxx'` 狀態（未找到資料）
+- 處理器不能套用到其本體內的陳述式
 
-**Example** -- catch division by zero:
+**範例** -- 捕捉除以零：
 
 ```sql
 BEGIN
@@ -417,12 +417,12 @@ BEGIN
       SET result = -1;
     END;
 
-  SET result = 10 / 0;  -- triggers handler
-  VALUES (result);       -- Returns -1
+  SET result = 10 / 0;  -- 觸發處理器
+  VALUES (result);       -- 傳回 -1
 END;
 ```
 
-**Example** -- generic exception handler:
+**範例** -- 一般異常處理器：
 
 ```sql
 BEGIN
@@ -434,16 +434,16 @@ BEGIN
       INSERT INTO error_log (message, ts) VALUES (error_msg, current_timestamp());
     END;
 
-  -- statements that might fail
+  -- 可能失敗的陳述式
   INSERT INTO target_table SELECT * FROM source_table;
 END;
 ```
 
-#### SIGNAL and RESIGNAL
+#### SIGNAL 和 RESIGNAL
 
-Raise or re-raise exceptions.
+引發或重新引發異常。
 
-**SIGNAL syntax**:
+**SIGNAL 語法**：
 
 ```sql
 SIGNAL condition_name
@@ -453,17 +453,17 @@ SIGNAL SQLSTATE [ VALUE ] sqlstate
   [ SET MESSAGE_TEXT = message_str ];
 ```
 
-**RESIGNAL syntax** (use in handlers to preserve diagnostic stack):
+**RESIGNAL 語法**（在處理器中使用以保留診斷堆疊）：
 
 ```sql
 RESIGNAL [ condition_name | SQLSTATE [ VALUE ] sqlstate ]
   [ SET { MESSAGE_ARGUMENTS = argument_map | MESSAGE_TEXT = message_str } ];
 ```
 
-- Prefer `RESIGNAL` over `SIGNAL` inside handlers -- `RESIGNAL` preserves the diagnostic stack while `SIGNAL` clears it
-- `MESSAGE_ARGUMENTS` takes a `MAP<STRING, STRING>` literal
+- 在處理器中傾向使用 `RESIGNAL` 而非 `SIGNAL` -- `RESIGNAL` 保留診斷堆疊，而 `SIGNAL` 清除堆疊
+- `MESSAGE_ARGUMENTS` 接收 `MAP<STRING, STRING>` 字面值
 
-**Example** -- validate input and raise custom error:
+**範例** -- 驗證輸入並引發自訂錯誤：
 
 ```sql
 BEGIN
@@ -478,7 +478,7 @@ BEGIN
 END;
 ```
 
-**Example** -- using named conditions with MESSAGE_ARGUMENTS:
+**範例** -- 使用具名條件和 MESSAGE_ARGUMENTS：
 
 ```sql
 BEGIN
@@ -493,13 +493,13 @@ BEGIN
 END;
 ```
 
-### EXECUTE IMMEDIATE (Dynamic SQL)
+### EXECUTE IMMEDIATE (動態 SQL)
 
-Execute SQL statements constructed as strings at runtime.
+在執行時執行構造為字符串的 SQL 陳述式。
 
-**Availability**: Runtime 14.3+; expression-based `sql_string` and nested execution from Runtime 17.3+.
+**可用性**：Runtime 14.3+；運算式型 `sql_string` 和巢狀執行自 Runtime 17.3+。
 
-**Syntax**:
+**語法**：
 
 ```sql
 EXECUTE IMMEDIATE sql_string
@@ -507,25 +507,25 @@ EXECUTE IMMEDIATE sql_string
   [ USING { arg_expr [ AS ] [ alias ] } [, ...] ];
 ```
 
-- `sql_string`: a constant expression producing a well-formed SQL statement
-- `INTO`: captures a single-row result into variables (returns `NULL` for zero rows; errors for multiple rows)
-- `USING`: binds values to positional (`?`) or named (`:param`) parameter markers (cannot mix styles)
+- `sql_string`：常數運算式，產生格式正確的 SQL 陳述式
+- `INTO`：將單行結果捕捉到變數（零行傳回 `NULL`；多行出錯）
+- `USING`：將值繫結至位置 (`?`) 或具名 (`:param`) 參數標記（無法混合樣式）
 
-**Examples**:
+**範例**：
 
 ```sql
--- Positional parameters
+-- 位置參數
 EXECUTE IMMEDIATE 'SELECT SUM(c1) FROM VALUES(?), (?) AS t(c1)' USING 5, 6;
 
--- Named parameters with INTO
+-- 具名參數和 INTO
 BEGIN
   DECLARE total INT;
   EXECUTE IMMEDIATE 'SELECT SUM(c1) FROM VALUES(:a), (:b) AS t(c1)'
     INTO total USING (5 AS a, 6 AS b);
-  VALUES (total);  -- Returns 11
+  VALUES (total);  -- 傳回 11
 END;
 
--- Dynamic table operations
+-- 動態表操作
 BEGIN
   DECLARE table_name STRING DEFAULT 'my_catalog.my_schema.staging';
   EXECUTE IMMEDIATE 'TRUNCATE TABLE ' || table_name;
@@ -535,15 +535,15 @@ END;
 
 ---
 
-## Stored Procedures
+## 預存程序
 
-**Availability**: Public Preview -- Databricks Runtime 17.0+
+**可用性**：公開預覽版 -- Databricks Runtime 17.0+
 
-Stored procedures persist SQL scripts in Unity Catalog and are invoked with `CALL`.
+預存程序在 Unity Catalog 中持久化 SQL 指令稿，並透過 `CALL` 叫用。
 
 ### CREATE PROCEDURE
 
-**Syntax**:
+**語法**：
 
 ```sql
 CREATE [ OR REPLACE ] PROCEDURE [ IF NOT EXISTS ]
@@ -552,7 +552,7 @@ CREATE [ OR REPLACE ] PROCEDURE [ IF NOT EXISTS ]
     AS compound_statement
 ```
 
-**Parameter definition**:
+**參數定義**：
 
 ```sql
 [ IN | OUT | INOUT ] parameter_name data_type
@@ -560,38 +560,38 @@ CREATE [ OR REPLACE ] PROCEDURE [ IF NOT EXISTS ]
   [ COMMENT parameter_comment ]
 ```
 
-| Parameter mode | Behavior |
-|---------------|----------|
-| `IN` (default) | Input-only; value passed into the procedure |
-| `OUT` | Output-only; initialized to `NULL`; final value returned on success |
-| `INOUT` | Input and output; accepts a value and returns the modified value on success |
+| 參數模式 | 行為 |
+|---------|------|
+| `IN`（預設） | 僅輸入；值傳入程序 |
+| `OUT` | 僅輸出；初始化為 `NULL`；成功時傳回最終值 |
+| `INOUT` | 輸入和輸出；接收值並在成功時傳回修改值 |
 
-**Required characteristics**:
+**必要特性**：
 
-| Characteristic | Description |
-|---------------|-------------|
-| `LANGUAGE SQL` | Specifies the implementation language |
-| `SQL SECURITY INVOKER` | Executes under the invoker's authority |
+| 特性 | 描述 |
+|------|------|
+| `LANGUAGE SQL` | 指定實作語言 |
+| `SQL SECURITY INVOKER` | 在叫用者的權限下執行 |
 
-**Optional characteristics**:
+**選用特性**：
 
-| Characteristic | Description |
-|---------------|-------------|
-| `NOT DETERMINISTIC` | Procedure may return different results with identical inputs |
-| `MODIFIES SQL DATA` | Procedure modifies SQL data |
-| `COMMENT 'description'` | Human-readable description |
-| `DEFAULT COLLATION UTF8_BINARY` | Required when schema uses non-UTF8_BINARY collation (Runtime 17.1+) |
+| 特性 | 描述 |
+|------|------|
+| `NOT DETERMINISTIC` | 程序可能以相同輸入傳回不同結果 |
+| `MODIFIES SQL DATA` | 程序修改 SQL 資料 |
+| `COMMENT 'description'` | 人類可讀描述 |
+| `DEFAULT COLLATION UTF8_BINARY` | 當綱要使用非 UTF8_BINARY 校系時需要（Runtime 17.1+） |
 
-**Rules**:
+**規則**：
 
-- `OR REPLACE` and `IF NOT EXISTS` cannot be combined
-- Parameter names must be unique within the procedure
-- `DEFAULT` is not supported for `OUT` parameters
-- Once a parameter has a `DEFAULT`, all subsequent parameters must also have defaults
-- Default expressions cannot reference other parameters or contain subqueries
-- Body is validated syntactically at creation but semantically only at invocation
+- `OR REPLACE` 和 `IF NOT EXISTS` 無法併用
+- 程序內參數名稱必須唯一
+- `OUT` 參數不支援 `DEFAULT`
+- 參數具有 `DEFAULT` 後，所有後續參數也必須具有預設值
+- 預設運算式無法參考其他參數或包含子查詢
+- 主體在建立時進行語法驗證，但僅在叫用時進行語義驗證
 
-**Example** -- ETL procedure with output parameters:
+**範例** -- 具輸出參數的 ETL 程序：
 
 ```sql
 CREATE OR REPLACE PROCEDURE run_daily_etl(
@@ -602,7 +602,7 @@ CREATE OR REPLACE PROCEDURE run_daily_etl(
 )
 LANGUAGE SQL
 SQL SECURITY INVOKER
-COMMENT 'Daily ETL pipeline for order processing'
+COMMENT '每日訂單處理的 ETL 管道'
 AS BEGIN
   DECLARE EXIT HANDLER FOR SQLEXCEPTION
     BEGIN
@@ -610,7 +610,7 @@ AS BEGIN
       SET rows_processed = 0;
     END;
 
-  -- Truncate and reload
+  -- 截斷並重新載入
   EXECUTE IMMEDIATE 'TRUNCATE TABLE ' || target_schema || '.orders_daily';
 
   EXECUTE IMMEDIATE
@@ -626,34 +626,34 @@ AS BEGIN
 END;
 ```
 
-### CALL (Invoke a Procedure)
+### CALL (叫用程序)
 
-**Syntax**:
+**語法**：
 
 ```sql
 CALL procedure_name( [ argument [, ...] ] );
 CALL procedure_name( [ named_param => argument ] [, ...] );
 ```
 
-**Rules**:
+**規則**：
 
-- Supports up to 64 levels of nesting
-- For `IN` parameters: any expression castable to the parameter type, or `DEFAULT`
-- For `OUT`/`INOUT` parameters: must be a session variable or local variable
-- Arguments must match the data type of the parameter (use typed literals, e.g., `DATE'2025-01-01'`)
-- Fewer arguments allowed if remaining parameters have `DEFAULT` values
-- Not supported via ODBC
+- 支援最多 64 層巢狀
+- 對 `IN` 參數：任何可轉換為參數類型的運算式，或 `DEFAULT`
+- 對 `OUT`/`INOUT` 參數：必須為工作階段變數或本地變數
+- 引數必須符合參數的資料類型（使用類型字面值，如 `DATE'2025-01-01'`）
+- 若其餘參數具有 `DEFAULT` 值，允許更少引數
+- 不透過 ODBC 支援
 
-**Example**:
+**範例**：
 
 ```sql
--- Positional invocation
+-- 位置叫用
 DECLARE rows_out INT;
 DECLARE status_out STRING;
 CALL run_daily_etl('raw', 'silver', rows_out, status_out);
 SELECT rows_out, status_out;
 
--- Named parameter invocation
+-- 具名參數叫用
 CALL run_daily_etl(
   target_schema => 'silver',
   source_schema => 'raw',
@@ -664,16 +664,16 @@ CALL run_daily_etl(
 
 ### DROP PROCEDURE
 
-**Syntax**:
+**語法**：
 
 ```sql
 DROP PROCEDURE [ IF EXISTS ] procedure_name;
 ```
 
-- Without `IF EXISTS`, dropping a non-existent procedure raises `ROUTINE_NOT_FOUND`
-- Requires `MANAGE` privilege, ownership of the procedure, or ownership of the containing schema/catalog/metastore
+- 不含 `IF EXISTS` 時，刪除不存在程序會引發 `ROUTINE_NOT_FOUND`
+- 需要 `MANAGE` 權限、程序擁有權，或包含綱要/目錄/中繼儲存體的擁有權
 
-**Example**:
+**範例**：
 
 ```sql
 DROP PROCEDURE IF EXISTS run_daily_etl;
@@ -681,16 +681,16 @@ DROP PROCEDURE IF EXISTS run_daily_etl;
 
 ### DESCRIBE PROCEDURE
 
-**Syntax**:
+**語法**：
 
 ```sql
 { DESC | DESCRIBE } PROCEDURE [ EXTENDED ] procedure_name;
 ```
 
-- Basic: returns procedure name and parameter list
-- `EXTENDED`: additionally returns owner, creation time, body, language, security type, determinism, data access, and configuration
+- 基本：傳回程序名稱和參數列表
+- `EXTENDED`：額外傳回擁有者、建立時間、主體、語言、安全類型、決定性、資料存取和組態
 
-**Example**:
+**範例**：
 
 ```sql
 DESCRIBE PROCEDURE EXTENDED run_daily_etl;
@@ -698,15 +698,15 @@ DESCRIBE PROCEDURE EXTENDED run_daily_etl;
 
 ### SHOW PROCEDURES
 
-**Syntax**:
+**語法**：
 
 ```sql
 SHOW PROCEDURES [ { FROM | IN } schema_name ];
 ```
 
-Returns columns: `catalog`, `namespace`, `schema`, `procedure_name`.
+傳回欄：`catalog`、`namespace`、`schema`、`procedure_name`。
 
-**Example**:
+**範例**：
 
 ```sql
 SHOW PROCEDURES IN my_catalog.my_schema;
@@ -714,13 +714,13 @@ SHOW PROCEDURES IN my_catalog.my_schema;
 
 ---
 
-## Recursive CTEs
+## 遞迴 CTE
 
-**Availability**: Databricks Runtime 17.0+ and DBSQL 2025.20+
+**可用性**：Databricks Runtime 17.0+ 和 DBSQL 2025.20+
 
-Recursive CTEs enable self-referential queries for hierarchical data, graph traversal, and series generation.
+遞迴 CTE 為層級資料、圖形遍歷和系列生成啟用自我參考查詢。
 
-### WITH RECURSIVE Syntax
+### WITH RECURSIVE 語法
 
 ```sql
 WITH RECURSIVE cte_name [ ( column_name [, ...] ) ]
@@ -732,15 +732,15 @@ WITH RECURSIVE cte_name [ ( column_name [, ...] ) ]
 SELECT ... FROM cte_name;
 ```
 
-### Anchor and Recursive Members
+### 基礎與遞迴成員
 
-| Component | Description |
-|-----------|-------------|
-| **Anchor (base case)** | Initial query providing seed rows; must NOT reference the CTE name |
-| **Recursive member** | References the CTE name; processes rows from the previous iteration |
-| **UNION ALL** | Combines anchor and recursive results (required) |
+| 元件 | 描述 |
+|------|------|
+| **基礎（基底情況）** | 初始查詢提供種子列；必須不參考 CTE 名稱 |
+| **遞迴成員** | 參考 CTE 名稱；處理前次反覆的列 |
+| **UNION ALL** | 結合基礎和遞迴結果（必要） |
 
-The recursive member reads rows produced by the previous iteration and generates new rows. Recursion terminates when the recursive member produces zero rows.
+遞迴成員讀取前次反覆產生的列並產生新列。當遞迴成員產生零列時遞迴終止。
 
 ### MAX RECURSION LEVEL
 
@@ -748,15 +748,15 @@ The recursive member reads rows produced by the previous iteration and generates
 WITH RECURSIVE cte_name MAX RECURSION LEVEL 200 AS (...)
 ```
 
-| Setting | Default | Description |
-|---------|---------|-------------|
-| Max recursion depth | 100 | Exceeding raises `RECURSION_LEVEL_LIMIT_EXCEEDED` |
-| Max result rows | 1,000,000 | Exceeding raises an error |
-| `LIMIT ALL` | N/A | Suspends the row limit (Runtime 17.2+) |
+| 設定 | 預設 | 描述 |
+|------|------|------|
+| 最大遞迴深度 | 100 | 超過會引發 `RECURSION_LEVEL_LIMIT_EXCEEDED` |
+| 最大結果列 | 1,000,000 | 超過會引發錯誤 |
+| `LIMIT ALL` | N/A | 暫停列限制（Runtime 17.2+） |
 
-### Use Cases and Examples
+### 使用案例和範例
 
-**Generate a number series**:
+**生成數字系列**：
 
 ```sql
 WITH RECURSIVE numbers(n) AS (
@@ -767,18 +767,18 @@ WITH RECURSIVE numbers(n) AS (
 SELECT * FROM numbers;
 ```
 
-**Organizational hierarchy traversal**:
+**組織層級遍歷**：
 
 ```sql
 WITH RECURSIVE org_tree AS (
-  -- Anchor: start from the CEO
+  -- 基礎：從 CEO 開始
   SELECT employee_id, name, manager_id, name AS root_name, 0 AS depth
   FROM employees
   WHERE manager_id IS NULL
 
   UNION ALL
 
-  -- Recursive: find direct reports
+  -- 遞迴：尋找直屬下屬
   SELECT e.employee_id, e.name, e.manager_id, t.root_name, t.depth + 1
   FROM employees e
   JOIN org_tree t ON e.manager_id = t.employee_id
@@ -786,17 +786,17 @@ WITH RECURSIVE org_tree AS (
 SELECT * FROM org_tree ORDER BY depth, name;
 ```
 
-**Graph traversal with cycle detection**:
+**圖形遍歷和循環偵測**：
 
 ```sql
 WITH RECURSIVE search_graph(f, t, label, path, cycle) AS (
-  -- Anchor: all edges as starting paths
+  -- 基礎：所有邊作為起始路徑
   SELECT *, array(struct(g.f, g.t)), false
   FROM graph g
 
   UNION ALL
 
-  -- Recursive: extend paths, detect cycles
+  -- 遞迴：擴展路徑、偵測循環
   SELECT g.f, g.t, g.label,
          sg.path || array(struct(g.f, g.t)),
          array_contains(sg.path, struct(g.f, g.t))
@@ -807,7 +807,7 @@ WITH RECURSIVE search_graph(f, t, label, path, cycle) AS (
 SELECT * FROM search_graph WHERE NOT cycle;
 ```
 
-**String accumulation**:
+**字符串累積**：
 
 ```sql
 WITH RECURSIVE r(col) AS (
@@ -821,18 +821,18 @@ SELECT * FROM r;
 -- a, ab, abc, abcd, ..., abcdefghij
 ```
 
-**Bill of Materials (BOM) explosion**:
+**物料清單 (BOM) 爆炸**：
 
 ```sql
 WITH RECURSIVE bom AS (
-  -- Anchor: top-level product
+  -- 基礎：頂層產品
   SELECT part_id, component_id, quantity, 1 AS level
   FROM bill_of_materials
   WHERE part_id = 'PROD-001'
 
   UNION ALL
 
-  -- Recursive: sub-components
+  -- 遞迴：子元件
   SELECT b.part_id, b.component_id, b.quantity * bom.quantity, bom.level + 1
   FROM bill_of_materials b
   JOIN bom ON b.part_id = bom.component_id
@@ -843,32 +843,32 @@ GROUP BY component_id
 ORDER BY total_quantity DESC;
 ```
 
-### Limitations
+### 限制
 
-- Not supported in UPDATE, DELETE, or MERGE statements
-- Step (recursive) queries cannot include correlated column references to the CTE name
-- Random number generators may produce identical values across iterations
-- Default row limit of 1,000,000 rows (use `LIMIT ALL` in Runtime 17.2+ to override)
-- Default recursion depth of 100 (override with `MAX RECURSION LEVEL`)
+- UPDATE、DELETE 或 MERGE 陳述式中不支援
+- 步驟（遞迴）查詢無法包含與 CTE 名稱的相關欄參考
+- 隨機數字產生器可能在各反覆間產生相同值
+- 預設列限制 1,000,000 列（Runtime 17.2+ 使用 `LIMIT ALL` 覆蓋）
+- 預設遞迴深度 100（使用 `MAX RECURSION LEVEL` 覆蓋）
 
 ---
 
-## Multi-Statement Transactions
+## 多陳述式交易
 
-### Overview and Current Status
+### 概述和現狀
 
-Multi-statement transactions (MST) allow grouping multiple SQL statements into atomic units that either succeed completely or fail completely.
+多陳述式交易 (MST) 允許將多個 SQL 陳述式分組為原子單位，要不完全成功，要不完全失敗。
 
-| Feature | Status | Notes |
-|---------|--------|-------|
-| Single-table transactions | GA | Delta Lake default; every DML statement is atomic |
-| Multi-statement transactions (SQL scripting) | Preview | `BEGIN ATOMIC...END` blocks |
-| Multi-statement transactions (Python connector) | Preview | `connection.autocommit = False` pattern |
-| Cross-table transactions | Preview | Atomic updates across multiple Delta tables |
+| 功能 | 狀態 | 說明 |
+|------|------|------|
+| 單表交易 | GA | Delta Lake 預設；每個 DML 陳述式為原子 |
+| 多陳述式交易 (SQL 指令稿) | 預覽版 | `BEGIN ATOMIC...END` 區塊 |
+| 多陳述式交易 (Python 連接器) | 預覽版 | `connection.autocommit = False` 模式 |
+| 跨表交易 | 預覽版 | 在多個 Delta 表中原子更新 |
 
-### SQL Scripting Atomic Blocks
+### SQL 指令稿原子塊
 
-Use `BEGIN ATOMIC...END` to execute multiple statements as a single atomic unit:
+使用 `BEGIN ATOMIC...END` 以單一原子單位執行多個陳述式：
 
 ```sql
 BEGIN ATOMIC
@@ -878,13 +878,13 @@ BEGIN ATOMIC
 END;
 ```
 
-If any statement fails, all changes are rolled back.
+若任何陳述式失敗，所有變更會回復。
 
-> **Note:** Tables used in `BEGIN ATOMIC` blocks must have the `catalogManaged` table feature enabled. Create tables with `TBLPROPERTIES ('delta.feature.catalogManaged' = 'supported')`. Existing tables cannot be upgraded in place — they must be recreated with this property.
+> **注意**：在 `BEGIN ATOMIC` 區塊中使用的表必須啟用 `catalogManaged` 表功能。使用 `TBLPROPERTIES ('delta.feature.catalogManaged' = 'supported')` 建立表。現有表無法就地升級 -- 必須使用此屬性重新建立。
 
-### Python Connector Transaction API
+### Python 連接器交易 API
 
-The Databricks SQL Connector for Python provides explicit transaction control:
+Databricks SQL Python 連接器提供明確交易控制：
 
 ```python
 from databricks import sql
@@ -895,7 +895,7 @@ connection = sql.connect(
     access_token="..."
 )
 
-# Disable autocommit to start explicit transactions
+# 禁用自動認可以啟動明確交易
 connection.autocommit = False
 cursor = connection.cursor()
 
@@ -903,137 +903,137 @@ try:
     cursor.execute("INSERT INTO customers VALUES (1, 'Alice')")
     cursor.execute("INSERT INTO orders VALUES (1, 1, 100.00)")
     cursor.execute("INSERT INTO shipments VALUES (1, 1, 'pending')")
-    connection.commit()    # All three succeed atomically
+    connection.commit()    # 三者以原子方式成功
 except Exception:
-    connection.rollback()  # All three discarded
+    connection.rollback()  # 三者都捨棄
 finally:
     connection.autocommit = True
 ```
 
-**Key API methods**:
+**關鍵 API 方法**：
 
-| Method | Description |
-|--------|-------------|
-| `connection.autocommit = False` | Start explicit transaction mode |
-| `connection.commit()` | Commit the current transaction |
-| `connection.rollback()` | Discard all changes in the current transaction |
-| `connection.get_transaction_isolation()` | Returns current isolation level |
-| `connection.set_transaction_isolation(level)` | Sets isolation level |
+| 方法 | 描述 |
+|------|------|
+| `connection.autocommit = False` | 啟動明確交易模式 |
+| `connection.commit()` | 認可目前交易 |
+| `connection.rollback()` | 捨棄目前交易中的所有變更 |
+| `connection.get_transaction_isolation()` | 傳回目前隔離層級 |
+| `connection.set_transaction_isolation(level)` | 設定隔離層級 |
 
-**Error handling**:
+**錯誤處理**：
 
-- `sql.TransactionError` raised when committing without an active transaction
-- Cannot change `autocommit` while a transaction is active
-- `rollback()` is a safe no-op when no transaction is active
+- 在無作用交易時認可會引發 `sql.TransactionError`
+- 交易作用時無法變更 `autocommit`
+- 無交易作用時 `rollback()` 為安全無操作
 
-### Isolation Levels
+### 隔離層級
 
-Databricks uses **Snapshot Isolation** (mapped to `REPEATABLE_READ` in standard SQL terminology).
+Databricks 使用**快照隔離**（在標準 SQL 術語中對應至 `REPEATABLE_READ`）。
 
-| Level | Description | Default |
-|-------|-------------|---------|
-| `WriteSerializable` | Only writes are serializable; concurrent writes may reorder | Yes (table default) |
-| `Serializable` | Both reads and writes are serializable; strictest isolation | No |
-| `REPEATABLE_READ` | Snapshot isolation for connector-level transactions | Connector default |
+| 層級 | 描述 | 預設 |
+|------|------|------|
+| `WriteSerializable` | 僅寫入可序列化；並行寫入可能重新排序 | 是（表預設） |
+| `Serializable` | 讀取和寫入都可序列化；最嚴格隔離 | 否 |
+| `REPEATABLE_READ` | 連接器層級交易的快照隔離 | 連接器預設 |
 
-**Setting isolation at table level**:
+**在表層級設定隔離**：
 
 ```sql
 ALTER TABLE my_table
 SET TBLPROPERTIES ('delta.isolationLevel' = 'Serializable');
 ```
 
-**Setting isolation in Python connector**:
+**在 Python 連接器中設定隔離**：
 
 ```python
 from databricks.sql import TRANSACTION_ISOLATION_LEVEL_REPEATABLE_READ
 
 connection.set_transaction_isolation(TRANSACTION_ISOLATION_LEVEL_REPEATABLE_READ)
-# Only REPEATABLE_READ is supported; others raise NotSupportedError
+# 僅支援 REPEATABLE_READ；其他會引發 NotSupportedError
 ```
 
-**Snapshot isolation behavior**:
+**快照隔離行為**：
 
-- **Repeatable reads**: Data read within a transaction remains consistent
-- **Atomic commits**: Changes are invisible to other connections until committed
-- **Write conflicts**: Concurrent writes to the same table cause conflicts
-- **Cross-table writes**: Concurrent writes to different tables can succeed
+- **可重複讀取**：交易內讀取的資料保持一致
+- **原子認可**：變更對其他連接不可見，直到認可
+- **寫入衝突**：對同表的並行寫入導致衝突
+- **跨表寫入**：對不同表的並行寫入可成功
 
-### Write Conflicts and Concurrency
+### 寫入衝突和並行處理
 
-**Row-level concurrency** (Runtime 14.2+) reduces conflicts for tables with deletion vectors or liquid clustering:
+**列層級並行處理**（Runtime 14.2+）減少具有刪除向量或液體叢集的表衝突：
 
-| Operation | WriteSerializable | Serializable |
-|-----------|------------------|--------------|
-| INSERT vs INSERT | No conflict | No conflict |
-| UPDATE/DELETE/MERGE vs same | No conflict (different rows) | May conflict |
-| OPTIMIZE vs concurrent DML | Conflict only with ZORDER BY | May conflict |
+| 操作 | WriteSerializable | Serializable |
+|------|------------------|--------------|
+| INSERT 對 INSERT | 無衝突 | 無衝突 |
+| UPDATE/DELETE/MERGE 對相同 | 無衝突（不同列） | 可能衝突 |
+| OPTIMIZE 對並行 DML | 僅與 ZORDER BY 衝突 | 可能衝突 |
 
-**Common conflict exceptions**:
+**常見衝突例外**：
 
-| Exception | Cause |
-|-----------|-------|
-| `ConcurrentAppendException` | Concurrent append to the same partition |
-| `ConcurrentDeleteReadException` | Concurrent delete of files being read |
-| `MetadataChangedException` | Concurrent ALTER TABLE or schema change |
-| `ProtocolChangedException` | Protocol version upgrade during write |
+| 例外 | 原因 |
+|------|------|
+| `ConcurrentAppendException` | 對相同分割區的並行附加 |
+| `ConcurrentDeleteReadException` | 正讀取檔案的並行刪除 |
+| `MetadataChangedException` | 並行 ALTER TABLE 或綱要變更 |
+| `ProtocolChangedException` | 寫入期間通訊協定版本升級 |
 
-### Best Practices
+### 最佳實踐
 
-1. **Keep transactions short** to minimize conflict windows
-2. **Always wrap in try/except/finally** with rollback on errors
-3. **Restore autocommit** in the `finally` block
-4. **Use partition pruning** in MERGE conditions to reduce conflict scope
-5. **Enable row-level concurrency** (deletion vectors + liquid clustering) for high-concurrency workloads
-6. **Prefer single-statement MERGE** over multi-statement transactions when updating a single table
-7. **Commit and restart** transactions to see changes made by other connections
-
----
-
-## Runtime Version Reference
-
-| Feature | Minimum Runtime | Status |
-|---------|----------------|--------|
-| SQL Scripting (compound statements, control flow) | 16.3 | GA |
-| Stored Procedures (CREATE/CALL/DROP PROCEDURE) | 17.0 | Public Preview |
-| Recursive CTEs (WITH RECURSIVE) | 17.0 / DBSQL 2025.20 | GA |
-| Multi-variable DECLARE | 17.2 | GA |
-| EXECUTE IMMEDIATE (basic) | 14.3 | GA |
-| EXECUTE IMMEDIATE (expressions, nested) | 17.3 | GA |
-| Recursive CTE LIMIT ALL | 17.2 | GA |
-| Multi-statement Transactions | Varies | Preview |
-| Row-level Concurrency | 14.2 | GA |
+1. **保持交易簡短**以最小化衝突窗口
+2. **始終用 try/except/finally 包裝**，失敗時回復
+3. **在 `finally` 區塊中還原自動認可**
+4. **在 MERGE 條件中使用分割區修剪**以減少衝突範圍
+5. **啟用列層級並行處理**（刪除向量 + 液體叢集）以進行高並行工作負載
+6. **傾向於單一陳述式 MERGE** 而非多陳述式交易（更新單表時）
+7. **認可並重啟交易**以查看其他連接所進行的變更
 
 ---
 
-## Quick Reference Card
+## Runtime 版本參考
 
-### SQL Scripting Skeleton
+| 功能 | 最低 Runtime | 狀態 |
+|------|-------------|------|
+| SQL 指令稿（複合陳述式、控制流） | 16.3 | GA |
+| 預存程序 (CREATE/CALL/DROP PROCEDURE) | 17.0 | 公開預覽版 |
+| 遞迴 CTE (WITH RECURSIVE) | 17.0 / DBSQL 2025.20 | GA |
+| 多變數 DECLARE | 17.2 | GA |
+| EXECUTE IMMEDIATE（基本） | 14.3 | GA |
+| EXECUTE IMMEDIATE（運算式、巢狀） | 17.3 | GA |
+| 遞迴 CTE LIMIT ALL | 17.2 | GA |
+| 多陳述式交易 | 依功能而異 | 預覽版 |
+| 列層級並行處理 | 14.2 | GA |
+
+---
+
+## 快速參考卡
+
+### SQL 指令稿骨架
 
 ```sql
 BEGIN
-  -- 1. Declarations
+  -- 1. 宣告
   DECLARE var1 INT DEFAULT 0;
   DECLARE var2 STRING;
   DECLARE my_error CONDITION FOR SQLSTATE '45000';
   DECLARE EXIT HANDLER FOR SQLEXCEPTION
     BEGIN
-      -- error handling logic
+      -- 錯誤處理邏輯
     END;
 
-  -- 2. Logic
+  -- 2. 邏輯
   IF var1 > 0 THEN
     SET var2 = 'positive';
   ELSE
     SET var2 = 'non-positive';
   END IF;
 
-  -- 3. Output
+  -- 3. 輸出
   VALUES (var1, var2);
 END;
 ```
 
-### Stored Procedure Skeleton
+### 預存程序骨架
 
 ```sql
 CREATE OR REPLACE PROCEDURE my_schema.my_proc(
@@ -1042,33 +1042,33 @@ CREATE OR REPLACE PROCEDURE my_schema.my_proc(
 )
 LANGUAGE SQL
 SQL SECURITY INVOKER
-COMMENT 'Description of what this procedure does'
+COMMENT '此程序執行的操作描述'
 AS BEGIN
   DECLARE EXIT HANDLER FOR SQLEXCEPTION
     SET output_param = -1;
 
-  -- procedure body
+  -- 程序主體
   SET output_param = (SELECT COUNT(*) FROM my_table WHERE col = input_param);
 END;
 
--- Invoke
+-- 叫用
 DECLARE result INT;
 CALL my_schema.my_proc('value', result);
 SELECT result;
 ```
 
-### Recursive CTE Skeleton
+### 遞迴 CTE 骨架
 
 ```sql
 WITH RECURSIVE cte_name (col1, col2) MAX RECURSION LEVEL 50 AS (
-  -- Anchor
+  -- 基礎
   SELECT seed_col1, seed_col2
   FROM base_table
   WHERE condition
 
   UNION ALL
 
-  -- Recursive step
+  -- 遞迴步驟
   SELECT derived_col1, derived_col2
   FROM source_table s
   JOIN cte_name c ON s.parent = c.col1

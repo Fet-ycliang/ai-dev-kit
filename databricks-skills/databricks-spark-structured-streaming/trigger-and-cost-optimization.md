@@ -1,261 +1,261 @@
 ---
 name: trigger-and-cost-optimization
-description: Select and tune triggers for Spark Structured Streaming to balance latency and cost. Use when choosing between processingTime, availableNow, and Real-Time Mode (RTM), calculating optimal trigger intervals, optimizing costs through cluster right-sizing, scheduled streaming, multi-stream clusters, or managing latency vs cost trade-offs.
+description: 選擇和調整 Spark Structured Streaming 的觸發器以平衡延遲和成本。適用於選擇 processingTime、availableNow 和實時模式（RTM）、計算最佳觸發間隔、透過叢集調整大小、排程流媒體、多串流叢集或管理延遲與成本權衡來最佳化成本。
 ---
 
-# Trigger and Cost Optimization
+# 觸發器和成本最佳化
 
-Select and tune triggers to balance latency requirements with cost. Optimize streaming job costs through trigger tuning, cluster right-sizing, multi-stream clusters, storage optimization, and scheduled execution patterns.
+選擇和調整觸發器以平衡延遲要求與成本。透過觸發器調整、叢集調整大小、多串流叢集、儲存最佳化和排程執行模式來最佳化流媒體工作成本。
 
-## Quick Start
+## 快速開始
 
 ```python
-# Cost-optimized: Scheduled streaming instead of continuous
+# 成本最佳化：排程流媒體而非持續
 df.writeStream \
     .format("delta") \
     .option("checkpointLocation", "/checkpoints/stream") \
-    .trigger(availableNow=True) \  # Process all, then stop
+    .trigger(availableNow=True) \  # 處理所有，然後停止
     .start("/delta/target")
 
-# Schedule via Databricks Jobs: Every 15 minutes
-# Cost: ~$20/day for 100 tables on 8-core cluster
+# 透過 Databricks 工作排程：每 15 分鐘
+# 成本：8 核心叢集上 100 個表格約 $20/天
 ```
 
-## Trigger Types
+## 觸發器類型
 
-### ProcessingTime Trigger
+### ProcessingTime 觸發器
 
-Process at fixed intervals:
+按固定間隔處理：
 
 ```python
-# Process every 30 seconds
+# 每 30 秒處理
 .trigger(processingTime="30 seconds")
 
-# Process every 5 minutes
+# 每 5 分鐘處理
 .trigger(processingTime="5 minutes")
 
-# Latency: Trigger interval + processing time
-# Cost: Continuous cluster running
+# 延遲：觸發間隔 + 處理時間
+# 成本：持續叢集執行
 ```
 
-### AvailableNow Trigger
+### AvailableNow 觸發器
 
-Process all available data, then stop:
+處理所有可用資料，然後停止：
 
 ```python
-# Process all available data, then stop
+# 處理所有可用資料，然後停止
 .trigger(availableNow=True)
 
-# Schedule via Databricks Jobs:
-# - Every 15 minutes: Near real-time
-# - Every 4 hours: Batch-style
+# 透過 Databricks 工作排程：
+# - 每 15 分鐘：接近即時
+# - 每 4 小時：批次樣式
 
-# Latency: Schedule interval + processing time
-# Cost: Cluster runs only during processing
+# 延遲：排程間隔 + 處理時間
+# 成本：叢集僅在處理期間執行
 ```
 
-### Real-Time Mode (RTM)
+### 實時模式（RTM）
 
-Sub-second latency with Photon:
+使用 Photon 的亞秒延遲：
 
 ```python
-# Real-Time Mode (Databricks 13.3+)
+# 實時模式（Databricks 13.3+）
 .trigger(realTime=True)
 
-# Requirements:
-# - Photon enabled
-# - Fixed-size cluster (no autoscaling)
-# - Latency: < 800ms
+# 要求：
+# - 啟用 Photon
+# - 固定大小的叢集（無自動調整）
+# - 延遲：< 800 毫秒
 
-# Cost: Continuous cluster with Photon
+# 成本：持續叢集和 Photon
 ```
 
-## Trigger Selection Guide
+## 觸發器選擇指南
 
-| Latency Requirement | Trigger | Cost | Use Case |
+| 延遲要求 | 觸發器 | 成本 | 使用情況 |
 |---------------------|---------|------|----------|
-| < 800ms | RTM | $$$ | Real-time analytics, alerts |
-| 1-30 seconds | processingTime | $$ | Near real-time dashboards |
-| 15-60 minutes | availableNow (scheduled) | $ | Batch-style SLA |
-| > 1 hour | availableNow (scheduled) | $ | ETL pipelines |
+| < 800 毫秒 | RTM | $$$ | 即時分析、警報 |
+| 1-30 秒 | processingTime | $$ | 接近即時的儀表板 |
+| 15-60 分鐘 | availableNow（排程） | $ | 批次樣式 SLA |
+| > 1 小時 | availableNow（排程） | $ | ETL 管道 |
 
-## Trigger Interval Calculation
+## 觸發器間隔計算
 
-### Rule of Thumb: SLA / 3
+### 經驗法則：SLA / 3
 
 ```python
-# Calculate trigger interval from SLA
-business_sla_minutes = 60  # 1 hour SLA
-trigger_interval_minutes = business_sla_minutes / 3  # 20 minutes
+# 從 SLA 計算觸發間隔
+business_sla_minutes = 60  # 1 小時 SLA
+trigger_interval_minutes = business_sla_minutes / 3  # 20 分鐘
 
 .trigger(processingTime=f"{trigger_interval_minutes} minutes")
 
-# Why /3?
-# - Processing time buffer
-# - Recovery time buffer
-# - Safety margin
+# 為什麼 /3？
+# - 處理時間緩衝
+# - 復原時間緩衝
+# - 安全裕度
 ```
 
-### Example Calculations
+### 範例計算
 
 ```python
-# Example 1: 1 hour SLA
-sla = 60  # minutes
-trigger = sla / 3  # 20 minutes
+# 範例 1：1 小時 SLA
+sla = 60  # 分鐘
+trigger = sla / 3  # 20 分鐘
 .trigger(processingTime="20 minutes")
 
-# Example 2: 15 minute SLA
-sla = 15  # minutes
-trigger = sla / 3  # 5 minutes
+# 範例 2：15 分鐘 SLA
+sla = 15  # 分鐘
+trigger = sla / 3  # 5 分鐘
 .trigger(processingTime="5 minutes")
 
-# Example 3: Real-time requirement
-.trigger(realTime=True)  # < 800ms
+# 範例 3：即時要求
+.trigger(realTime=True)  # < 800 毫秒
 ```
 
-## Cost Optimization Strategies
+## 成本最佳化策略
 
-### Strategy 1: Trigger Interval Tuning
+### 策略 1：觸發間隔調整
 
-Balance latency and cost:
+平衡延遲和成本：
 
 ```python
-# Shorter interval = higher cost
-.trigger(processingTime="5 seconds")   # Expensive - continuous processing
+# 較短的間隔 = 更高的成本
+.trigger(processingTime="5 seconds")   # 昂貴 - 持續處理
 
-# Longer interval = lower cost
-.trigger(processingTime="5 minutes")   # Cheaper - less frequent processing
+# 較長的間隔 = 更低的成本
+.trigger(processingTime="5 minutes")   # 便宜 - 不頻繁處理
 
-# Use availableNow for batch-style (cheapest)
-.trigger(availableNow=True)            # Process backlog, then stop
+# 使用 availableNow 進行批次樣式（最便宜）
+.trigger(availableNow=True)            # 處理待辦項目，然後停止
 
-# Rule of thumb: SLA / 3
-# Example: 1 hour SLA → 20 minute trigger
+# 經驗法則：SLA / 3
+# 範例：1 小時 SLA → 20 分鐘觸發
 ```
 
-### Strategy 2: Scheduled vs Continuous
+### 策略 2：排程與持續
 
-Choose execution pattern based on SLA:
+根據 SLA 選擇執行模式：
 
-| Pattern | Cost | Latency | Use Case |
+| 模式 | 成本 | 延遲 | 使用情況 |
 |---------|------|---------|----------|
-| Continuous | $$$ | < 1 minute | Real-time requirements |
-| 15-min schedule | $$ | 15-30 minutes | Near real-time |
-| 4-hour schedule | $ | 4-5 hours | Batch-style SLA |
+| 持續 | $$$ | < 1 分鐘 | 即時要求 |
+| 15 分鐘排程 | $$ | 15-30 分鐘 | 接近即時 |
+| 4 小時排程 | $ | 4-5 小時 | 批次樣式 SLA |
 
 ```python
-# Continuous (expensive)
+# 持續（昂貴）
 .trigger(processingTime="30 seconds")
 
-# Scheduled (cost-effective)
-.trigger(availableNow=True)  # Schedule via Jobs: Every 15 minutes
+# 排程（成本效益）
+.trigger(availableNow=True)  # 排程透過工作：每 15 分鐘
 
-# Batch-style (cheapest)
-.trigger(availableNow=True)  # Schedule via Jobs: Every 4 hours
+# 批次樣式（最便宜）
+.trigger(availableNow=True)  # 排程透過工作：每 4 小時
 ```
 
-### Strategy 3: Cluster Right-Sizing
+### 策略 3：叢集調整大小
 
-Right-size clusters based on workload:
+根據工作負載調整叢集大小：
 
 ```python
-# Don't oversize:
-# - Monitor CPU utilization (target 60-80%)
-# - Check for idle time
-# - Use fixed-size clusters (no autoscaling for streaming)
+# 不要過度調整大小：
+# - 監控 CPU 使用率（目標 60-80%）
+# - 檢查空閒時間
+# - 為流媒體使用固定大小的叢集（無自動調整）
 
-# Scale test approach:
-# 1. Start small
-# 2. Monitor lag (max offsets behind latest)
-# 3. Scale up if falling behind
-# 4. Right-size based on steady state
+# 調整規模測試方法：
+# 1. 從小開始
+# 2. 監控延遲（最大位移落後最新）
+# 3. 如果落後則調整規模
+# 4. 根據穩定狀態調整大小
 ```
 
-### Strategy 4: Multi-Stream Clusters
+### 策略 4：多串流叢集
 
-Run multiple streams on one cluster:
+在一個叢集上執行多個串流：
 
 ```python
-# Run multiple streams on one cluster
-# Tested: 100 streams on 8-core single-node cluster
-# Cost: ~$20/day for 100 tables
+# 在一個叢集上執行多個串流
+# 已測試：8 核心單一節點叢集上的 100 個串流
+# 成本：100 個表格約 $20/天
 
-# Example: Multiple streams on same cluster
+# 範例：同一叢集上的多個串流
 stream1.writeStream.option("checkpointLocation", "/checkpoints/stream1").start()
 stream2.writeStream.option("checkpointLocation", "/checkpoints/stream2").start()
 stream3.writeStream.option("checkpointLocation", "/checkpoints/stream3").start()
-# ... up to 100+ streams
+# ... 最多 100+ 個串流
 
-# Monitor: CPU/memory per stream
-# Scale cluster if aggregate utilization > 80%
+# 監控：每個串流的 CPU/記憶體
+# 如果彙總使用率 > 80%，調整叢集大小
 ```
 
-### Strategy 5: Storage Optimization
+### 策略 5：儲存最佳化
 
-Reduce storage costs:
+減少儲存成本：
 
 ```sql
--- VACUUM old files
+-- VACUUM 舊檔案
 VACUUM table RETAIN 24 HOURS;
 
--- Enable auto-optimize to reduce small files
+-- 啟用自動最佳化以減少小檔案
 ALTER TABLE table SET TBLPROPERTIES (
     'delta.autoOptimize.optimizeWrite' = true,
     'delta.autoOptimize.autoCompact' = true
 );
 
--- Archive old data to cheaper storage
--- Use data retention policies
+-- 將舊資料歸檔到更便宜的儲存
+-- 使用資料保留原則
 ```
 
-## Cost Formula
+## 成本公式
 
 ```
-Daily Cost = 
-    (Cluster DBU/hour × Hours running) +
-    (Storage GB × Storage rate) +
-    (Network egress if applicable)
+每日成本 =
+    (叢集 DBU/小時 × 執行小時數) +
+    (儲存 GB × 儲存速率) +
+    (網路傳出，如適用)
 
-Optimization levers:
-- Reduce hours running (scheduled triggers)
-- Reduce cluster size (right-sizing)
-- Reduce storage (VACUUM, compression)
-- Reduce network egress (co-locate compute and storage)
+最佳化槓桿：
+- 減少執行小時數（排程觸發器）
+- 減少叢集大小（調整大小）
+- 減少儲存（VACUUM、壓縮）
+- 減少網路傳出（同地運算和儲存）
 ```
 
-## Common Patterns
+## 常見模式
 
-### Pattern 1: Cost-Optimized Scheduled Streaming
+### 模式 1：成本最佳化的排程流媒體
 
-Convert continuous to scheduled:
+將持續轉換為排程：
 
 ```python
-# Before: Continuous (expensive)
+# 之前：持續（昂貴）
 df.writeStream \
     .trigger(processingTime="30 seconds") \
     .start()
 
-# After: Scheduled (cost-effective)
+# 之後：排程（成本效益）
 df.writeStream \
-    .trigger(availableNow=True) \  # Process all, then stop
+    .trigger(availableNow=True) \  # 處理所有，然後停止
     .start()
 
-# Schedule via Databricks Jobs:
-# - Every 15 minutes: Near real-time
-# - Every 4 hours: Batch-style
-# Same code, different schedule
+# 透過 Databricks 工作排程：
+# - 每 15 分鐘：接近即時
+# - 每 4 小時：批次樣式
+# 相同的程式碼，不同的排程
 ```
 
-### Pattern 2: Multi-Stream Cluster
+### 模式 2：多串流叢集
 
-Optimize cluster utilization:
+最佳化叢集使用率：
 
 ```python
-# Run multiple streams on one cluster
+# 在一個叢集上執行多個串流
 def start_all_streams():
     streams = []
-    
-    # Start multiple streams
+
+    # 啟動多個串流
     for i in range(100):
         stream = (spark
             .readStream
@@ -267,251 +267,251 @@ def start_all_streams():
             .start(f"/delta/target_{i}")
         )
         streams.append(stream)
-    
+
     return streams
 
-# Monitor aggregate CPU/memory
-# Scale cluster if needed
+# 監控彙總 CPU/記憶體
+# 如果需要，調整叢集大小
 ```
 
-### Pattern 3: RTM for Sub-Second Latency
+### 模式 3：亞秒延遲的 RTM
 
-Use RTM for real-time requirements:
+對即時要求使用 RTM：
 
 ```python
-# Real-Time Mode for sub-second latency
+# 亞秒延遲的實時模式
 df.writeStream \
-    .format("kafka")
-    .option("topic", "output")
+    .format("kafka") \
+    .option("topic", "output") \
     .trigger(realTime=True) \
     .start()
 
-# Required configurations:
+# 必需的組態：
 spark.conf.set("spark.databricks.photon.enabled", "true")
-spark.conf.set("spark.sql.streaming.stateStore.providerClass", 
+spark.conf.set("spark.sql.streaming.stateStore.providerClass",
                "com.databricks.sql.streaming.state.RocksDBStateProvider")
 
-# Latency: < 800ms
-# Cost: Continuous cluster with Photon
+# 延遲：< 800 毫秒
+# 成本：持續叢集和 Photon
 ```
 
-## Real-Time Mode (RTM) Configuration
+## 實時模式（RTM）設定
 
-### Enable RTM
+### 啟用 RTM
 
 ```python
-# Enable Real-Time Mode
+# 啟用實時模式
 .trigger(realTime=True)
 
-# Required configurations:
+# 必需的組態：
 spark.conf.set("spark.databricks.photon.enabled", "true")
-spark.conf.set("spark.sql.streaming.stateStore.providerClass", 
+spark.conf.set("spark.sql.streaming.stateStore.providerClass",
                "com.databricks.sql.streaming.state.RocksDBStateProvider")
 
-# Cluster requirements:
-# - Fixed-size cluster (no autoscaling)
-# - Photon enabled
-# - Driver: Minimum 4 cores
+# 叢集要求：
+# - 固定大小的叢集（無自動調整）
+# - 啟用 Photon
+# - 驅動程式：最少 4 核心
 ```
 
-### RTM Use Cases
+### RTM 使用情況
 
 ```python
-# Good for RTM:
-# - Sub-second latency requirements
-# - Simple transformations
-# - Stateless operations
-# - Kafka-to-Kafka pipelines
+# RTM 適合：
+# - 亞秒延遲要求
+# - 簡單的轉換
+# - 無狀態操作
+# - Kafka 到 Kafka 管道
 
-# Not recommended for RTM:
-# - Stateful operations (aggregations, joins)
-# - Complex transformations
-# - Large batch sizes
+# RTM 不建議用於：
+# - 有狀態操作（彙總、連接）
+# - 複雜的轉換
+# - 大型批次大小
 ```
 
-## Performance Considerations
+## 效能考慮
 
-### Batch Duration vs Trigger Interval
+### 批次持續時間與觸發間隔
 
 ```python
-# Batch duration should be < trigger interval
-# Example:
-trigger_interval = 30  # seconds
-batch_duration = 10  # seconds
+# 批次持續時間應該 < 觸發間隔
+# 範例：
+trigger_interval = 30  # 秒
+batch_duration = 10  # 秒
 
-# Healthy: batch_duration < trigger_interval
-# Unhealthy: batch_duration >= trigger_interval
+# 健康：batch_duration < trigger_interval
+# 不健康：batch_duration >= trigger_interval
 
-# Monitor in Spark UI:
-# - Batch duration
-# - Trigger interval
-# - Alert if batch duration >= trigger interval
+# 在 Spark UI 中監控：
+# - 批次持續時間
+# - 觸發間隔
+# - 如果批次持續時間 >= 觸發間隔，發出警報
 ```
 
-### Trigger Interval Tuning
+### 觸發間隔調整
 
 ```python
-# Start conservative, optimize based on monitoring
-# Step 1: Start with SLA / 3
+# 從保守開始，根據監控最佳化
+# 步驟 1：從 SLA / 3 開始
 trigger_interval = business_sla / 3
 
-# Step 2: Monitor batch duration
-# If batch duration < trigger_interval / 2: Can increase trigger
-# If batch duration >= trigger_interval: Decrease trigger
+# 步驟 2：監控批次持續時間
+# 如果批次持續時間 < 觸發間隔 / 2：可以增加觸發
+# 如果批次持續時間 >= 觸發間隔：降低觸發
 
-# Step 3: Optimize for cost vs latency
-# Increase trigger interval to reduce cost
-# Decrease trigger interval to reduce latency
+# 步驟 3：最佳化成本與延遲
+# 增加觸發間隔以降低成本
+# 降低觸發間隔以降低延遲
 ```
 
-## Cost Monitoring
+## 成本監控
 
-### Track Per-Stream Costs
+### 追蹤每流成本
 
 ```python
-# Tag jobs with stream name
+# 使用串流名稱標籤工作
 job_tags = {
     "stream_name": "orders_stream",
     "environment": "prod",
     "cost_center": "analytics"
 }
 
-# Use DBU consumption metrics
-# Monitor by workspace/cluster
-# Track cost per stream over time
+# 使用 DBU 消費指標
+# 按工作區/叢集監控
+# 追蹤一段時間內每個串流的成本
 ```
 
-### Monitor Cluster Utilization
+### 監控叢集使用率
 
 ```python
-# Check CPU utilization
-# Target: 60-80% utilization
-# Below 60%: Consider downsizing
-# Above 80%: Consider upsizing
+# 檢查 CPU 使用率
+# 目標：60-80% 使用率
+# 低於 60%：考慮向下調整
+# 高於 80%：考慮向上調整
 
-# Check memory utilization
-# Monitor for OOM errors
-# Adjust cluster size accordingly
+# 檢查記憶體使用率
+# 監控 OOM 錯誤
+# 根據需要調整叢集大小
 ```
 
-## Latency vs Cost Trade-offs
+## 延遲與成本權衡
 
-### Continuous Processing
+### 持續處理
 
 ```python
-# High cost, low latency
+# 高成本、低延遲
 .trigger(processingTime="30 seconds")
 
-# Cost: Continuous cluster running
-# Latency: 30 seconds + processing time
-# Use when: Real-time requirements
+# 成本：持續叢集執行
+# 延遲：30 秒 + 處理時間
+# 使用時機：即時要求
 ```
 
-### Scheduled Processing
+### 排程處理
 
 ```python
-# Lower cost, higher latency
-.trigger(availableNow=True)  # Schedule: Every 15 minutes
+# 更低的成本、更高的延遲
+.trigger(availableNow=True)  # 排程：每 15 分鐘
 
-# Cost: Cluster runs only during processing
-# Latency: Schedule interval + processing time
-# Use when: Batch-style SLA acceptable
+# 成本：叢集僅在處理期間執行
+# 延遲：排程間隔 + 處理時間
+# 使用時機：批次樣式 SLA 可接受
 ```
 
-### Real-Time Mode
+### 實時模式
 
 ```python
-# Highest cost, lowest latency
+# 最高成本、最低延遲
 .trigger(realTime=True)
 
-# Cost: Continuous cluster with Photon
-# Latency: < 800ms
-# Use when: Sub-second latency required
+# 成本：持續叢集和 Photon
+# 延遲：< 800 毫秒
+# 使用時機：亞秒延遲需要
 ```
 
-## Common Issues
+## 常見問題
 
-| Issue | Cause | Solution |
+| 問題 | 原因 | 解決方案 |
 |-------|-------|----------|
-| **High latency** | Trigger interval too long | Decrease trigger interval or use RTM |
-| **High cost** | Continuous processing | Use scheduled (availableNow) |
-| **Batch duration > trigger** | Processing too slow | Optimize processing or increase trigger |
-| **RTM not working** | Photon not enabled | Enable Photon and configure cluster |
+| **延遲過高** | 觸發間隔過長 | 減少觸發間隔或使用 RTM |
+| **成本過高** | 持續處理 | 使用排程（availableNow） |
+| **批次持續時間 > 觸發** | 處理太慢 | 最佳化處理或增加觸發 |
+| **RTM 無法工作** | Photon 未啟用 | 啟用 Photon 並設定叢集 |
 
-## Quick Wins
+## 快速勝利
 
-1. **Change from continuous to 15-minute schedule** - Significant cost reduction
-2. **Run multiple streams per cluster** - Better cluster utilization
-3. **Enable auto-optimize** - Reduce storage costs
-4. **Use Spot instances** - For non-critical streams (with caution)
-5. **Archive old data** - Move to cheaper storage tiers
+1. **從持續改為 15 分鐘排程** - 顯著降低成本
+2. **在一個叢集上執行多個串流** - 更好的叢集使用率
+3. **啟用自動最佳化** - 減少儲存成本
+4. **使用 Spot 實例** - 用於非關鍵串流（謹慎）
+5. **歸檔舊資料** - 移至更便宜的儲存層
 
-## Trade-offs
+## 權衡
 
-| Cost Reduction | Impact | Mitigation |
+| 成本降低 | 影響 | 緩解 |
 |----------------|--------|------------|
-| Longer trigger | Higher latency | Acceptable if SLA allows |
-| Smaller cluster | May fall behind | Monitor lag; scale if needed |
-| Aggressive VACUUM | Less time travel | Balance retention vs cost |
-| Spot instances | Possible interruptions | Use for non-critical streams |
-| Scheduled vs continuous | Higher latency | Match to business SLA |
+| 更長的觸發 | 更高的延遲 | 可接受（如果 SLA 允許） |
+| 更小的叢集 | 可能落後 | 監控延遲；需要時調整 |
+| 激進的 VACUUM | 較少時間旅遊 | 平衡保留與成本 |
+| Spot 實例 | 可能中斷 | 用於非關鍵串流 |
+| 排程與持續 | 更高的延遲 | 符合業務 SLA |
 
-## Production Best Practices
+## 生產最佳實踐
 
-### Match Trigger to SLA
+### 符合觸發器與 SLA
 
 ```python
-# Calculate trigger from business SLA
+# 從業務 SLA 計算觸發
 def calculate_trigger_interval(sla_minutes):
-    """Calculate optimal trigger interval"""
-    return max(30, sla_minutes / 3)  # Minimum 30 seconds
+    """計算最佳觸發間隔"""
+    return max(30, sla_minutes / 3)  # 最少 30 秒
 
 trigger_interval = calculate_trigger_interval(business_sla_minutes)
 .trigger(processingTime=f"{trigger_interval} seconds")
 ```
 
-### Cluster Configuration
+### 叢集設定
 
 ```python
-# Fixed-size cluster (no autoscaling for streaming)
+# 固定大小的叢集（流媒體無自動調整）
 cluster_config = {
     "num_workers": 4,
     "node_type_id": "i3.xlarge",
-    "autotermination_minutes": 60,  # Terminate if idle
-    "enable_elastic_disk": True  # Reduce storage costs
+    "autotermination_minutes": 60,  # 如果空閒則終止
+    "enable_elastic_disk": True  # 減少儲存成本
 }
 ```
 
-### Storage Management
+### 儲存管理
 
 ```sql
--- Enable auto-optimize
+-- 啟用自動最佳化
 ALTER TABLE table SET TBLPROPERTIES (
     'delta.autoOptimize.optimizeWrite' = true,
     'delta.autoOptimize.autoCompact' = true
 );
 
--- Periodic VACUUM
-VACUUM table RETAIN 7 DAYS;  -- Balance retention vs cost
+-- 定期 VACUUM
+VACUUM table RETAIN 7 DAYS;  -- 平衡保留與成本
 
--- Archive old partitions
--- Move to cheaper storage tier
+-- 歸檔舊分割區
+-- 移至更便宜的儲存層
 ```
 
-## Production Checklist
+## 生產檢查清單
 
-- [ ] Trigger type selected based on latency requirements
-- [ ] Trigger interval calculated from SLA (SLA / 3)
-- [ ] Batch duration monitored (< trigger interval)
-- [ ] Cluster right-sized (60-80% utilization)
-- [ ] Multiple streams per cluster (if applicable)
-- [ ] Scheduled execution (if SLA allows)
-- [ ] RTM configured if sub-second latency required
-- [ ] Auto-optimize enabled
-- [ ] Storage costs monitored
-- [ ] Cost per stream tracked
+- [ ] 根據延遲要求選擇觸發器類型
+- [ ] 從 SLA（SLA / 3）計算觸發間隔
+- [ ] 監控批次持續時間（< 觸發間隔）
+- [ ] 叢集適當調整大小（60-80% 使用率）
+- [ ] 多個串流每個叢集（如適用）
+- [ ] 排程執行（如果 SLA 允許）
+- [ ] 配置 RTM（如果需要亞秒延遲）
+- [ ] 啟用自動最佳化
+- [ ] 監控儲存成本
+- [ ] 追蹤每個串流的成本
 
-## Related Skills
+## 相關技能
 
-- `kafka-streaming` - RTM configuration for Kafka pipelines
-- `checkpoint-best-practices` - Checkpoint management
+- `kafka-streaming` - Kafka 管道的 RTM 設定
+- `checkpoint-best-practices` - 檢查點管理

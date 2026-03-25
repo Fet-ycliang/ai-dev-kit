@@ -1,8 +1,8 @@
 """
-Vector Search Operations
+Vector Search 操作
 
-Functions for managing Databricks Vector Search endpoints, indexes,
-and performing similarity queries.
+用於管理 Databricks Vector Search 端點、索引，
+以及執行相似度查詢的函式。
 """
 
 from .endpoints import (
@@ -24,12 +24,12 @@ from .indexes import (
 )
 
 __all__ = [
-    # Endpoints
+    # 端點
     "create_vs_endpoint",
     "get_vs_endpoint",
     "list_vs_endpoints",
     "delete_vs_endpoint",
-    # Indexes
+    # 索引
     "create_vs_index",
     "get_vs_index",
     "list_vs_indexes",

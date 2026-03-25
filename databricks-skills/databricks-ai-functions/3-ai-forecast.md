@@ -1,15 +1,15 @@
-# `ai_forecast` — Full Reference
+# `ai_forecast` — 完整參考
 
-**Docs:** https://docs.databricks.com/aws/en/sql/language-manual/functions/ai_forecast
+**文件：** https://docs.databricks.com/aws/en/sql/language-manual/functions/ai_forecast
 
-> `ai_forecast` is a **table-valued function** — it returns a table of rows, not a scalar. Call it with `SELECT * FROM ai_forecast(...)`.
+> `ai_forecast` 是**資料表值型函式**——它回傳的是資料列組成的資料表，而不是純量。請使用 `SELECT * FROM ai_forecast(...)` 呼叫。
 
-## Requirements
+## 需求條件
 
-- **Pro or Serverless SQL warehouse** — not available on Classic or Starter
-- Input data must have a DATE or TIMESTAMP time column and at least one numeric value column
+- **Pro 或 Serverless SQL warehouse**——Classic 或 Starter 不提供
+- 輸入資料必須具有 DATE 或 TIMESTAMP 時間欄位，以及至少一個數值欄位
 
-## Syntax
+## 語法
 
 ```sql
 SELECT *
@@ -23,32 +23,32 @@ FROM ai_forecast(
 )
 ```
 
-## Parameters
+## 參數
 
-| Parameter | Type | Description |
+| 參數 | 型別 | 說明 |
 |---|---|---|
-| `observed` | TABLE reference or subquery | Training data with time + value columns |
-| `horizon` | DATE, TIMESTAMP, or STRING | End date/time for the forecast period |
-| `time_col` | STRING | Name of the DATE or TIMESTAMP column in `observed` |
-| `value_col` | STRING | One or more numeric columns to forecast (up to 100 per group) |
-| `group_col` | STRING (optional) | Column to partition forecasts by — produces one forecast series per group value |
-| `prediction_interval_width` | DOUBLE (optional, default 0.95) | Confidence interval width between 0 and 1 |
+| `observed` | TABLE 參照或子查詢 | 含時間 + 數值欄位的訓練資料 |
+| `horizon` | DATE、TIMESTAMP 或 STRING | 預測期間的結束日期／時間 |
+| `time_col` | STRING | `observed` 中 DATE 或 TIMESTAMP 欄位的名稱 |
+| `value_col` | STRING | 要預測的一個或多個數值欄位（每個 group 最多 100 個） |
+| `group_col` | STRING（選填） | 依欄位分組預測——每個 group 值各產生一條預測序列 |
+| `prediction_interval_width` | DOUBLE（選填，預設 0.95） | 介於 0 到 1 之間的信賴區間寬度 |
 
-## Output Columns
+## 輸出欄位
 
-For each `value_col` named `metric`, the output includes:
+對於每個名為 `metric` 的 `value_col`，輸出包含：
 
-| Column | Type | Description |
+| 欄位 | 型別 | 說明 |
 |---|---|---|
-| time_col | DATE or TIMESTAMP | The forecast timestamp (same type as input) |
-| `metric_forecast` | DOUBLE | Point forecast |
-| `metric_upper` | DOUBLE | Upper confidence bound |
-| `metric_lower` | DOUBLE | Lower confidence bound |
-| group_col | original type | Present when `group_col` is specified |
+| time_col | DATE 或 TIMESTAMP | 預測時間戳（與輸入型別相同） |
+| `metric_forecast` | DOUBLE | 點預測值 |
+| `metric_upper` | DOUBLE | 信賴區間上界 |
+| `metric_lower` | DOUBLE | 信賴區間下界 |
+| group_col | 原始型別 | 指定 `group_col` 時才會出現 |
 
-## Patterns
+## 模式
 
-### Single Metric Forecast
+### 單一指標預測
 
 ```sql
 SELECT *
@@ -58,12 +58,12 @@ FROM ai_forecast(
     time_col  => 'order_date',
     value_col => 'revenue'
 );
--- Returns: order_date, revenue_forecast, revenue_upper, revenue_lower
+-- 回傳：order_date, revenue_forecast, revenue_upper, revenue_lower
 ```
 
-### Multi-Group Forecast
+### 多群組預測
 
-Produces one forecast series per distinct value of `group_col`:
+會為 `group_col` 的每個不同值產生一條預測序列：
 
 ```sql
 SELECT *
@@ -74,11 +74,11 @@ FROM ai_forecast(
     value_col => 'sales',
     group_col => 'region'
 );
--- Returns: date, region, sales_forecast, sales_upper, sales_lower
--- One row per date per region
+-- 回傳：date, region, sales_forecast, sales_upper, sales_lower
+-- 每個 region 的每個日期各一列
 ```
 
-### Multiple Value Columns
+### 多個數值欄位
 
 ```sql
 SELECT *
@@ -86,13 +86,13 @@ FROM ai_forecast(
     observed  => TABLE(SELECT date, units, revenue FROM daily_kpis),
     horizon   => '2026-06-30',
     time_col  => 'date',
-    value_col => 'units,revenue'   -- comma-separated
+    value_col => 'units,revenue'   -- 以逗號分隔
 );
--- Returns: date, units_forecast, units_upper, units_lower,
+-- 回傳：date, units_forecast, units_upper, units_lower,
 --                revenue_forecast, revenue_upper, revenue_lower
 ```
 
-### Custom Confidence Interval
+### 自訂信賴區間
 
 ```sql
 SELECT *
@@ -101,11 +101,11 @@ FROM ai_forecast(
     horizon                    => '2026-03-31',
     time_col                   => 'ts',
     value_col                  => 'sensor_value',
-    prediction_interval_width  => 0.80   -- narrower interval = less conservative
+    prediction_interval_width  => 0.80   -- 較窄的區間 = 較不保守
 );
 ```
 
-### Filtering Input Data (Subquery)
+### 篩選輸入資料（Subquery）
 
 ```sql
 SELECT *
@@ -121,9 +121,9 @@ FROM ai_forecast(
 );
 ```
 
-### PySpark — Use `spark.sql()`
+### PySpark — 使用 `spark.sql()`
 
-`ai_forecast` is a table-valued function and must be called through `spark.sql()`:
+`ai_forecast` 是資料表值型函式，因此必須透過 `spark.sql()` 呼叫：
 
 ```python
 result = spark.sql("""
@@ -138,7 +138,7 @@ result = spark.sql("""
 result.display()
 ```
 
-### Save Forecast to Delta Table
+### 將預測結果儲存至 Delta 資料表
 
 ```python
 result = spark.sql("""
@@ -154,9 +154,9 @@ result = spark.sql("""
 result.write.format("delta").mode("overwrite").saveAsTable("catalog.schema.revenue_forecast")
 ```
 
-## Notes
+## 注意事項
 
-- The underlying model is a **prophet-like piecewise linear + seasonality model** — suitable for business time series with trend and weekly/yearly seasonality
-- Handles "any number of groups" but up to **100 metrics per group**
-- Output time column preserves the input type (DATE stays DATE, TIMESTAMP stays TIMESTAMP)
-- Value columns are always cast to DOUBLE in output regardless of input type
+- 底層模型是類似 prophet 的分段線性 + 季節性模型——適合具有趨勢與每週／每年季節性的商業時間序列
+- 可處理「任意數量的群組」，但每個群組最多 **100 個指標**
+- 輸出時間欄位會保留輸入型別（DATE 仍為 DATE，TIMESTAMP 仍為 TIMESTAMP）
+- 無論輸入型別為何，數值欄位在輸出中一律轉型為 DOUBLE

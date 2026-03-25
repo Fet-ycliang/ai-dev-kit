@@ -1,45 +1,45 @@
-# Project Initialization with databricks pipelines init
+# 使用 databricks pipelines init 進行專案初始化
 
-## Overview
+## 概觀
 
-The `databricks pipelines init` command scaffolds a complete Databricks Asset Bundle project for Lakeflow Spark Declarative Pipelines, providing a production-ready structure with multi-environment support, pipeline configuration, and sample transformation files.
+`databricks pipelines init` 指令會為 Lakeflow Spark Declarative Pipelines 建立完整的 Databricks Asset Bundle 專案骨架，提供可用於正式環境的結構，並支援多環境、pipeline 設定與範例轉換檔案。
 
-**Benefits of Asset Bundles:**
-- Multi-environment deployments (dev/staging/prod)
-- Infrastructure as code with `databricks.yml`
-- Built-in CI/CD integration
-- Version control for pipeline configuration
-- Automated deployment workflows
+**Asset Bundles 的優點：**
+- 多環境部署（dev/staging/prod）
+- 使用 `databricks.yml` 實現 infrastructure as code
+- 內建 CI/CD 整合
+- 以版本控制管理 pipeline 設定
+- 自動化部署工作流程
 
 ---
 
-## Command Reference
+## 指令參考
 
-### Interactive Mode
+### 互動模式
 
 ```bash
 databricks pipelines init --output-dir .
 ```
 
-**Interactive Prompts:**
+**互動提示：**
 
-1. **Project name** (default: `my_pipeline_project`)
-   - Used for bundle name, pipeline name, and folder structure
-   - Example: `customer_orders_pipeline`
+1. **專案名稱**（預設：`my_pipeline_project`）
+   - 用於 bundle 名稱、pipeline 名稱與資料夾結構
+   - 範例：`customer_orders_pipeline`
 
-2. **Initial catalog** (Unity Catalog name)
-   - Must be an existing Unity Catalog catalog
-   - Example: `main`, `prod_catalog`, `dev_catalog`
+2. **初始 catalog**（Unity Catalog 名稱）
+   - 必須是已存在的 Unity Catalog catalog
+   - 範例：`main`、`prod_catalog`、`dev_catalog`
 
-3. **Use personal schema for each user?** (yes/no)
-   - `yes`: Schema is `${workspace.current_user.short_name}` (recommended for dev)
-   - `no`: Schema is fixed value (recommended for prod)
+3. **每位使用者都使用個人 schema？**（yes/no）
+   - `yes`：schema 為 `${workspace.current_user.short_name}`（建議用於 dev）
+   - `no`：schema 為固定值（建議用於 prod）
 
-4. **Initial language** (python/sql)
-   - Determines whether sample transformation files are `.py` or `.sql`
-   - Both SQL and Python can be used in the same project
+4. **初始語言**（python/sql）
+   - 決定範例轉換檔案使用 `.py` 或 `.sql`
+   - 同一個專案中可同時使用 SQL 與 Python
 
-### Non-Interactive Mode
+### 非互動模式
 
 ```bash
 databricks pipelines init \
@@ -47,7 +47,7 @@ databricks pipelines init \
   --config-file init-config.json
 ```
 
-**Example init-config.json:**
+**init-config.json 範例：**
 ```json
 {
   "project_name": "customer_pipeline",
@@ -57,83 +57,83 @@ databricks pipelines init \
 }
 ```
 
-**Use non-interactive mode for:**
-- Automated project generation scripts
-- Templating workflows
-- CI/CD pipeline initialization
-- Batch project creation
+**適合使用非互動模式的情境：**
+- 自動化專案產生腳本
+- 範本化工作流程
+- CI/CD pipeline 初始化
+- 批次建立專案
 
 ---
 
-## Generated Structure
+## 產生的結構
 
-### SQL Project
+### SQL 專案
 
 ```
 project_root/
-├── databricks.yml                           # Bundle configuration
+├── databricks.yml                           # Bundle 設定
 ├── resources/
-│   ├── customer_pipeline_etl.pipeline.yml  # Pipeline resource definition
-│   └── sample_job.job.yml                  # Optional scheduled job
-├── README.md                                # Auto-generated documentation
+│   ├── customer_pipeline_etl.pipeline.yml  # Pipeline 資源定義
+│   └── sample_job.job.yml                  # 選用的排程 job
+├── README.md                                # 自動產生的文件
 └── src/
     └── customer_pipeline_etl/
-        ├── README.md                        # ETL folder documentation
+        ├── README.md                        # ETL 資料夾文件
         ├── explorations/
-        │   └── sample_exploration.ipynb     # Notebook for ad-hoc queries
+        │   └── sample_exploration.ipynb     # 用於 ad-hoc 查詢的 Notebook
         └── transformations/
             ├── sample_trips_customer_pipeline.sql
             └── sample_zones_customer_pipeline.sql
 ```
 
-### Python Project
+### Python 專案
 
 ```
 project_root/
-├── databricks.yml                           # Bundle configuration
-├── pyproject.toml                           # Python dependencies
+├── databricks.yml                           # Bundle 設定
+├── pyproject.toml                           # Python 依賴
 ├── resources/
-│   ├── customer_pipeline_etl.pipeline.yml  # Pipeline resource definition
-│   └── sample_job.job.yml                  # Optional scheduled job
-├── README.md                                # Auto-generated documentation
+│   ├── customer_pipeline_etl.pipeline.yml  # Pipeline 資源定義
+│   └── sample_job.job.yml                  # 選用的排程 job
+├── README.md                                # 自動產生的文件
 └── src/
     └── customer_pipeline_etl/
-        ├── README.md                        # ETL folder documentation
+        ├── README.md                        # ETL 資料夾文件
         ├── explorations/
-        │   └── sample_exploration.ipynb     # Notebook for ad-hoc queries
+        │   └── sample_exploration.ipynb     # 用於 ad-hoc 查詢的 Notebook
         └── transformations/
             ├── sample_trips_customer_pipeline.py
             └── sample_zones_customer_pipeline.py
 ```
 
-**Key Differences:**
-- Python projects include `pyproject.toml` for dependency management
-- Transformation files use `.py` extension with `@dp.table` decorators
-- Both use the same bundle structure and deployment process
+**主要差異：**
+- Python 專案包含 `pyproject.toml` 以管理依賴
+- 轉換檔案使用附帶 `@dp.table` decorator 的 `.py` 副檔名
+- 兩者使用相同的 bundle 結構與部署流程
 
 ---
 
-## Customization Workflow
+## 自訂流程
 
-### 1. Replace Sample Files
+### 1. 取代範例檔案
 
-The generated project includes sample transformation files that can be replaced:
+產生的專案會包含可替換的範例轉換檔案：
 
 ```bash
 cd src/customer_pipeline_etl/transformations/
 
-# Remove sample files
-rm sample_*.sql  # or sample_*.py for Python
+# 移除範例檔案
+rm sample_*.sql  # 若為 Python 專案則使用 sample_*.py
 
-# Add your transformation files
+# 加入你的轉換檔案
 touch bronze_orders.sql
 touch silver_cleaned_orders.sql
 touch gold_daily_summary.sql
 ```
 
-### 2. Update databricks.yml
+### 2. 更新 databricks.yml
 
-Configure target environments in the root `databricks.yml`:
+在根目錄的 `databricks.yml` 中設定目標環境：
 
 ```yaml
 bundle:
@@ -146,9 +146,9 @@ include:
 
 variables:
   catalog:
-    description: The catalog to use
+    description: 要使用的 catalog
   schema:
-    description: The schema to use
+    description: 要使用的 schema
 
 targets:
   dev:
@@ -173,15 +173,15 @@ targets:
         level: CAN_MANAGE
 ```
 
-**Key Configuration Options:**
-- `mode: development` - Prefixes resources with `[dev username]`, pauses schedules
-- `mode: production` - No prefix, enables schedules
-- `variables` - Parameterize catalog and schema for different environments
-- `permissions` - Control access to deployed resources
+**主要設定選項：**
+- `mode: development` - 為資源加上 `[dev username]` 前綴，並暫停排程
+- `mode: production` - 不加前綴，並啟用排程
+- `variables` - 針對不同環境將 catalog 與 schema 參數化
+- `permissions` - 控制已部署資源的存取權限
 
-### 3. Customize Pipeline Configuration
+### 3. 自訂 Pipeline 設定
 
-Edit `resources/*_etl.pipeline.yml` to adjust pipeline settings:
+編輯 `resources/*_etl.pipeline.yml` 以調整 pipeline 設定：
 
 ```yaml
 resources:
@@ -198,144 +198,144 @@ resources:
       environment:
         dependencies:
           - --editable ${workspace.file_path}
-      # Optional: Add development mode for faster iteration
+      # 選用：加入 development mode 以加快迭代
       # development: true
-      # Optional: Add continuous mode for always-running pipeline
+      # 選用：加入 continuous mode 以維持 pipeline 持續執行
       # continuous: false
 ```
 
-### 4. Deploy to Workspace
+### 4. 部署到 Workspace
 
 ```bash
-# Validate configuration
+# 驗證設定
 databricks bundle validate
 
-# Deploy to dev (default target)
+# 部署到 dev（預設 target）
 databricks bundle deploy
 
-# Deploy to prod
+# 部署到 prod
 databricks bundle deploy --target prod
 
-# Deploy and run immediately
+# 部署後立即執行
 databricks bundle run customer_pipeline_etl
 ```
 
-**Deployment Process:**
-1. Uploads files to workspace
-2. Creates/updates pipeline resource
-3. Applies target-specific configuration
-4. Sets permissions (if configured)
+**部署流程：**
+1. 上傳檔案至 workspace
+2. 建立或更新 pipeline 資源
+3. 套用 target 專屬設定
+4. 設定權限（若有配置）
 
-### 5. Run Pipeline
+### 5. 執行 Pipeline
 
 ```bash
-# Run via bundle (uses default target)
+# 透過 bundle 執行（使用預設 target）
 databricks bundle run customer_pipeline_etl
 
-# Run specific target
+# 執行特定 target
 databricks bundle run customer_pipeline_etl --target prod
 
-# Or use Pipeline API directly
+# 或直接使用 Pipeline API
 databricks pipelines start-update --pipeline-id <id>
 ```
 
 ---
 
-## Language Detection (for Claude)
+## 語言判斷（供 Claude 使用）
 
-When a user requests a new Lakeflow pipeline, Claude should detect the appropriate language from keywords in the prompt.
+當使用者要求建立新的 Lakeflow pipeline 時，Claude 應根據提示中的關鍵字判斷適合的語言。
 
-### CRITICAL: Explicit Language Requests
+### 關鍵：明確指定語言的要求
 
-**If the user explicitly mentions a language, use it without asking:**
+**如果使用者明確提到語言，直接使用該語言，不要追問：**
 
 | User Says | Action |
 |-----------|--------|
-| "Python pipeline", "Python SDP", "use Python" | **Use Python immediately** |
-| "SQL pipeline", "SQL files", "use SQL" | **Use SQL immediately** |
-| "Python Spark Declarative Pipeline" | **Use Python immediately** |
+| "Python pipeline", "Python SDP", "use Python" | **立即使用 Python** |
+| "SQL pipeline", "SQL files", "use SQL" | **立即使用 SQL** |
+| "Python Spark Declarative Pipeline" | **立即使用 Python** |
 
-**DO NOT ask for clarification when the user explicitly states a language.** This is the most common mistake - ignoring an explicit language request.
+**當使用者已明確指定語言時，不要再要求澄清。** 最常見的錯誤就是忽略使用者已明確提出的語言要求。
 
-### SQL Indicators (Default Choice When Ambiguous)
+### SQL 指標（情況不明時的預設選擇）
 
-**Keywords:**
-- "sql files", ".sql"
-- "simple", "basic", "straightforward"
-- "aggregations", "joins", "transformations"
-- "materialized view", "CREATE OR REFRESH"
-- "SELECT", "GROUP BY", "WHERE"
+**關鍵字：**
+- "sql files"、".sql"
+- "simple"、"basic"、"straightforward"
+- "aggregations"、"joins"、"transformations"
+- "materialized view"、"CREATE OR REFRESH"
+- "SELECT"、"GROUP BY"、"WHERE"
 
-**Context:**
-- User mentions only data transformations without complex logic
-- Request focuses on filtering, joining, aggregating data
-- No mention of custom functions or external integrations
-- **No explicit mention of "Python"**
+**情境：**
+- 使用者只提到資料轉換，沒有複雜邏輯
+- 請求重點在篩選、join 或彙總資料
+- 未提及自訂函式或外部整合
+- **未明確提到 "Python"**
 
-**Default Behavior**: Prefer SQL only when ambiguous AND no Python indicators present
+**預設行為**：僅在情況不明且沒有 Python 指標時，優先選擇 SQL
 
-### Python Indicators
+### Python 指標
 
-**Keywords:**
-- "Python", "python files", ".py", "@dp.table"
-- "UDF", "user-defined function", "custom function"
-- "complex logic", "complex transformations"
-- "ML", "machine learning", "inference", "model"
-- "API", "external API", "REST", "HTTP"
-- "pandas", "numpy", "pyspark"
-- "decorator", "pyspark.pipelines"
+**關鍵字：**
+- "Python"、"python files"、".py"、"@dp.table"
+- "UDF"、"user-defined function"、"custom function"
+- "complex logic"、"complex transformations"
+- "ML"、"machine learning"、"inference"、"model"
+- "API"、"external API"、"REST"、"HTTP"
+- "pandas"、"numpy"、"pyspark"
+- "decorator"、"pyspark.pipelines"
 
-**Context:**
-- User needs custom data processing beyond SQL capabilities
-- Request mentions integrating with external services
-- Task requires ML model inference or scoring
-- Dynamic schema or path generation needed
+**情境：**
+- 使用者需要超出 SQL 能力範圍的自訂資料處理
+- 請求提到要與外部服務整合
+- 任務需要 ML model inference 或 scoring
+- 需要動態產生 schema 或路徑
 
-### Ambiguous Cases (Ask User)
+### 模糊情況（詢問使用者）
 
-**Only ask when ALL conditions are met:**
-- User did NOT explicitly mention "Python" or "SQL"
-- Mixed signals present (some SQL keywords, some Python keywords)
-- OR no clear indicators either way
+**只有在符合下列所有條件時才需要詢問：**
+- 使用者**沒有**明確提到 "Python" 或 "SQL"
+- 同時出現混合訊號（部分 SQL 關鍵字、部分 Python 關鍵字）
+- 或兩者都沒有明顯指標
 
-**Response:**
+**回應：**
 ```
-I can create this pipeline using either SQL or Python:
+我可以使用 SQL 或 Python 來建立這個 pipeline：
 
-- **SQL**: Best for transformations, aggregations, joins (simpler, faster to develop)
-- **Python**: Best for custom logic, UDFs, ML inference, external APIs
+- **SQL**：最適合 transformations、aggregations、joins（較簡單、開發較快）
+- **Python**：最適合自訂邏輯、UDF、ML inference、external APIs
 
-Which would you prefer?
+你偏好哪一種？
 ```
 
 ---
 
 ## Medallion Architecture
 
-For bronze/silver/gold organization, Asset Bundles support two approaches. Both work with the `transformations/**` glob pattern in pipeline configuration.
+對於 bronze/silver/gold 的組織方式，Asset Bundles 支援兩種作法。兩者都可搭配 pipeline 設定中的 `transformations/**` glob pattern 使用。
 
-### Option 1: Flat Structure with Naming (Template Default, SQL Example)
+### 方案 1：以命名規則維持平面結構（範本預設，SQL 範例）
 
 ```
 transformations/
-├── bronze_raw_orders.sql          # Raw data ingestion
+├── bronze_raw_orders.sql          # 原始資料擷取
 ├── bronze_raw_events.sql
 ├── bronze_raw_customers.sql
-├── silver_cleaned_orders.sql      # Cleaned and validated
+├── silver_cleaned_orders.sql      # 清理並驗證後的資料
 ├── silver_joined_data.sql
 ├── silver_customer_profiles.sql
-├── gold_daily_metrics.sql         # Business aggregations
+├── gold_daily_metrics.sql         # 業務彙總
 ├── gold_customer_summary.sql
 └── gold_revenue_analysis.sql
 ```
 
-**Advantages:**
-- Matches the official `databricks pipelines init` template structure
-- All files visible at one level
-- Simple file listing and discovery
-- Clear naming provides logical organization
+**優點：**
+- 符合官方 `databricks pipelines init` 範本結構
+- 所有檔案都在同一層可見
+- 檔案列出與尋找都較簡單
+- 清楚的命名可提供邏輯上的組織
 
-### Option 2: Subdirectories by Layer, SQL Example
+### 方案 2：依 Layer 使用子目錄（SQL 範例）
 
 ```
 transformations/
@@ -353,21 +353,21 @@ transformations/
     └── revenue_analysis.sql
 ```
 
-**Advantages:**
-- Physical separation of layers
-- Familiar structure for teams using manual workflow
-- Easier to navigate large projects with many files
-- Works with `transformations/**` glob pattern
+**優點：**
+- 各 Layer 有實體上的區隔
+- 對採用手動流程的團隊而言結構更熟悉
+- 檔案很多的大型專案更容易導覽
+- 可搭配 `transformations/**` glob pattern 使用
 
-**Both approaches are technically valid** - the `**` in the glob pattern matches files recursively. Choose based on team preference and project size.
+**兩種作法在技術上都成立**——glob pattern 中的 `**` 會遞迴比對檔案。請依團隊偏好與專案規模選擇。
 
-### Example Bronze Layer (SQL)
+### Bronze Layer 範例（SQL）
 
 ```sql
--- File: bronze_raw_orders.sql
+-- 檔案：bronze_raw_orders.sql
 CREATE OR REFRESH STREAMING TABLE bronze_raw_orders
 CLUSTER BY (order_date)
-COMMENT "Raw order data ingested from cloud storage"
+COMMENT "從雲端儲存體擷取的原始訂單資料"
 AS
 SELECT
   *,
@@ -380,13 +380,13 @@ FROM read_files(
 );
 ```
 
-### Example Silver Layer (SQL)
+### Silver Layer 範例（SQL）
 
 ```sql
--- File: silver_cleaned_orders.sql
+-- 檔案：silver_cleaned_orders.sql
 CREATE OR REFRESH MATERIALIZED VIEW silver_cleaned_orders
 CLUSTER BY (order_date)
-COMMENT "Cleaned and validated orders with customer enrichment"
+COMMENT "已清理並驗證，且補充客戶資料的訂單"
 AS
 SELECT
   o.order_id,
@@ -398,17 +398,17 @@ SELECT
 FROM LIVE.bronze_raw_orders o
 INNER JOIN LIVE.bronze_raw_customers c
   ON o.customer_id = c.customer_id
-WHERE o.amount > 0  -- Remove invalid orders
+WHERE o.amount > 0  -- 移除無效訂單
   AND o.order_date >= '2020-01-01';
 ```
 
-### Example Gold Layer (SQL)
+### Gold Layer 範例（SQL）
 
 ```sql
--- File: gold_daily_metrics.sql
+-- 檔案：gold_daily_metrics.sql
 CREATE OR REFRESH MATERIALIZED VIEW gold_daily_metrics
 CLUSTER BY (metric_date)
-COMMENT "Daily business metrics for reporting"
+COMMENT "供報表使用的每日業務指標"
 AS
 SELECT
   order_date AS metric_date,
@@ -422,13 +422,13 @@ GROUP BY order_date;
 
 ---
 
-## Migration from Manual Structure
+## 從手動結構遷移
 
-### Option 1: Migrate to Bundle (Recommended)
+### 方案 1：遷移到 Bundle（建議）
 
-If you have an existing manual structure with separate folders:
+如果你目前使用的是將資料夾分開的手動結構：
 
-**Old Structure:**
+**舊結構：**
 ```
 my_pipeline/
 ├── bronze/
@@ -443,18 +443,18 @@ my_pipeline/
 
 ---
 
-## Python Project: Dependency Management
+## Python 專案：依賴管理
 
-### Using pyproject.toml
+### 使用 pyproject.toml
 
-Python bundle projects include `pyproject.toml` for dependency management:
+Python bundle 專案包含 `pyproject.toml` 來管理依賴：
 
 ```toml
 [project]
 name = "customer_pipeline"
 version = "0.0.1"
 dependencies = [
-    # Add your runtime dependencies here
+    # 在此加入執行階段依賴
     # "pandas>=2.0.0",
     # "scikit-learn==1.3.0",
 ]
@@ -475,9 +475,9 @@ build-backend = "hatchling.build"
 line-length = 120
 ```
 
-### Adding Dependencies
+### 新增依賴
 
-1. **Runtime dependencies** (available during pipeline execution):
+1. **執行階段依賴**（pipeline 執行時可用）：
    ```toml
    dependencies = [
        "pandas>=2.0.0",
@@ -485,7 +485,7 @@ line-length = 120
    ]
    ```
 
-2. **Development dependencies** (local development only):
+2. **開發依賴**（僅限本機開發）：
    ```toml
    [project.optional-dependencies]
    dev = [
@@ -494,154 +494,154 @@ line-length = 120
    ]
    ```
 
-3. **Deploy with dependencies**:
+3. **連同依賴一起部署**：
    ```bash
    databricks bundle deploy
    ```
 
-   The pipeline configuration includes:
+   pipeline 設定包含：
    ```yaml
    environment:
      dependencies:
        - --editable ${workspace.file_path}
    ```
 
-   This installs your package and dependencies on serverless compute.
+   這會在 serverless compute 上安裝你的套件與依賴。
 
 ---
 
-## Troubleshooting
+## 疑難排解
 
-### "Command not found: databricks"
+### 「Command not found: databricks」
 
-**Problem**: Databricks CLI not installed
+**問題**：未安裝 Databricks CLI
 
-**Solution**:
+**解決方式：**
 ```bash
 pip install databricks-cli
-# or
+# 或
 pip install --upgrade databricks-cli
 ```
 
-### "Invalid catalog name"
+### 「Invalid catalog name」
 
-**Problem**: Specified catalog doesn't exist in Unity Catalog
+**問題**：指定的 catalog 不存在於 Unity Catalog 中
 
-**Solution**:
+**解決方式：**
 ```bash
-# List available catalogs
+# 列出可用的 catalog
 databricks catalogs list
 
-# Create catalog if needed
+# 視需要建立 catalog
 databricks catalogs create --name my_catalog
 ```
 
-### "Language option not recognized"
+### 「Language option not recognized」
 
-**Problem**: Incorrect language parameter format
+**問題**：語言參數格式不正確
 
-**Solution**: Use lowercase values:
-- Correct: `"initial_language": "sql"` or `"initial_language": "python"`
-- Incorrect: `"initial_language": "SQL"` or `"initial_language": "Python"`
+**解決方式**：使用小寫值：
+- 正確：`"initial_language": "sql"` 或 `"initial_language": "python"`
+- 錯誤：`"initial_language": "SQL"` 或 `"initial_language": "Python"`
 
-### "Files not found during deployment"
+### 「Files not found during deployment」
 
-**Problem**: Pipeline configuration glob pattern doesn't match your files
+**問題**：pipeline 設定中的 glob pattern 沒有比對到你的檔案
 
-**Solution**: Check `resources/*_etl.pipeline.yml`:
+**解決方式**：檢查 `resources/*_etl.pipeline.yml`：
 ```yaml
 libraries:
   - glob:
       include: ../src/my_pipeline_etl/transformations/**
-      # Make sure this path matches your file locations
+      # 確認這個路徑與你的檔案位置一致
 ```
 
-### "Pipeline deployment failed: Authentication error"
+### 「Pipeline deployment failed: Authentication error」
 
-**Problem**: Databricks authentication not configured
+**問題**：尚未設定 Databricks 認證
 
-**Solution**:
+**解決方式：**
 ```bash
-# Configure authentication
+# 設定認證
 databricks configure --host https://your-workspace.cloud.databricks.com
 
-# Or set environment variables
+# 或設定環境變數
 export DATABRICKS_HOST="https://your-workspace.cloud.databricks.com"
 export DATABRICKS_TOKEN="your-personal-access-token"
 ```
 
-### "Bundle validation failed: Invalid schema"
+### 「Bundle validation failed: Invalid schema」
 
-**Problem**: databricks.yml has syntax errors
+**問題**：databricks.yml 有語法錯誤
 
-**Solution**:
+**解決方式：**
 ```bash
-# Validate configuration
+# 驗證設定
 databricks bundle validate
 
-# Check YAML syntax
-# Ensure proper indentation (use spaces, not tabs)
-# Verify required fields are present
+# 檢查 YAML 語法
+# 確認縮排正確（使用空格，不要使用 tab）
+# 確認必填欄位都存在
 ```
 
-### Files Deploy But Pipeline Doesn't Update
+### 檔案已部署，但 Pipeline 沒有更新
 
-**Problem**: Pipeline configuration not refreshed
+**問題**：pipeline 設定沒有重新整理
 
-**Solution**:
+**解決方式：**
 ```bash
-# Force full deployment
+# 強制完整部署
 databricks bundle deploy --force
 
-# Or delete and recreate
+# 或刪除後重建
 databricks bundle destroy
 databricks bundle deploy
 ```
 
 ---
 
-## Advanced Configuration
+## 進階設定
 
-For advanced pipeline configuration options beyond the bundle initialization:
+若需要 bundle 初始化以外的進階 pipeline 設定選項：
 
-- **Development mode**: Faster iteration, allows table deletion
-- **Continuous mode**: Always-running pipelines for streaming
-- **Custom notifications**: Email or webhook alerts
-- **Non-serverless clusters**: When serverless limitations apply
+- **Development mode**：可更快迭代，並允許刪除資料表
+- **Continuous mode**：適用於串流的常駐型 pipeline
+- **自訂通知**：Email 或 webhook 警示
+- **非 serverless cluster**：適用於受限於 serverless 條件的情況
 
-See [7-advanced-configuration.md](7-advanced-configuration.md) for detailed examples.
+詳細範例請參閱 [7-advanced-configuration.md](7-advanced-configuration.md)。
 
 ---
 
-## Working with Multiple Environments
+## 搭配多個環境使用
 
-### Development Workflow
+### 開發工作流程
 
 ```bash
-# Work in dev environment (default)
+# 在 dev 環境中作業（預設）
 databricks bundle deploy
 databricks bundle run my_pipeline_etl
 
-# Resources are prefixed: [dev username]my_pipeline_etl
-# Tables written to: dev_catalog.username.table_name
+# 資源會加上前綴：[dev username]my_pipeline_etl
+# 資料表會寫入：dev_catalog.username.table_name
 ```
 
-### Production Deployment
+### 正式環境部署
 
 ```bash
-# Deploy to production
+# 部署到正式環境
 databricks bundle deploy --target prod
 
-# Run in production
+# 在正式環境執行
 databricks bundle run my_pipeline_etl --target prod
 
-# No prefix: my_pipeline_etl
-# Tables written to: prod_catalog.production.table_name
+# 不加前綴：my_pipeline_etl
+# 資料表會寫入：prod_catalog.production.table_name
 ```
 
-### Environment-Specific Configuration
+### 環境專屬設定
 
-**databricks.yml:**
+**databricks.yml：**
 ```yaml
 targets:
   dev:
@@ -655,58 +655,58 @@ targets:
       schema: production
 ```
 
-**Pipeline uses variables:**
+**Pipeline 使用變數：**
 ```yaml
 resources:
   pipelines:
     my_pipeline_etl:
-      catalog: ${var.catalog}  # dev_catalog or prod_catalog
-      schema: ${var.schema}    # username or production
+      catalog: ${var.catalog}  # dev_catalog 或 prod_catalog
+      schema: ${var.schema}    # username 或 production
 ```
 
 ---
 
-## Best Practices
+## 最佳實務
 
-### Project Organization
+### 專案組織
 
-1. **Use descriptive file names**: `bronze_orders_raw.sql` not just `orders.sql`
-2. **Choose structure approach**:
-   - **Flat with prefixes**: `bronze_*`, `silver_*`, `gold_*` (template default)
-   - **Subdirectories**: `bronze/`, `silver/`, `gold/` folders (also valid)
-   - Both work with `transformations/**` glob pattern
-3. **One table per file**: Each file defines a single table or view
-4. **Be consistent**: Pick one approach and use it throughout the project
+1. **使用具描述性的檔名**：例如 `bronze_orders_raw.sql`，不要只用 `orders.sql`
+2. **選擇結構方式**：
+   - **平面結構加前綴**：`bronze_*`、`silver_*`、`gold_*`（範本預設）
+   - **子目錄**：`bronze/`、`silver/`、`gold/` 資料夾（同樣有效）
+   - 兩者都可搭配 `transformations/**` glob pattern 使用
+3. **每個檔案只定義一個資料表**：每個檔案只定義單一資料表或 view
+4. **保持一致**：選定一種作法後，在整個專案中一致使用
 
-### Configuration Management
+### 設定管理
 
-1. **Use variables**: Parameterize catalog and schema names
-2. **Separate environments**: Define dev/staging/prod targets
-3. **Version control**: Track `databricks.yml` and pipeline configs in git
-4. **Sensitive data**: Use secrets, not hardcoded values
+1. **使用變數**：將 catalog 與 schema 名稱參數化
+2. **區分環境**：定義 dev/staging/prod targets
+3. **版本控制**：在 git 中追蹤 `databricks.yml` 與 pipeline 設定
+4. **敏感資料**：使用 secrets，不要硬編碼值
 
-### Development Workflow
+### 開發工作流程
 
-1. **Start with dev**: Always test in development environment first
-2. **Validate locally**: Run `databricks bundle validate` before deploy
-3. **Incremental changes**: Deploy and test small changes frequently
-4. **Use explorations**: Ad-hoc notebooks for data exploration
+1. **先從 dev 開始**：務必先在開發環境測試
+2. **在本機驗證**：部署前先執行 `databricks bundle validate`
+3. **漸進式變更**：經常部署並測試小幅變更
+4. **使用 explorations**：以 ad-hoc Notebook 進行資料探索
 
-### Deployment Strategy
+### 部署策略
 
-1. **CI/CD integration**: Automate deployments with GitHub Actions, GitLab CI
-2. **Approval gates**: Require approval for production deployments
-3. **Rollback plan**: Keep previous bundle versions for quick rollback
-4. **Monitor pipelines**: Set up notifications for failures
+1. **CI/CD 整合**：使用 GitHub Actions、GitLab CI 自動化部署
+2. **核准關卡**：正式環境部署需經過核准
+3. **回滾計畫**：保留先前的 bundle 版本以便快速回滾
+4. **監控 pipelines**：為失敗事件設定通知
 
 ---
 
-## References
+## 參考資料
 
-- **[SKILL.md](SKILL.md)** - Main development workflow and MCP tools
-- **[Databricks Asset Bundles Documentation](https://docs.databricks.com/dev-tools/bundles/)** - Official bundle reference
-- **[Pipeline Configuration Reference](https://docs.databricks.com/aws/en/ldp/configure-pipeline)** - Pipeline settings
-- **[Databricks CLI Reference](https://docs.databricks.com/dev-tools/cli/)** - CLI commands and options
-- **[1-ingestion-patterns.md](1-ingestion-patterns.md)** - Data ingestion patterns
-- **[2-streaming-patterns.md](2-streaming-patterns.md)** - Streaming transformations
-- **[7-advanced-configuration.md](7-advanced-configuration.md)** - Advanced pipeline settings
+- **[SKILL.md](SKILL.md)** - 主要開發工作流程與 MCP 工具
+- **[Databricks Asset Bundles Documentation](https://docs.databricks.com/dev-tools/bundles/)** - 官方 bundle 參考
+- **[Pipeline Configuration Reference](https://docs.databricks.com/aws/en/ldp/configure-pipeline)** - Pipeline 設定
+- **[Databricks CLI Reference](https://docs.databricks.com/dev-tools/cli/)** - CLI 指令與選項
+- **[1-ingestion-patterns.md](1-ingestion-patterns.md)** - 資料擷取模式
+- **[2-streaming-patterns.md](2-streaming-patterns.md)** - 串流轉換
+- **[7-advanced-configuration.md](7-advanced-configuration.md)** - 進階 pipeline 設定

@@ -1,56 +1,56 @@
-# Data Profiling (formerly Lakehouse Monitoring)
+# 資料側寫（原 Lakehouse Monitoring）
 
-Comprehensive reference for Data Profiling: create quality monitors on Unity Catalog tables to track data profiles, detect drift, and monitor ML model performance.
+Unity Catalog 資料側寫完整參考：在資料表上建立品質監控，追蹤資料統計側寫、偵測漂移，並監控 ML 模型效能。
 
-## Overview
+## 概覽
 
-Data profiling automatically computes statistical profiles and drift metrics for tables over time. When you create a monitor, Databricks generates two output Delta tables (profile metrics + drift metrics) and an optional dashboard.
+資料側寫會隨時間自動計算資料表的統計側寫與漂移指標。建立監控後，Databricks 會生成兩張輸出 Delta 資料表（側寫指標 + 漂移指標）以及可選的儀表板。
 
-| Component | Description |
-|-----------|-------------|
-| **Monitor** | Configuration attached to a UC table |
-| **Profile Metrics Table** | Summary statistics computed per column |
-| **Drift Metrics Table** | Statistical drift compared to baseline or previous time window |
-| **Dashboard** | Auto-generated visualization of metrics |
+| 元件 | 說明 |
+|------|------|
+| **Monitor（監控）** | 附加於 Unity Catalog 資料表的設定 |
+| **Profile Metrics Table（側寫指標資料表）** | 依欄位計算的摘要統計數據 |
+| **Drift Metrics Table（漂移指標資料表）** | 與基準線或前一時間窗口的統計漂移比較 |
+| **Dashboard（儀表板）** | 自動生成的指標視覺化 |
 
-### Requirements
+### 前置需求
 
-- Unity Catalog enabled workspace
-- Databricks SQL access
-- Privileges: `USE CATALOG`, `USE SCHEMA`, `SELECT`, and `MANAGE` on the table
-- Only Delta tables supported (managed, external, views, materialized views, streaming tables)
-
----
-
-## Profile Types
-
-| Type | Use Case | Key Params | Limitations |
-|------|----------|------------|-------------|
-| **Snapshot** | General-purpose tables without time column | None required | Max 4TB table size |
-| **TimeSeries** | Tables with a timestamp column | `timestamp_column`, `granularities` | Last 30 days only |
-| **InferenceLog** | ML model monitoring | `timestamp_column`, `granularities`, `model_id_column`, `problem_type`, `prediction_column` | Last 30 days only |
-
-### Granularities (for TimeSeries and InferenceLog)
-
-Supported `AggregationGranularity` values: `AGGREGATION_GRANULARITY_5_MINUTES`, `AGGREGATION_GRANULARITY_30_MINUTES`, `AGGREGATION_GRANULARITY_1_HOUR`, `AGGREGATION_GRANULARITY_1_DAY`, `AGGREGATION_GRANULARITY_1_WEEK` – `AGGREGATION_GRANULARITY_4_WEEKS`, `AGGREGATION_GRANULARITY_1_MONTH`, `AGGREGATION_GRANULARITY_1_YEAR`
+- 已啟用 Unity Catalog 的工作區
+- Databricks SQL 存取權限
+- 所需權限：資料表的 `USE CATALOG`、`USE SCHEMA`、`SELECT` 與 `MANAGE`
+- 僅支援 Delta 資料表（受管、外部、View、物化 View、串流資料表）
 
 ---
 
-## MCP Tools
+## 側寫類型
 
-Use the `manage_uc_monitors` tool for all monitor operations:
+| 類型 | 使用情境 | 關鍵參數 | 限制 |
+|------|---------|---------|------|
+| **Snapshot** | 無時間欄位的通用資料表 | 無需額外參數 | 資料表最大 4TB |
+| **TimeSeries** | 含時間戳記欄位的資料表 | `timestamp_column`、`granularities` | 僅處理最近 30 天 |
+| **InferenceLog** | ML 模型監控 | `timestamp_column`、`granularities`、`model_id_column`、`problem_type`、`prediction_column` | 僅處理最近 30 天 |
 
-| Action | Description |
-|--------|-------------|
-| `create` | Create a quality monitor on a table |
-| `get` | Get monitor details and status |
-| `run_refresh` | Trigger a metric refresh |
-| `list_refreshes` | List refresh history |
-| `delete` | Delete the monitor (assets are not deleted) |
+### 時間粒度（適用於 TimeSeries 與 InferenceLog）
 
-### Create a Monitor
+支援的 `AggregationGranularity` 值：`AGGREGATION_GRANULARITY_5_MINUTES`、`AGGREGATION_GRANULARITY_30_MINUTES`、`AGGREGATION_GRANULARITY_1_HOUR`、`AGGREGATION_GRANULARITY_1_DAY`、`AGGREGATION_GRANULARITY_1_WEEK` 至 `AGGREGATION_GRANULARITY_4_WEEKS`、`AGGREGATION_GRANULARITY_1_MONTH`、`AGGREGATION_GRANULARITY_1_YEAR`
 
-> **Note:** The MCP tool currently only creates **snapshot** monitors. For TimeSeries or InferenceLog monitors, use the Python SDK directly (see below).
+---
+
+## MCP 工具
+
+使用 `manage_uc_monitors` 工具執行所有監控操作：
+
+| 動作 | 說明 |
+|------|------|
+| `create` | 在資料表上建立品質監控 |
+| `get` | 取得監控詳情與狀態 |
+| `run_refresh` | 觸發指標重新整理 |
+| `list_refreshes` | 列出重新整理歷程 |
+| `delete` | 刪除監控（不刪除相關資產） |
+
+### 建立監控
+
+> **注意：** MCP 工具目前僅支援建立 **Snapshot** 監控。如需 TimeSeries 或 InferenceLog 監控，請直接使用 Python SDK（見下方）。
 
 ```python
 manage_uc_monitors(
@@ -60,7 +60,7 @@ manage_uc_monitors(
 )
 ```
 
-### Get Monitor Status
+### 取得監控狀態
 
 ```python
 manage_uc_monitors(
@@ -69,7 +69,7 @@ manage_uc_monitors(
 )
 ```
 
-### Trigger a Refresh
+### 觸發重新整理
 
 ```python
 manage_uc_monitors(
@@ -78,7 +78,7 @@ manage_uc_monitors(
 )
 ```
 
-### Delete a Monitor
+### 刪除監控
 
 ```python
 manage_uc_monitors(
@@ -89,13 +89,13 @@ manage_uc_monitors(
 
 ---
 
-## Python SDK Examples
+## Python SDK 範例
 
-**Doc:** https://databricks-sdk-py.readthedocs.io/en/stable/workspace/dataquality/data_quality.html
+**文件：** https://databricks-sdk-py.readthedocs.io/en/stable/workspace/dataquality/data_quality.html
 
-The new SDK provides full control over all profile types via `w.data_quality`.
+新版 SDK 透過 `w.data_quality` 完整支援所有側寫類型。
 
-### Create Snapshot Monitor
+### 建立 Snapshot 監控
 
 ```python
 from databricks.sdk import WorkspaceClient
@@ -105,7 +105,7 @@ from databricks.sdk.service.dataquality import (
 
 w = WorkspaceClient()
 
-# Look up UUIDs — the new API uses object_id and output_schema_id (both UUIDs)
+# 查詢 UUID——新版 API 使用 object_id 與 output_schema_id（均為 UUID）
 table_info = w.tables.get("catalog.schema.my_table")
 schema_info = w.schemas.get(f"{table_info.catalog_name}.{table_info.schema_name}")
 
@@ -120,10 +120,10 @@ monitor = w.data_quality.create_monitor(
         ),
     ),
 )
-print(f"Monitor status: {monitor.data_profiling_config.status}")
+print(f"監控狀態：{monitor.data_profiling_config.status}")
 ```
 
-### Create TimeSeries Monitor
+### 建立 TimeSeries 監控
 
 ```python
 from databricks.sdk.service.dataquality import (
@@ -149,7 +149,7 @@ monitor = w.data_quality.create_monitor(
 )
 ```
 
-### Create InferenceLog Monitor
+### 建立 InferenceLog 監控
 
 ```python
 from databricks.sdk.service.dataquality import (
@@ -180,7 +180,7 @@ monitor = w.data_quality.create_monitor(
 )
 ```
 
-### Schedule a Monitor
+### 排程監控
 
 ```python
 from databricks.sdk.service.dataquality import (
@@ -199,7 +199,7 @@ monitor = w.data_quality.create_monitor(
             output_schema_id=schema_info.schema_id,
             snapshot=SnapshotConfig(),
             schedule=CronSchedule(
-                quartz_cron_expression="0 0 12 * * ?",  # Daily at noon
+                quartz_cron_expression="0 0 12 * * ?",  # 每日中午執行
                 timezone_id="UTC",
             ),
         ),
@@ -207,16 +207,16 @@ monitor = w.data_quality.create_monitor(
 )
 ```
 
-### Get, Refresh, and Delete
+### 取得、重新整理與刪除
 
 ```python
-# Get monitor details
+# 取得監控詳情
 monitor = w.data_quality.get_monitor(
     object_type="table",
     object_id=table_info.table_id,
 )
 
-# Trigger refresh
+# 觸發重新整理
 from databricks.sdk.service.dataquality import Refresh
 
 refresh = w.data_quality.create_refresh(
@@ -228,7 +228,7 @@ refresh = w.data_quality.create_refresh(
     ),
 )
 
-# Delete monitor (does not delete output tables or dashboard)
+# 刪除監控（不刪除輸出資料表或儀表板）
 w.data_quality.delete_monitor(
     object_type="table",
     object_id=table_info.table_id,
@@ -237,9 +237,9 @@ w.data_quality.delete_monitor(
 
 ---
 
-## Anomaly Detection
+## 異常偵測
 
-Anomaly detection is enabled at the **schema level**, not per table. Once enabled, Databricks automatically scans all tables in the schema at the same frequency they are updated.
+異常偵測在 **Schema 層級**啟用，非單一資料表。啟用後，Databricks 會以資料表更新的相同頻率自動掃描 Schema 中的所有資料表。
 
 ```python
 from databricks.sdk.service.dataquality import Monitor, AnomalyDetectionConfig
@@ -255,29 +255,29 @@ monitor = w.data_quality.create_monitor(
 )
 ```
 
-> **Note:** Anomaly detection requires `MANAGE SCHEMA` or `MANAGE CATALOG` privileges and serverless compute enabled on the workspace.
+> **注意：** 異常偵測需要 `MANAGE SCHEMA` 或 `MANAGE CATALOG` 權限，且工作區須啟用無伺服器計算。
 
 ---
 
-## Output Tables
+## 輸出資料表
 
-When a monitor is created, two metric tables are generated in the specified output schema:
+建立監控後，會在指定的輸出 Schema 中生成兩張指標資料表：
 
-| Table | Naming Convention | Contents |
-|-------|-------------------|----------|
-| **Profile Metrics** | `{table_name}_profile_metrics` | Per-column statistics (nulls, min, max, mean, distinct count, etc.) |
-| **Drift Metrics** | `{table_name}_drift_metrics` | Statistical tests comparing current vs. baseline or previous window |
+| 資料表 | 命名規則 | 內容 |
+|--------|---------|------|
+| **側寫指標** | `{table_name}_profile_metrics` | 每欄統計數據（空值比率、最小值、最大值、平均值、相異計數等） |
+| **漂移指標** | `{table_name}_drift_metrics` | 與基準線或前一時間窗口的統計檢定結果 |
 
-### Query Output Tables
+### 查詢輸出資料表
 
 ```sql
--- View latest profile metrics
+-- 查看最新側寫指標
 SELECT *
 FROM catalog.schema.my_table_profile_metrics
 ORDER BY window_end DESC
 LIMIT 100;
 
--- View latest drift metrics
+-- 查看最新漂移指標
 SELECT *
 FROM catalog.schema.my_table_drift_metrics
 ORDER BY window_end DESC
@@ -286,24 +286,23 @@ LIMIT 100;
 
 ---
 
-## Common Issues
+## 常見問題
 
-| Issue | Cause | Solution |
-|-------|-------|----------|
-| `FEATURE_NOT_ENABLED` | Data profiling not enabled on workspace | Contact workspace admin to enable the feature |
-| `PERMISSION_DENIED` | Missing `MANAGE` privilege on the table | Grant `MANAGE` on the table to your user/group |
-| Monitor refresh stuck in `PENDING` | No SQL warehouse available | Ensure a SQL warehouse is running or set `warehouse_id` |
-| Profile metrics table empty | Refresh has not completed yet | Check refresh state with `list_refreshes`; wait for `SUCCESS` |
-| Snapshot monitor on large table fails | Table exceeds 4TB limit | Switch to TimeSeries profile type instead |
-| TimeSeries shows limited data | Only processes last 30 days | Expected behavior; contact account team to adjust |
+| 問題 | 原因 | 解決方式 |
+|------|------|---------|
+| `FEATURE_NOT_ENABLED` | 工作區未啟用資料側寫功能 | 聯絡工作區管理員啟用此功能 |
+| `PERMISSION_DENIED` | 缺少資料表的 `MANAGE` 權限 | 為您的使用者/群組授予資料表的 `MANAGE` 權限 |
+| Monitor 重新整理卡在 `PENDING` | 無可用的 SQL Warehouse | 確保 SQL Warehouse 正在執行，或設定 `warehouse_id` |
+| 側寫指標資料表為空 | 重新整理尚未完成 | 透過 `list_refreshes` 確認重新整理狀態，等待 `SUCCESS` |
+| Snapshot 監控在大型資料表失敗 | 資料表超過 4TB 限制 | 改用 TimeSeries 側寫類型 |
+| TimeSeries 顯示資料有限 | 僅處理最近 30 天 | 此為預期行為；如需調整請聯絡客戶成功團隊 |
 
 ---
 
-> **Note:** Data profiling was formerly known as Lakehouse Monitoring. The legacy SDK accessor
-> `w.lakehouse_monitors` and the MCP tool `manage_uc_monitors` still use the previous API.
+> **注意：** 資料側寫前身為 Lakehouse Monitoring。舊版 SDK 存取器 `w.lakehouse_monitors` 與 MCP 工具 `manage_uc_monitors` 仍使用舊版 API。
 
-## Resources
+## 參考資源
 
-- [Data Quality Monitoring Documentation](https://docs.databricks.com/aws/en/data-quality-monitoring/)
-- [Data Quality SDK Reference](https://databricks-sdk-py.readthedocs.io/en/stable/workspace/dataquality/data_quality.html)
-- [Legacy Lakehouse Monitors SDK Reference](https://databricks-sdk-py.readthedocs.io/en/stable/workspace/catalog/lakehouse_monitors.html)
+- [資料品質監控文件](https://docs.databricks.com/aws/en/data-quality-monitoring/)
+- [Data Quality SDK 參考](https://databricks-sdk-py.readthedocs.io/en/stable/workspace/dataquality/data_quality.html)
+- [舊版 Lakehouse Monitors SDK 參考](https://databricks-sdk-py.readthedocs.io/en/stable/workspace/catalog/lakehouse_monitors.html)

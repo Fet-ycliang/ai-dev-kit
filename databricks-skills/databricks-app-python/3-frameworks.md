@@ -1,14 +1,14 @@
-# Supported Frameworks
+# 支援的框架
 
-All frameworks below are **pre-installed** in the Databricks Apps runtime. Claude already knows how to use them — this guide covers only **Databricks-specific** patterns. For full examples and recipes, see the **[Databricks Apps Cookbook](https://apps-cookbook.dev/)**.
+以下所有框架均已**預裝**於 Databricks Apps runtime。Claude 已知道如何使用它們——本指南僅涵蓋 **Databricks 專屬**的模式。如需完整範例與食譜，請參閱 **[Databricks Apps Cookbook](https://apps-cookbook.dev/)**。
 
 ---
 
 ## Dash
 
-**Best for**: Production dashboards, BI tools, complex interactive visualizations.
+**最適用於**：生產級儀表板、BI 工具、複雜的互動視覺化。
 
-**Critical**: Always use `dash-bootstrap-components` for layout and styling.
+**重要**：版面與樣式務必使用 `dash-bootstrap-components`。
 
 ```python
 import dash
@@ -21,35 +21,35 @@ app = dash.Dash(
 )
 ```
 
-| Detail | Value |
-|--------|-------|
-| Pre-installed version | 2.18.1 |
-| app.yaml command | `["python", "app.py"]` |
-| Default port | 8050 — override in code: `app.run(port=int(os.environ.get("DATABRICKS_APP_PORT", 8000)))` |
-| Auth header | `request.headers.get('x-forwarded-access-token')` (Flask under the hood) |
+| 細節 | 值 |
+|------|-----|
+| 預裝版本 | 2.18.1 |
+| app.yaml 指令 | `["python", "app.py"]` |
+| 預設 port | 8050——在程式碼中覆寫：`app.run(port=int(os.environ.get("DATABRICKS_APP_PORT", 8000)))` |
+| Auth 標頭 | `request.headers.get('x-forwarded-access-token')`（底層使用 Flask） |
 
-**Databricks tips**:
-- Use `dbc.themes.BOOTSTRAP` and `dbc.icons.FONT_AWESOME` for consistent styling
-- Use Bootstrap badge color names (`"success"`, `"danger"`), not hex colors, for `dbc.Badge`
-- Use `prevent_initial_call=True` on expensive callbacks
-- Use `dcc.Store` for client-side caching
+**Databricks 使用提示**：
+- 使用 `dbc.themes.BOOTSTRAP` 與 `dbc.icons.FONT_AWESOME` 保持一致的樣式
+- `dbc.Badge` 使用 Bootstrap badge 顏色名稱（`"success"`、`"danger"`），而非十六進位色碼
+- 耗費資源的 callback 使用 `prevent_initial_call=True`
+- 使用 `dcc.Store` 進行客戶端快取
 
-**Cookbook**: [apps-cookbook.dev/docs/category/dash](https://apps-cookbook.dev/docs/category/dash) — tables, volumes, AI/ML, workflows, dashboards, compute, auth, external services.
+**Cookbook**：[apps-cookbook.dev/docs/category/dash](https://apps-cookbook.dev/docs/category/dash) — 資料表、volumes、AI/ML、工作流程、儀表板、運算、授權、外部服務。
 
 ---
 
 ## Streamlit
 
-**Best for**: Rapid prototyping, data science apps, internal tools, notebook-to-app workflow.
+**最適用於**：快速原型、資料科學應用、內部工具、notebook 轉 app 的工作流程。
 
-**Critical**: Always use `@st.cache_resource` for database connections.
+**重要**：資料庫連線務必使用 `@st.cache_resource`。
 
 ```python
 import streamlit as st
 from databricks.sdk.core import Config
 from databricks import sql
 
-st.set_page_config(page_title="My App", layout="wide")  # Must be first!
+st.set_page_config(page_title="My App", layout="wide")  # 必須是第一個指令！
 
 @st.cache_resource(ttl=300)
 def get_connection():
@@ -61,27 +61,27 @@ def get_connection():
     )
 ```
 
-| Detail | Value |
-|--------|-------|
-| Pre-installed version | 1.38.0 |
-| app.yaml command | `["streamlit", "run", "app.py"]` |
-| Auth header | `st.context.headers.get('x-forwarded-access-token')` |
+| 細節 | 值 |
+|------|-----|
+| 預裝版本 | 1.38.0 |
+| app.yaml 指令 | `["streamlit", "run", "app.py"]` |
+| Auth 標頭 | `st.context.headers.get('x-forwarded-access-token')` |
 
-**Databricks tips**:
-- `st.set_page_config()` must be the **first** Streamlit command
-- `@st.cache_resource` for connections/models; `@st.cache_data(ttl=...)` for query results
-- Use `st.form()` to batch inputs and prevent reruns on every keystroke
-- Use `st.column_config` for formatted DataFrames (currency, dates)
+**Databricks 使用提示**：
+- `st.set_page_config()` 必須是**第一個** Streamlit 指令
+- 連線／模型使用 `@st.cache_resource`；查詢結果使用 `@st.cache_data(ttl=...)`
+- 使用 `st.form()` 批次輸入，防止每次按鍵都觸發重新執行
+- 使用 `st.column_config` 格式化 DataFrame（貨幣、日期）
 
-**Cookbook**: [apps-cookbook.dev/docs/category/streamlit](https://apps-cookbook.dev/docs/category/streamlit) — tables, volumes, AI/ML, workflows, visualizations, dashboards, compute, auth, external services.
+**Cookbook**：[apps-cookbook.dev/docs/category/streamlit](https://apps-cookbook.dev/docs/category/streamlit) — 資料表、volumes、AI/ML、工作流程、視覺化、儀表板、運算、授權、外部服務。
 
 ---
 
 ## Gradio
 
-**Best for**: ML model demos, chat interfaces, image/audio/video processing UIs.
+**最適用於**：ML 模型示範、對話介面、圖片／音訊／影片處理 UI。
 
-**Critical**: Use `gr.Request` parameter to access auth headers.
+**重要**：使用 `gr.Request` 參數存取 auth 標頭。
 
 ```python
 import os
@@ -93,7 +93,7 @@ cfg = Config()
 
 def predict(message, request: gr.Request):
     user_token = request.headers.get("x-forwarded-access-token")
-    # Query model serving endpoint
+    # 查詢 model serving endpoint
     headers = {**cfg.authenticate(), "Content-Type": "application/json"}
     resp = requests.post(
         f"https://{cfg.host}/serving-endpoints/my-model/invocations",
@@ -107,27 +107,27 @@ port = int(os.environ.get("DATABRICKS_APP_PORT", 8000))
 demo.launch(server_name="0.0.0.0", server_port=port)
 ```
 
-| Detail | Value |
-|--------|-------|
-| Pre-installed version | 4.44.0 |
-| app.yaml command | `["python", "app.py"]` |
-| Default port | 7860 — override in code: `server_port=int(os.environ.get("DATABRICKS_APP_PORT", 8000))` |
-| Auth header | `request.headers.get('x-forwarded-access-token')` via `gr.Request` |
+| 細節 | 值 |
+|------|-----|
+| 預裝版本 | 4.44.0 |
+| app.yaml 指令 | `["python", "app.py"]` |
+| 預設 port | 7860——在程式碼中覆寫：`server_port=int(os.environ.get("DATABRICKS_APP_PORT", 8000))` |
+| Auth 標頭 | 透過 `gr.Request` 取得 `request.headers.get('x-forwarded-access-token')` |
 
-**Databricks tips**:
-- Natural fit for model serving endpoint integration
-- Use `gr.ChatInterface` for conversational AI demos
-- Use `gr.Blocks` for complex multi-component layouts
+**Databricks 使用提示**：
+- 天然適合整合 model serving endpoint
+- 對話式 AI 示範使用 `gr.ChatInterface`
+- 複雜多元件版面使用 `gr.Blocks`
 
-**Docs**: [gradio.app/docs](https://www.gradio.app/docs)
+**官方文件**：[gradio.app/docs](https://www.gradio.app/docs)
 
 ---
 
 ## Flask
 
-**Best for**: Custom REST APIs, lightweight web apps, webhook receivers.
+**最適用於**：自訂 REST API、輕量網頁應用、webhook 接收器。
 
-**Critical**: Deploy with Gunicorn — never use Flask's dev server in production.
+**重要**：以 Gunicorn 部署——絕不在正式環境使用 Flask 的開發伺服器。
 
 ```python
 from flask import Flask, request, jsonify
@@ -149,24 +149,24 @@ def get_data():
         return jsonify(cursor.fetchall())
 ```
 
-| Detail | Value |
-|--------|-------|
-| Pre-installed version | 3.0.3 |
-| app.yaml command | `["gunicorn", "app:app", "-w", "4", "-b", "0.0.0.0:8000"]` |
-| Auth header | `request.headers.get('x-forwarded-access-token')` |
+| 細節 | 值 |
+|------|-----|
+| 預裝版本 | 3.0.3 |
+| app.yaml 指令 | `["gunicorn", "app:app", "-w", "4", "-b", "0.0.0.0:8000"]` |
+| Auth 標頭 | `request.headers.get('x-forwarded-access-token')` |
 
-**Databricks tips**:
-- Use connection pooling (Flask doesn't cache connections like Streamlit)
-- Gunicorn workers (`-w 4`) handle concurrent requests
-- Use `request.headers` for user authorization tokens
+**Databricks 使用提示**：
+- 使用連線池（Flask 不像 Streamlit 會快取連線）
+- Gunicorn workers（`-w 4`）處理並行請求
+- 使用 `request.headers` 取得使用者授權 token
 
 ---
 
 ## FastAPI
 
-**Best for**: Modern async APIs, auto-generated OpenAPI/Swagger docs, high-performance backends.
+**最適用於**：現代非同步 API、自動產生 OpenAPI/Swagger 文件、高效能後端。
 
-**Critical**: Deploy with uvicorn.
+**重要**：以 uvicorn 部署。
 
 ```python
 from fastapi import FastAPI, Request
@@ -189,24 +189,24 @@ async def get_data(request: Request):
         return cursor.fetchall()
 ```
 
-| Detail | Value |
-|--------|-------|
-| Pre-installed version | 0.115.0 |
-| app.yaml command | `["uvicorn", "app:app", "--host", "0.0.0.0", "--port", "8000"]` |
-| Auth header | `request.headers.get('x-forwarded-access-token')` via `Request` |
+| 細節 | 值 |
+|------|-----|
+| 預裝版本 | 0.115.0 |
+| app.yaml 指令 | `["uvicorn", "app:app", "--host", "0.0.0.0", "--port", "8000"]` |
+| Auth 標頭 | 透過 `Request` 取得 `request.headers.get('x-forwarded-access-token')` |
 
-**Databricks tips**:
-- Auto-generates OpenAPI docs at `/docs` (Swagger) and `/redoc`
-- Databricks SQL connector is synchronous — use `asyncio.to_thread()` for async endpoints
-- Good choice for API backends that serve APX (FastAPI + React) apps
+**Databricks 使用提示**：
+- 在 `/docs`（Swagger）和 `/redoc` 自動產生 OpenAPI 文件
+- Databricks SQL connector 為同步——非同步 endpoint 請使用 `asyncio.to_thread()`
+- 適合作為 APX（FastAPI + React）應用程式的 API 後端
 
-**Cookbook**: [apps-cookbook.dev/docs/category/fastapi](https://apps-cookbook.dev/docs/category/fastapi) — getting started, endpoint examples.
+**Cookbook**：[apps-cookbook.dev/docs/category/fastapi](https://apps-cookbook.dev/docs/category/fastapi) — 入門、endpoint 範例。
 
 ---
 
 ## Reflex
 
-**Best for**: Full-stack Python apps with reactive UIs, no JavaScript required.
+**最適用於**：具有響應式 UI 的全端 Python 應用程式，無需 JavaScript。
 
 ```python
 import reflex as rx
@@ -229,20 +229,20 @@ class State(rx.State):
             self.data = [dict(zip([d[0] for d in cursor.description], row)) for row in cursor.fetchall()]
 ```
 
-| Detail | Value |
-|--------|-------|
-| app.yaml command | `["reflex", "run", "--env", "prod"]` |
-| Auth header | `session.http_conn.headers.get('x-forwarded-access-token')` |
+| 細節 | 值 |
+|------|-----|
+| app.yaml 指令 | `["reflex", "run", "--env", "prod"]` |
+| Auth 標頭 | `session.http_conn.headers.get('x-forwarded-access-token')` |
 
-**Cookbook**: [apps-cookbook.dev/docs/category/reflex](https://apps-cookbook.dev/docs/category/reflex) — tables, volumes, AI/ML, workflows, dashboards, compute, auth, external services.
+**Cookbook**：[apps-cookbook.dev/docs/category/reflex](https://apps-cookbook.dev/docs/category/reflex) — 資料表、volumes、AI/ML、工作流程、儀表板、運算、授權、外部服務。
 
 ---
 
-## Common: All Frameworks
+## 所有框架通用事項
 
-- All frameworks are **pre-installed** — no need to add them to `requirements.txt`
-- Add only additional packages your app needs to `requirements.txt`
-- SDK `Config()` auto-detects credentials from injected environment variables
-- Apps must bind to `DATABRICKS_APP_PORT` env var (defaults to 8000). Streamlit is auto-configured by the runtime; for other frameworks, read the env var in code or hardcode 8000 in `app.yaml` command. **Never use 8080**
-- For framework-specific deployment commands, see [4-deployment.md](4-deployment.md)
-- For authorization integration, see [1-authorization.md](1-authorization.md)
+- 所有框架均已**預裝**——不需要加入 `requirements.txt`
+- 只需在 `requirements.txt` 中加入應用程式額外需要的套件
+- SDK `Config()` 自動從注入的環境變數偵測認證資訊
+- 應用程式必須綁定 `DATABRICKS_APP_PORT` 環境變數（預設 8000）。Streamlit 由 runtime 自動設定；其他框架請在程式碼中讀取該環境變數，或在 `app.yaml` 指令中直接寫 8000。**絕不使用 8080**
+- 各框架的部署指令請見 [4-deployment.md](4-deployment.md)
+- 授權整合請見 [1-authorization.md](1-authorization.md)

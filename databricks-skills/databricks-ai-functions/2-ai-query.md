@@ -1,18 +1,18 @@
-# `ai_query` — Full Reference
+# `ai_query` — 完整參考
 
-**Docs:** https://docs.databricks.com/aws/en/sql/language-manual/functions/ai_query
+**文件：** https://docs.databricks.com/aws/en/sql/language-manual/functions/ai_query
 
-> Use `ai_query` only when no task-specific function fits. See the function selection table in [SKILL.md](SKILL.md).
+> 只有在沒有任何任務專用函式適用時才使用 `ai_query`。請參閱 [SKILL.md](SKILL.md) 中的函式選擇表。
 
-## When to Use `ai_query`
+## 何時使用 `ai_query`
 
-- Output schema has **nested arrays or deeply nested STRUCTs** (e.g., `itens: [{codigo, descricao, qtde}]`)
-- Calling a **custom Model Serving endpoint** (your own fine-tuned model)
-- **Multimodal input** — passing binary image files via `files =>`
-- **Cross-document reasoning** — prompt includes content from multiple sources
-- Need **sampling parameters** (`temperature`, `max_tokens`) control
+- 輸出結構描述包含**巢狀陣列或深層巢狀 STRUCT**（例如 `itens: [{codigo, descricao, qtde}]`）
+- 呼叫**自訂 Model Serving 端點**（你自行微調的模型）
+- **多模態輸入**——透過 `files =>` 傳遞二進位影像檔案
+- **跨文件推理**——prompt 包含多個來源的內容
+- 需要控制**取樣參數**（`temperature`、`max_tokens`）
 
-## Syntax
+## 語法
 
 ```sql
 ai_query(
@@ -26,66 +26,66 @@ ai_query(
 )
 ```
 
-## Parameters
+## 參數
 
-| Parameter | Type | Runtime | Description |
+| 參數 | 型別 | Runtime | 說明 |
 |---|---|---|---|
-| `endpoint` | STRING literal | — | Foundation Model name or custom endpoint name. Never guess — use exact names from the [model serving docs](https://docs.databricks.com/aws/en/machine-learning/foundation-models/supported-models.html). |
-| `request` | STRING or STRUCT | — | Prompt string for chat models; STRUCT for custom ML endpoints |
-| `returnType` | DDL schema (optional) | 15.2+ | Structures the parsed response like `from_json` |
-| `failOnError` | BOOLEAN (optional, default `true`) | 15.3+ | If `false`, returns STRUCT `{response, error}` instead of raising on failure |
-| `modelParameters` | STRUCT (optional) | 15.3+ | Sampling params: `temperature`, `max_tokens`, `top_p`, etc. |
-| `responseFormat` | JSON string (optional) | 15.4+ | Forces structured JSON output: `'{"type":"json_object"}'` |
-| `files` | binary column (optional) | — | Pass binary images directly (JPEG/PNG) — no upload step needed |
+| `endpoint` | STRING literal | — | 基礎模型名稱或自訂 endpoint 名稱。請勿猜測——請使用 [model serving docs](https://docs.databricks.com/aws/en/machine-learning/foundation-models/supported-models.html) 中的精確名稱。 |
+| `request` | STRING or STRUCT | — | chat models 的 prompt 字串；自訂 ML 端點則為 STRUCT |
+| `returnType` | DDL schema（選填） | 15.2+ | 像 `from_json` 一樣將回應結構化解析 |
+| `failOnError` | BOOLEAN（選填，預設 `true`） | 15.3+ | 若為 `false`，失敗時回傳 STRUCT `{response, error}`，而不是直接拋出錯誤 |
+| `modelParameters` | STRUCT（選填） | 15.3+ | 取樣參數：`temperature`、`max_tokens`、`top_p` 等 |
+| `responseFormat` | JSON string（選填） | 15.4+ | 強制輸出結構化 JSON：`'{"type":"json_object"}'` |
+| `files` | binary column（選填） | — | 直接傳遞二進位影像（JPEG/PNG）——不需要上傳步驟 |
 
-## Foundation Model Names (Do Not Guess)
+## 基礎模型名稱（請勿猜測）
 
-| Use case | Endpoint name |
+| 使用情境 | Endpoint 名稱 |
 |---|---|
-| General reasoning / extraction | `databricks-claude-sonnet-4` |
-| Fast / cheap tasks | `databricks-meta-llama-3-1-8b-instruct` |
-| Large context / complex | `databricks-meta-llama-3-3-70b-instruct` |
-| Multimodal (vision + text) | `databricks-llama-4-maverick` |
-| Embeddings | `databricks-gte-large-en` |
+| 一般推理／擷取 | `databricks-claude-sonnet-4` |
+| 快速／低成本任務 | `databricks-meta-llama-3-1-8b-instruct` |
+| 大 context／高複雜度 | `databricks-meta-llama-3-3-70b-instruct` |
+| 多模態（vision + text） | `databricks-llama-4-maverick` |
+| 向量嵌入 | `databricks-gte-large-en` |
 
-## Patterns
+## 模式
 
-### Basic — single prompt
+### 基本用法 — 單一 prompt
 
 ```sql
 SELECT ai_query(
     'databricks-meta-llama-3-3-70b-instruct',
-    'Describe Databricks SQL in 30 words.'
+    '請用 30 個字描述 Databricks SQL。'
 ) AS response;
 ```
 
-### Applied to a table column
+### 套用至資料表欄位
 
 ```sql
 SELECT ticket_id,
        ai_query(
            'databricks-meta-llama-3-3-70b-instruct',
-           CONCAT('Summarize in one sentence: ', ticket_body)
+           CONCAT('請用一句話摘要：', ticket_body)
        ) AS summary
 FROM support_tickets;
 ```
 
-### Structured JSON output (`responseFormat`)
+### 結構化 JSON 輸出（`responseFormat`）
 
-Preferred over `returnType` for chat models (requires Runtime 15.4+):
+對於 chat models，優先使用此方式而非 `returnType`（需要 Runtime 15.4+）：
 
 ```sql
 SELECT ai_query(
     'databricks-claude-sonnet-4',
-    CONCAT('Extract invoice fields as JSON. Fields: numero, fornecedor, total, '
-           'itens:[{codigo, descricao, qtde, vlrUnit}]. Input: ', text_blocks),
+    CONCAT('將發票欄位擷取為 JSON。欄位：numero, fornecedor, total, '
+           'itens:[{codigo, descricao, qtde, vlrUnit}]。輸入：', text_blocks),
     responseFormat => '{"type":"json_object"}',
     failOnError     => false
 ) AS ai_response
 FROM parsed_documents;
 ```
 
-Then parse with `from_json`:
+接著使用 `from_json` 解析：
 
 ```python
 from pyspark.sql.functions import from_json, col
@@ -98,11 +98,11 @@ df = df.withColumn(
         "itens:ARRAY<STRUCT<codigo:STRING, descricao:STRING, qtde:DOUBLE, vlrUnit:DOUBLE>>>"
     )
 )
-# Access fields
+# 存取欄位
 df.select("invoice.numero", "invoice.total", "invoice.itens").display()
 ```
 
-### With `failOnError` (always use in batch pipelines)
+### 搭配 `failOnError`（批次管線務必使用）
 
 ```sql
 SELECT
@@ -113,36 +113,36 @@ FROM (
     SELECT id,
            ai_query(
                'databricks-claude-sonnet-4',
-               CONCAT('Classify: ', text),
+               CONCAT('分類：', text),
                failOnError => false
            ) AS ai_response
     FROM documents
 )
--- Route errors to a separate table downstream
+-- 在下游將錯誤導向至獨立資料表
 ```
 
-### With `modelParameters` (control sampling)
+### 搭配 `modelParameters`（控制取樣）
 
 ```sql
 SELECT ai_query(
     'databricks-meta-llama-3-3-70b-instruct',
-    CONCAT('Extract entities from: ', text),
+    CONCAT('從以下內容擷取實體：', text),
     failOnError     => false,
     modelParameters => named_struct('temperature', CAST(0.0 AS DOUBLE), 'max_tokens', 500)
 ) AS result
 FROM documents;
 ```
 
-### Multimodal — image files (`files =>`)
+### 多模態 — 影像檔案（`files =>`）
 
-No file upload step needed. Pass the binary column directly:
+不需要額外的檔案上傳步驟。直接傳入二進位欄位即可：
 
 ```sql
 SELECT
     path,
     ai_query(
         'databricks-llama-4-maverick',
-        'Describe what is in this image in detail.',
+        '詳細描述這張影像中的內容。',
         files => content
     ) AS description
 FROM read_files('/Volumes/catalog/schema/images/', format => 'binaryFile');
@@ -157,28 +157,28 @@ df = (
     .withColumn("description", expr("""
         ai_query(
             'databricks-llama-4-maverick',
-            'Describe the contents of this image.',
+            '描述這張影像的內容。',
             files => content
         )
     """))
 )
 ```
 
-### As a reusable SQL UDF
+### 作為可重複使用的 SQL UDF
 
 ```sql
 CREATE FUNCTION catalog.schema.extract_invoice(text STRING)
 RETURNS STRING
 RETURN ai_query(
     'databricks-claude-sonnet-4',
-    CONCAT('Extract invoice JSON from: ', text),
+    CONCAT('從以下內容擷取發票 JSON：', text),
     responseFormat => '{"type":"json_object"}'
 );
 
 SELECT extract_invoice(document_text) FROM raw_documents;
 ```
 
-### PySpark with `expr`
+### 搭配 `expr` 的 PySpark
 
 ```python
 from pyspark.sql.functions import expr
@@ -187,22 +187,22 @@ df = spark.table("documents")
 df = df.withColumn("result", expr("""
     ai_query(
         'databricks-claude-sonnet-4',
-        concat('Extract structured data from: ', content),
+        concat('從以下內容擷取結構化資料：', content),
         responseFormat => '{"type":"json_object"}',
         failOnError     => false
     )
 """))
 ```
 
-## Error Handling Pattern for Batch Pipelines
+## 批次管線的錯誤處理模式
 
-Always use `failOnError => false` in batch jobs. Write errors to a sidecar table:
+在批次工作中務必使用 `failOnError => false`。將錯誤寫入 sidecar 資料表：
 
 ```python
 import dlt
 from pyspark.sql.functions import expr, col
 
-@dlt.table(comment="AI extraction results")
+@dlt.table(comment="AI 擷取結果")
 def extracted():
     return (
         dlt.read("raw")
@@ -213,7 +213,7 @@ def extracted():
         """))
     )
 
-@dlt.table(comment="Rows that failed AI extraction")
+@dlt.table(comment="AI 擷取失敗的資料列")
 def extraction_errors():
     return (
         dlt.read("extracted")

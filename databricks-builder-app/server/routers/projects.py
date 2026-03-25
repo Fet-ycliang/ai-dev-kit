@@ -1,6 +1,6 @@
-"""Project management endpoints.
+"""專案管理端點。
 
-All endpoints are scoped to the current authenticated user.
+所有端點都限定在目前已認證的使用者範圍內。
 """
 
 import logging
@@ -16,20 +16,20 @@ router = APIRouter()
 
 
 class CreateProjectRequest(BaseModel):
-  """Request to create a new project."""
+  """建立新專案的請求。"""
 
   name: str
 
 
 class UpdateProjectRequest(BaseModel):
-  """Request to update a project."""
+  """更新專案的請求。"""
 
   name: str
 
 
 @router.get('/projects')
 async def get_all_projects(request: Request):
-  """Get all projects for the current user sorted by created_at (newest first)."""
+  """取得目前使用者的所有專案，依 created_at 排序（最新在前）。"""
   user_email = await get_current_user(request)
   storage = ProjectStorage(user_email)
 
@@ -42,7 +42,7 @@ async def get_all_projects(request: Request):
 
 @router.get('/projects/{project_id}')
 async def get_project(request: Request, project_id: str):
-  """Get a specific project by ID."""
+  """依 ID 取得特定專案。"""
   user_email = await get_current_user(request)
   storage = ProjectStorage(user_email)
 
@@ -58,7 +58,7 @@ async def get_project(request: Request, project_id: str):
 
 @router.post('/projects')
 async def create_project(request: Request, body: CreateProjectRequest):
-  """Create a new project."""
+  """建立新專案。"""
   user_email = await get_current_user(request)
   storage = ProjectStorage(user_email)
 
@@ -72,7 +72,7 @@ async def create_project(request: Request, body: CreateProjectRequest):
 
 @router.patch('/projects/{project_id}')
 async def update_project(request: Request, project_id: str, body: UpdateProjectRequest):
-  """Update a project's name."""
+  """更新專案名稱。"""
   user_email = await get_current_user(request)
   storage = ProjectStorage(user_email)
 
@@ -89,7 +89,7 @@ async def update_project(request: Request, project_id: str, body: UpdateProjectR
 
 @router.delete('/projects/{project_id}')
 async def delete_project(request: Request, project_id: str):
-  """Delete a project and all its conversations."""
+  """刪除專案及其所有對話。"""
   user_email = await get_current_user(request)
   storage = ProjectStorage(user_email)
 

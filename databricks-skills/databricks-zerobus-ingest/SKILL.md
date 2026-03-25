@@ -1,88 +1,88 @@
 ---
 name: databricks-zerobus-ingest
-description: "Build Zerobus Ingest clients for near real-time data ingestion into Databricks Delta tables via gRPC. Use when creating producers that write directly to Unity Catalog tables without a message bus, working with the Zerobus Ingest SDK in Python/Java/Go/TypeScript/Rust, generating Protobuf schemas from UC tables, or implementing stream-based ingestion with ACK handling and retry logic."
+description: "透過 gRPC 建立 Zerobus Ingest 客戶端，以便將資料近即時攝取到 Databricks Delta 資料表。當建立可直接寫入 Unity Catalog 資料表而不需訊息匯流排的 producer、在 Python/Java/Go/TypeScript/Rust 中使用 Zerobus Ingest SDK、從 UC 資料表產生 Protobuf 結構描述，或實作具 ACK 處理與重試邏輯的 stream 型攝取時使用。"
 ---
 
 # Zerobus Ingest
 
-Build clients that ingest data directly into Databricks Delta tables via the Zerobus gRPC API.
+建立透過 Zerobus gRPC API 直接將資料攝取至 Databricks Delta 資料表的客戶端。
 
-**Status:** GA (Generally Available since February 2026; billed under Lakeflow Jobs Serverless SKU)
+**狀態:** GA（自 2026 年 2 月起正式可用；依 Lakeflow Jobs Serverless SKU 計費）
 
-**Documentation:**
-- [Zerobus Overview](https://docs.databricks.com/aws/en/ingestion/zerobus-overview)
+**文件:**
+- [Zerobus 總覽](https://docs.databricks.com/aws/en/ingestion/zerobus-overview)
 - [Zerobus Ingest SDK](https://docs.databricks.com/aws/en/ingestion/zerobus-ingest)
-- [Zerobus Limits](https://docs.databricks.com/aws/en/ingestion/zerobus-limits)
+- [Zerobus 限制](https://docs.databricks.com/aws/en/ingestion/zerobus-limits)
 
 ---
 
-## What Is Zerobus Ingest?
+## 什麼是 Zerobus Ingest？
 
-Zerobus Ingest is a serverless connector that enables direct, record-by-record data ingestion into Delta tables via gRPC. It eliminates the need for message bus infrastructure (Kafka, Kinesis, Event Hub) for lakehouse-bound data. The service validates schemas, materializes data to target tables, and sends durability acknowledgments back to the client.
+Zerobus Ingest 是一種 serverless connector，可讓你透過 gRPC 直接逐筆將資料攝取到 Delta 資料表。它免除了將資料送往 lakehouse 時所需的訊息匯流排基礎架構（Kafka、Kinesis、Event Hub）。此服務會驗證結構描述、將資料具體化到目標資料表，並將持久性確認回傳給客戶端。
 
-**Core pattern:** SDK init -> create stream -> ingest records -> handle ACKs -> flush -> close
+**核心模式:** SDK 初始化 -> 建立 stream -> 攝取記錄 -> 處理 ACK -> flush -> close
 
 ---
 
-## Quick Decision: What Are You Building?
+## 快速判斷：你要建立什麼？
 
-| Scenario | Language | Serialization | Reference |
+| 場景 | 語言 | 序列化 | 參考 |
 |----------|----------|---------------|-----------|
-| Quick prototype / test harness | Python | JSON | [2-python-client.md](2-python-client.md) |
-| Production Python producer | Python | Protobuf | [2-python-client.md](2-python-client.md) + [4-protobuf-schema.md](4-protobuf-schema.md) |
-| JVM microservice | Java | Protobuf | [3-multilanguage-clients.md](3-multilanguage-clients.md) |
-| Go service | Go | JSON or Protobuf | [3-multilanguage-clients.md](3-multilanguage-clients.md) |
-| Node.js / TypeScript app | TypeScript | JSON | [3-multilanguage-clients.md](3-multilanguage-clients.md) |
-| High-performance system service | Rust | JSON or Protobuf | [3-multilanguage-clients.md](3-multilanguage-clients.md) |
-| Schema generation from UC table | Any | Protobuf | [4-protobuf-schema.md](4-protobuf-schema.md) |
-| Retry / reconnection logic | Any | Any | [5-operations-and-limits.md](5-operations-and-limits.md) |
+| 快速原型 / 測試 harness | Python | JSON | [2-python-client.md](2-python-client.md) |
+| 正式環境 Python producer | Python | Protobuf | [2-python-client.md](2-python-client.md) + [4-protobuf-schema.md](4-protobuf-schema.md) |
+| JVM 微服務 | Java | Protobuf | [3-multilanguage-clients.md](3-multilanguage-clients.md) |
+| Go 服務 | Go | JSON 或 Protobuf | [3-multilanguage-clients.md](3-multilanguage-clients.md) |
+| Node.js / TypeScript 應用程式 | TypeScript | JSON | [3-multilanguage-clients.md](3-multilanguage-clients.md) |
+| 高效能系統服務 | Rust | JSON 或 Protobuf | [3-multilanguage-clients.md](3-multilanguage-clients.md) |
+| 從 UC 資料表產生結構描述 | Any | Protobuf | [4-protobuf-schema.md](4-protobuf-schema.md) |
+| 重試 / 重新連線邏輯 | Any | Any | [5-operations-and-limits.md](5-operations-and-limits.md) |
 
-If not specified, default to python.
+若未特別指定，預設使用 python。
 
 ---
 
-## Common Libraries
+## 常用函式庫
 
-These libraries are essential for ZeroBus data ingestion:
+以下函式庫是 ZeroBus 資料攝取的必要項目：
 
-- **databricks-sdk>=0.85.0**: Databricks workspace client for authentication and metadata
-- **databricks-zerobus-ingest-sdk>=1.0.0**: ZeroBus SDK for high-performance streaming ingestion
+- **databricks-sdk>=0.85.0**：用於認證與中繼資料的 Databricks workspace client
+- **databricks-zerobus-ingest-sdk>=1.0.0**：用於高效能 streaming 攝取的 ZeroBus SDK
 - **grpcio-tools**
-These are typically NOT pre-installed on Databricks. Install them using `execute_databricks_command` tool:
+這些套件通常不會預先安裝在 Databricks 上。請使用 `execute_databricks_command` 工具安裝：
 - `code`: "%pip install databricks-sdk>=VERSION databricks-zerobus-ingest-sdk>=VERSION"
 
-Save the returned `cluster_id` and `context_id` for subsequent calls.
+請保存回傳的 `cluster_id` 與 `context_id` 供後續呼叫使用。
 
-Smart Installation Approach
+智慧安裝方式
 
-# Check protobuf version first, then install compatible 
+# 先檢查 protobuf 版本，再安裝相容的
 grpcio-tools
 import google.protobuf
 runtime_version = google.protobuf.__version__
-print(f"Runtime protobuf version: {runtime_version}")
+print(f"執行階段 protobuf 版本: {runtime_version}")
 
 if runtime_version.startswith("5.26") or
 runtime_version.startswith("5.29"):
     %pip install grpcio-tools==1.62.0
 else:
-    %pip install grpcio-tools  # Use latest for newer protobuf 
-versions
+    %pip install grpcio-tools  # 對較新的 protobuf 使用最新版
+版本
 ---
 
-## Prerequisites
+## 必要條件
 
-You must never execute the skill without confirming the below objects are valid: 
+在確認以下項目有效之前，絕不可執行此 skill：
 
-1. **A Unity Catalog managed Delta table** to ingest into
-2. **A service principal id and secret** with `MODIFY` and `SELECT` on the target table
-3. **The Zerobus server endpoint** for your workspace region
-4. **The Zerobus Ingest SDK** installed for your target language
+1. **可供攝取的 Unity Catalog managed Delta 資料表**
+2. **具有目標資料表 `MODIFY` 與 `SELECT` 權限的 service principal id 與 secret**
+3. **你工作區所在區域的 Zerobus 伺服器端點**
+4. **已為目標語言安裝的 Zerobus Ingest SDK**
 
-See [1-setup-and-authentication.md](1-setup-and-authentication.md) for complete setup instructions.
+完整設定指引請參閱 [1-setup-and-authentication.md](1-setup-and-authentication.md)。
 
 ---
 
-## Minimal Python Example (JSON)
+## 最小 Python 範例（JSON）
 
 ```python
 import json
@@ -104,130 +104,130 @@ finally:
 
 ---
 
-## Detailed guides
+## 詳細指南
 
-| Topic | File | When to Read |
+| 主題 | 檔案 | 適合閱讀時機 |
 |-------|------|--------------|
-| Setup & Auth | [1-setup-and-authentication.md](1-setup-and-authentication.md) | Endpoint formats, service principals, SDK install |
-| Python Client | [2-python-client.md](2-python-client.md) | Sync/async Python, JSON and Protobuf flows, reusable client class |
-| Multi-Language | [3-multilanguage-clients.md](3-multilanguage-clients.md) | Java, Go, TypeScript, Rust SDK examples |
-| Protobuf Schema | [4-protobuf-schema.md](4-protobuf-schema.md) | Generate .proto from UC table, compile, type mappings |
-| Operations & Limits | [5-operations-and-limits.md](5-operations-and-limits.md) | ACK handling, retries, reconnection, throughput limits, constraints |
+| 設定與認證 | [1-setup-and-authentication.md](1-setup-and-authentication.md) | 端點格式、service principal、SDK 安裝 |
+| Python 客戶端 | [2-python-client.md](2-python-client.md) | 同步/非同步 Python、JSON 與 Protobuf 流程、可重用的 client 類別 |
+| 多語言 | [3-multilanguage-clients.md](3-multilanguage-clients.md) | Java、Go、TypeScript、Rust SDK 範例 |
+| Protobuf 結構描述 | [4-protobuf-schema.md](4-protobuf-schema.md) | 從 UC 資料表產生 .proto、編譯、型別對應 |
+| 操作與限制 | [5-operations-and-limits.md](5-operations-and-limits.md) | ACK 處理、重試、重新連線、吞吐量限制、約束 |
 
 ---
 
-You must always follow all the steps in the Workflow
+你必須始終遵循 Workflow 中的所有步驟
 
 ## Workflow
-0. **Display the plan of your execution**
-1. **Determinate the type of client**
-2. **Get schema** Always use 4-protobuf-schema.md. Execute using the `run_python_file_on_databricks` MCP tool
-3. **Write Python code to a local file follow the instructions in the relevant guide to ingest with zerobus** in the project (e.g., `scripts/zerobus_ingest.py`). 
-4. **Execute on Databricks** using the `run_python_file_on_databricks` MCP tool
-5. **If execution fails**: Edit the local file to fix the error, then re-execute
-6. **Reuse the context** for follow-up executions by passing the returned `cluster_id` and `context_id`
+0. **顯示你的執行計畫**
+1. **判定客戶端類型**
+2. **取得結構描述** 一律使用 4-protobuf-schema.md。使用 `run_python_file_on_databricks` MCP 工具執行
+3. **將 Python 程式碼寫入專案中的本機檔案，並依照相關指南使用 zerobus 攝取**（例如 `scripts/zerobus_ingest.py`）。
+4. **使用 `run_python_file_on_databricks` MCP 工具在 Databricks 上執行**
+5. **若執行失敗**：編輯本機檔案修正錯誤，然後重新執行
+6. **重用 context**：傳入回傳的 `cluster_id` 與 `context_id` 以供後續執行
 
 ---
 
-## Important
-- Never install local packages
-- Always validate MCP server requirement before execution
-- **Serverless limitation**: The Zerobus SDK cannot pip-install on serverless compute. Use classic compute clusters, or use the [Zerobus REST API](https://docs.databricks.com/aws/en/ingestion/zerobus-rest-api) (Beta) for notebook-based ingestion without the SDK.
-- **Explicit table grants**: Service principals need explicit `MODIFY` and `SELECT` grants on the target table. Schema-level inherited permissions may not be sufficient for the `authorization_details` OAuth flow.
+## 重要事項
+- 永遠不要安裝本機套件
+- 執行前一律驗證 MCP 伺服器需求
+- **Serverless 限制**：Zerobus SDK 無法在 serverless compute 上以 pip 安裝。請改用 classic compute clusters，或在 notebook 中使用 [Zerobus REST API](https://docs.databricks.com/aws/en/ingestion/zerobus-rest-api)（Beta）進行無 SDK 的資料攝取。
+- **明確的資料表授權**：Service principal 需要在目標資料表上明確具備 `MODIFY` 與 `SELECT` 授權。對 `authorization_details` OAuth flow 而言，schema 層級繼承的權限可能不足。
 
 ---
 
-### Context Reuse Pattern
+### Context 重用模式
 
-The first execution auto-selects a running cluster and creates an execution context. **Reuse this context for follow-up calls** - it's much faster (~1s vs ~15s) and shares variables/imports:
+第一次執行會自動選擇一個執行中的 cluster，並建立 execution context。**請在後續呼叫中重用這個 context** —— 速度會快很多（約 1 秒對比約 15 秒），而且會共享變數與匯入內容：
 
-**First execution** - use `run_python_file_on_databricks` tool:
+**第一次執行** - 使用 `run_python_file_on_databricks` 工具：
 - `file_path`: "scripts/zerobus_ingest.py"
 
-Returns: `{ success, output, error, cluster_id, context_id, ... }`
+回傳：`{ success, output, error, cluster_id, context_id, ... }`
 
-Save `cluster_id` and `context_id` for follow-up calls.
+請保存 `cluster_id` 與 `context_id` 供後續呼叫使用。
 
-**If execution fails:**
-1. Read the error from the result
-2. Edit the local Python file to fix the issue
-3. Re-execute with same context using `run_python_file_on_databricks` tool:
+**若執行失敗：**
+1. 從結果中讀取錯誤
+2. 編輯本機 Python 檔案以修正問題
+3. 使用相同的 context 透過 `run_python_file_on_databricks` 工具重新執行：
    - `file_path`: "scripts/zerobus_ingest.py"
    - `cluster_id`: "<saved_cluster_id>"
    - `context_id`: "<saved_context_id>"
 
-**Follow-up executions** reuse the context (faster, shares state):
+**後續執行**會重用這個 context（更快，且會共享狀態）：
 - `file_path`: "scripts/validate_ingestion.py"
 - `cluster_id`: "<saved_cluster_id>"
 - `context_id`: "<saved_context_id>"
 
-### Handling Failures
+### 處理失敗情況
 
-When execution fails:
-1. Read the error from the result
-2. **Edit the local Python file** to fix the issue
-3. Re-execute using the same `cluster_id` and `context_id` (faster, keeps installed libraries)
-4. If the context is corrupted, omit `context_id` to create a fresh one
+當執行失敗時：
+1. 從結果中讀取錯誤
+2. **編輯本機 Python 檔案**以修正問題
+3. 使用相同的 `cluster_id` 與 `context_id` 重新執行（更快，且保留已安裝函式庫）
+4. 若 context 已損壞，省略 `context_id` 以建立新的 context
 
 ---
 
-### Installing Libraries
+### 安裝函式庫
 
-Databricks provides Spark, pandas, numpy, and common data libraries by default. **Only install a library if you get an import error.**
+Databricks 預設提供 Spark、pandas、numpy 與常見資料函式庫。**只有在發生 import 錯誤時才安裝函式庫。**
 
-Use `execute_databricks_command` tool:
+使用 `execute_databricks_command` 工具：
 - `code`: "%pip install databricks-zerobus-ingest-sdk>=1.0.0"
 - `cluster_id`: "<cluster_id>"
 - `context_id`: "<context_id>"
 
-The library is immediately available in the same context.
+該函式庫會立即在同一個 context 中可用。
 
-**Note:** Keeping the same `context_id` means installed libraries persist across calls.
+**注意：** 持續使用相同的 `context_id`，表示已安裝的函式庫會在多次呼叫之間保留。
 
-## 🚨 Critical Learning: Timestamp Format Fix
+## 🚨 關鍵經驗：Timestamp 格式修正
 
-**BREAKTHROUGH**: ZeroBus requires **timestamp fields as Unix integer timestamps**, NOT string timestamps.
-The timestamp generation must use microseconds for Databricks.
-
----
-
-## Key Concepts
-
-- **gRPC + Protobuf**: Zerobus uses gRPC as its transport protocol. Any application that can communicate via gRPC and construct Protobuf messages can produce to Zerobus.
-- **JSON or Protobuf serialization**: JSON for quick starts; Protobuf for type safety, forward compatibility, and performance.
-- **At-least-once delivery**: The connector provides at-least-once guarantees. Design consumers to handle duplicates.
-- **Durability ACKs**: Each ingested record returns a `RecordAcknowledgment`. Use `flush()` to ensure all buffered records are durably written, or use `wait_for_offset(offset)` for offset-based tracking.
-- **No table management**: Zerobus does not create or alter tables. You must pre-create your target table and manage schema evolution yourself.
-- **Single-AZ durability**: The service runs in a single availability zone. Plan for potential zone outages.
+**重大發現**：ZeroBus 要求 **timestamp 欄位必須是 Unix 整數 timestamp**，**不是**字串 timestamp。
+針對 Databricks，timestamp 的產生必須使用微秒。
 
 ---
 
-## Common Issues
+## 關鍵概念
 
-| Issue | Solution |
+- **gRPC + Protobuf**：Zerobus 使用 gRPC 作為傳輸協定。任何能透過 gRPC 通訊並建構 Protobuf 訊息的應用程式，都可以將資料寫入 Zerobus。
+- **JSON 或 Protobuf 序列化**：JSON 適合快速開始；Protobuf 則提供型別安全、向前相容與較佳效能。
+- **至少一次傳遞**：此 connector 提供至少一次傳遞保證。請將 consumer 設計成可處理重複資料。
+- **持久性 ACK**：每筆攝取的記錄都會回傳 `RecordAcknowledgment`。使用 `flush()` 可確保所有緩衝記錄都已持久化寫入，或使用 `wait_for_offset(offset)` 進行以 offset 為基礎的追蹤。
+- **不管理資料表**：Zerobus 不會建立或變更資料表。你必須先建立目標資料表，並自行管理結構描述演進。
+- **單一 AZ 持久性**：此服務在單一 availability zone 中運作。請為可能的 zone 中斷做好規劃。
+
+---
+
+## 常見問題
+
+| 問題 | 解法 |
 |-------|----------|
-| **Connection refused** | Verify server endpoint format matches your cloud (AWS vs Azure). Check firewall allowlists. |
-| **Authentication failed** | Confirm service principal client_id/secret. Verify GRANT statements on the target table. |
-| **Schema mismatch** | Ensure record fields match the target table schema exactly. Regenerate .proto if table changed. |
-| **Stream closed unexpectedly** | Implement retry with exponential backoff and stream reinitialization. See [5-operations-and-limits.md](5-operations-and-limits.md). |
-| **Throughput limits hit** | Max 100 MB/s and 15,000 rows/s per stream. Open multiple streams or contact Databricks. |
-| **Region not supported** | Check supported regions in [5-operations-and-limits.md](5-operations-and-limits.md). |
-| **Table not found** | Ensure table is a managed Delta table in a supported region with correct three-part name. |
-| **SDK install fails on serverless** | The Zerobus SDK cannot be pip-installed on serverless compute. Use classic compute clusters or the REST API (Beta) from notebooks. |
-| **Error 4024 / authorization_details** | Service principal lacks explicit table-level grants. Grant `MODIFY` and `SELECT` directly on the target table — schema-level inherited grants may be insufficient. |
+| **連線被拒絕** | 確認伺服器端點格式與你的雲端環境相符（AWS 或 Azure）。檢查防火牆 allowlist。 |
+| **認證失敗** | 確認 service principal 的 client_id/secret。驗證目標資料表上的 GRANT 陳述式。 |
+| **結構描述不相符** | 確保記錄欄位與目標資料表結構描述完全一致。若資料表已變更，請重新產生 .proto。 |
+| **Stream 意外關閉** | 請實作具指數退避的重試與 stream 重新初始化。請參閱 [5-operations-and-limits.md](5-operations-and-limits.md)。 |
+| **觸及吞吐量限制** | 每個 stream 上限為 100 MB/s 與 15,000 rows/s。請開啟多個 streams，或聯絡 Databricks。 |
+| **區域不受支援** | 請檢查 [5-operations-and-limits.md](5-operations-and-limits.md) 中的支援區域。 |
+| **找不到資料表** | 確認資料表是位於支援區域中的 managed Delta 資料表，且使用正確的三段式名稱。 |
+| **在 serverless 上安裝 SDK 失敗** | Zerobus SDK 無法在 serverless compute 上以 pip 安裝。請改用 classic compute clusters，或從 notebook 使用 REST API（Beta）。 |
+| **Error 4024 / authorization_details** | Service principal 缺少明確的資料表層級授權。請直接在目標資料表上授與 `MODIFY` 與 `SELECT` —— schema 層級繼承的授權可能不足。 |
 
 ---
 
-## Related Skills
+## 相關 Skills
 
-- **[databricks-python-sdk](../databricks-python-sdk/SKILL.md)** - General SDK patterns and WorkspaceClient for table/schema management
-- **[databricks-spark-declarative-pipelines](../databricks-spark-declarative-pipelines/SKILL.md)** - Downstream pipeline processing of ingested data
-- **[databricks-unity-catalog](../databricks-unity-catalog/SKILL.md)** - Managing catalogs, schemas, and tables that Zerobus writes to
-- **[databricks-synthetic-data-gen](../databricks-synthetic-data-gen/SKILL.md)** - Generate test data to feed into Zerobus producers
-- **[databricks-config](../databricks-config/SKILL.md)** - Profile and authentication setup
+- **[databricks-python-sdk](../databricks-python-sdk/SKILL.md)** - 一般 SDK 模式，以及用於資料表/結構描述管理的 WorkspaceClient
+- **[databricks-spark-declarative-pipelines](../databricks-spark-declarative-pipelines/SKILL.md)** - 對已攝取資料進行下游管線處理
+- **[databricks-unity-catalog](../databricks-unity-catalog/SKILL.md)** - 管理 Zerobus 會寫入的 catalogs、schemas 與 tables
+- **[databricks-synthetic-data-gen](../databricks-synthetic-data-gen/SKILL.md)** - 產生可供 Zerobus producer 使用的測試資料
+- **[databricks-config](../databricks-config/SKILL.md)** - Profile 與認證設定
 
-## Resources
+## 資源
 
-- [Zerobus Overview](https://docs.databricks.com/aws/en/ingestion/zerobus-overview)
+- [Zerobus 總覽](https://docs.databricks.com/aws/en/ingestion/zerobus-overview)
 - [Zerobus Ingest SDK](https://docs.databricks.com/aws/en/ingestion/zerobus-ingest)
-- [Zerobus Limits](https://docs.databricks.com/aws/en/ingestion/zerobus-limits)
+- [Zerobus 限制](https://docs.databricks.com/aws/en/ingestion/zerobus-limits)

@@ -1,4 +1,4 @@
-"""Volume file tools - Manage files in Unity Catalog Volumes."""
+"""Volume 檔案工具 - 管理 Unity Catalog Volumes 中的檔案。"""
 
 from typing import Dict, Any
 
@@ -18,23 +18,23 @@ from ..server import mcp
 @mcp.tool
 def list_volume_files(volume_path: str, max_results: int = 500) -> Dict[str, Any]:
     """
-    List files and directories in a Unity Catalog volume path.
+    列出 Unity Catalog volume 路徑中的檔案與目錄。
 
-    Args:
-        volume_path: Path in volume (e.g., "/Volumes/catalog/schema/volume/folder")
-        max_results: Maximum number of results to return (default: 500, max: 1000)
+    參數:
+        volume_path: Volume 中的路徑（例如 "/Volumes/catalog/schema/volume/folder"）
+        max_results: 要回傳的最大結果數（預設：500，上限：1000）
 
-    Returns:
-        Dictionary with 'files' list and 'truncated' boolean indicating if results were limited
+    回傳:
+        包含 'files' 清單與 'truncated' 布林值的字典，用來表示結果是否被限制
     """
-    # Cap max_results to prevent buffer overflow (1MB JSON limit)
+    # 限制 max_results 以避免緩衝區溢位（1MB JSON 限制）
     max_results = min(max_results, 1000)
 
-    # Fetch one extra to detect if there are more results
+    # 多抓一筆以判斷是否還有更多結果
     results = _list_volume_files(volume_path, max_results=max_results + 1)
     truncated = len(results) > max_results
 
-    # Only return up to max_results
+    # 僅回傳最多 max_results 筆
     results = results[:max_results]
 
     files = [
@@ -65,15 +65,15 @@ def upload_to_volume(
     overwrite: bool = True,
 ) -> Dict[str, Any]:
     """
-    Upload a local file to a Unity Catalog volume.
+    將本機檔案上傳到 Unity Catalog volume。
 
-    Args:
-        local_path: Path to local file to upload
-        volume_path: Target path in volume (e.g., "/Volumes/catalog/schema/volume/data.csv")
-        overwrite: Whether to overwrite existing file (default: True)
+    參數:
+        local_path: 要上傳的本機檔案路徑
+        volume_path: Volume 中的目標路徑（例如 "/Volumes/catalog/schema/volume/data.csv"）
+        overwrite: 是否覆寫既有檔案（預設：True）
 
-    Returns:
-        Dictionary with local_path, volume_path, success, and error (if failed)
+    回傳:
+        包含 local_path、volume_path、success 與 error（若失敗）的字典
     """
     result = _upload_to_volume(
         local_path=local_path,
@@ -95,15 +95,15 @@ def download_from_volume(
     overwrite: bool = True,
 ) -> Dict[str, Any]:
     """
-    Download a file from a Unity Catalog volume to local path.
+    將檔案從 Unity Catalog volume 下載到本機路徑。
 
-    Args:
-        volume_path: Path in volume (e.g., "/Volumes/catalog/schema/volume/data.csv")
-        local_path: Target local file path
-        overwrite: Whether to overwrite existing local file (default: True)
+    參數:
+        volume_path: Volume 中的路徑（例如 "/Volumes/catalog/schema/volume/data.csv"）
+        local_path: 目標本機檔案路徑
+        overwrite: 是否覆寫既有本機檔案（預設：True）
 
-    Returns:
-        Dictionary with volume_path, local_path, success, and error (if failed)
+    回傳:
+        包含 volume_path、local_path、success 與 error（若失敗）的字典
     """
     result = _download_from_volume(
         volume_path=volume_path,
@@ -121,13 +121,13 @@ def download_from_volume(
 @mcp.tool
 def delete_volume_file(volume_path: str) -> Dict[str, Any]:
     """
-    Delete a file from a Unity Catalog volume.
+    從 Unity Catalog volume 刪除檔案。
 
-    Args:
-        volume_path: Path to file in volume (e.g., "/Volumes/catalog/schema/volume/file.csv")
+    參數:
+        volume_path: Volume 中檔案的路徑（例如 "/Volumes/catalog/schema/volume/file.csv"）
 
-    Returns:
-        Dictionary with volume_path and success status
+    回傳:
+        包含 volume_path 與 success 狀態的字典
     """
     try:
         _delete_volume_file(volume_path)
@@ -139,15 +139,15 @@ def delete_volume_file(volume_path: str) -> Dict[str, Any]:
 @mcp.tool
 def delete_volume_directory(volume_path: str) -> Dict[str, Any]:
     """
-    Delete an empty directory from a Unity Catalog volume.
+    從 Unity Catalog volume 刪除空目錄。
 
-    Note: Directory must be empty. Delete all contents first.
+    注意：目錄必須為空。請先刪除所有內容。
 
-    Args:
-        volume_path: Path to directory in volume
+    參數:
+        volume_path: Volume 中目錄的路徑
 
-    Returns:
-        Dictionary with volume_path and success status
+    回傳:
+        包含 volume_path 與 success 狀態的字典
     """
     try:
         _delete_volume_directory(volume_path)
@@ -159,16 +159,16 @@ def delete_volume_directory(volume_path: str) -> Dict[str, Any]:
 @mcp.tool
 def create_volume_directory(volume_path: str) -> Dict[str, Any]:
     """
-    Create a directory in a Unity Catalog volume.
+    在 Unity Catalog volume 中建立目錄。
 
-    Creates parent directories as needed (like mkdir -p).
-    Idempotent - succeeds if directory already exists.
+    會視需要建立父目錄（如同 mkdir -p）。
+    具冪等性 - 若目錄已存在仍視為成功。
 
-    Args:
-        volume_path: Path for new directory (e.g., "/Volumes/catalog/schema/volume/new_folder")
+    參數:
+        volume_path: 新目錄的路徑（例如 "/Volumes/catalog/schema/volume/new_folder"）
 
-    Returns:
-        Dictionary with volume_path and success status
+    回傳:
+        包含 volume_path 與 success 狀態的字典
     """
     try:
         _create_volume_directory(volume_path)
@@ -180,13 +180,13 @@ def create_volume_directory(volume_path: str) -> Dict[str, Any]:
 @mcp.tool
 def get_volume_file_info(volume_path: str) -> Dict[str, Any]:
     """
-    Get metadata for a file in a Unity Catalog volume.
+    取得 Unity Catalog volume 中檔案的中繼資料。
 
-    Args:
-        volume_path: Path to file in volume
+    參數:
+        volume_path: Volume 中檔案的路徑
 
-    Returns:
-        Dictionary with name, path, is_directory, file_size, last_modified
+    回傳:
+        包含 name、path、is_directory、file_size、last_modified 的字典
     """
     try:
         info = _get_volume_file_metadata(volume_path)

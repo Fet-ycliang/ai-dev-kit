@@ -1,4 +1,4 @@
-"""Tests for clusters service."""
+"""Clusters 服務的測試。"""
 
 import asyncio
 import time
@@ -7,7 +7,7 @@ import pytest
 
 
 def test_fetch_clusters_sync_performance():
-  """Test that raw API cluster fetching is fast (< 10s)."""
+  """測試原始 API cluster 擷取速度（< 10 秒）。"""
   from server.services.clusters import _fetch_clusters_sync
 
   start = time.time()
@@ -18,34 +18,34 @@ def test_fetch_clusters_sync_performance():
   if clusters:
     print(f'First cluster: {clusters[0]["cluster_name"]} ({clusters[0]["state"]})')
 
-  # Should complete in under 10 seconds
+  # 應在 10 秒內完成
   assert elapsed < 10, f'Cluster fetch took too long: {elapsed:.2f}s'
   assert len(clusters) <= 50, f'Got more than limit: {len(clusters)}'
 
 
 def test_clusters_sorted_correctly():
-  """Test that clusters are sorted: serverless first, then running, shared, then rest."""
+  """測試 clusters 排序正確：serverless 優先、然後執行中、shared、其餘。"""
   from server.services.clusters import _fetch_clusters_sync, SERVERLESS_CLUSTER_ID
 
   clusters = _fetch_clusters_sync(limit=50)
 
-  # First entry should always be Serverless Compute
+  # 第一個項目應該總是 Serverless Compute
   assert clusters[0]['cluster_id'] == SERVERLESS_CLUSTER_ID
   assert clusters[0]['cluster_name'] == 'Serverless Compute'
 
-  # Skip the synthetic serverless entry for sort order checking
+  # 跳過合成的 serverless 項目以檢查排序順序
   real_clusters = [c for c in clusters if c['cluster_id'] != SERVERLESS_CLUSTER_ID]
 
   if len(real_clusters) < 2:
     pytest.skip('Not enough real clusters to test sorting')
 
-  # Check running clusters come first among real clusters
+  # 檢查執行中的 clusters 在真實 clusters 中排在最前面
   found_non_running = False
   for c in real_clusters:
     if c['state'] != 'RUNNING':
       found_non_running = True
     elif found_non_running:
-      # Found a RUNNING cluster after a non-running one - bad sort
+      # 在非執行中 cluster 之後發現執行中 cluster - 排序錯誤
       pytest.fail(f"Running cluster {c['cluster_name']} found after non-running cluster")
 
   print(f'\nFirst 5 clusters:')
@@ -55,20 +55,20 @@ def test_clusters_sorted_correctly():
 
 @pytest.mark.asyncio
 async def test_list_clusters_async_caching():
-  """Test that caching works - second call should be instant."""
+  """測試快取功能 - 第二次呼叫應該是即時的。"""
   from server.services.clusters import _cache, list_clusters_async
 
-  # Clear cache first
+  # 先清除快取
   _cache['clusters'] = None
   _cache['last_updated'] = 0
 
-  # First call - should fetch from API
+  # 第一次呼叫 - 應從 API 擷取
   start = time.time()
   clusters1 = await list_clusters_async()
   first_call_time = time.time() - start
   print(f'\nFirst call: {len(clusters1)} clusters in {first_call_time:.2f}s')
 
-  # Second call - should be from cache (instant)
+  # 第二次呼叫 - 應從快取取得（即時）
   start = time.time()
   clusters2 = await list_clusters_async()
   second_call_time = time.time() - start
@@ -80,7 +80,7 @@ async def test_list_clusters_async_caching():
 
 
 if __name__ == '__main__':
-  # Run sync test directly
+  # 直接執行同步測試
   print('=== Testing sync fetch performance ===')
   test_fetch_clusters_sync_performance()
 

@@ -1,11 +1,10 @@
-"""Thread-safe operation tracker for async tool execution.
+"""執行緒安全的 operation tracker，用於非同步工具執行。
 
-When MCP tools take longer than a safe threshold, they return immediately
-with an operation ID. The operation continues in the background and can
-be polled via check_operation_status().
+當 MCP 工具執行時間超過安全閾值時，會立即回傳 operation ID。
+作業會在背景繼續執行，可透過 check_operation_status() 查詢狀態。
 
-This keeps the Claude connection alive during long-running operations
-by allowing frequent polling interactions instead of blocking calls.
+這樣做可在長時間執行的作業期間維持 Claude 連線，
+透過頻繁的輪詢互動而非阻塞式呼叫來保持連線活躍。
 """
 
 import threading
@@ -17,13 +16,13 @@ from typing import Any, Optional, Dict
 
 logger = logging.getLogger(__name__)
 
-# TTL for completed operations (1 hour)
+# 已完成作業的 TTL（1 小時）
 OPERATION_TTL_SECONDS = 3600
 
 
 @dataclass
 class TrackedOperation:
-    """Represents a background operation that can be polled for status."""
+    """代表可輪詢狀態的背景作業。"""
 
     operation_id: str
     tool_name: str
@@ -35,25 +34,25 @@ class TrackedOperation:
     completed_at: Optional[float] = None
 
 
-# Thread-safe operation storage
+# 執行緒安全的作業儲存
 _operations: Dict[str, TrackedOperation] = {}
 _lock = threading.Lock()
 
 
 def create_operation(tool_name: str, args: dict) -> str:
-    """Create a new tracked operation.
+    """建立新的追蹤作業。
 
     Args:
-        tool_name: Name of the MCP tool being executed
-        args: Arguments passed to the tool
+        tool_name: 正在執行的 MCP 工具名稱
+        args: 傳遞給工具的參數
 
     Returns:
-        operation_id: Short unique ID for polling
+        operation_id: 用於輪詢的簡短唯一 ID
     """
     op_id = str(uuid.uuid4())[:8]
 
     with _lock:
-        # Clean up old operations before creating new one
+        # 建立新作業前先清理舊作業
         _cleanup_expired_operations()
 
         _operations[op_id] = TrackedOperation(
@@ -67,25 +66,25 @@ def create_operation(tool_name: str, args: dict) -> str:
 
 
 def get_operation(op_id: str) -> Optional[TrackedOperation]:
-    """Get an operation by ID.
+    """根據 ID 取得作業。
 
     Args:
-        op_id: The operation ID returned by create_operation
+        op_id: create_operation 回傳的作業 ID
 
     Returns:
-        TrackedOperation or None if not found
+        TrackedOperation，若找不到則回傳 None
     """
     with _lock:
         return _operations.get(op_id)
 
 
 def complete_operation(op_id: str, result: Any = None, error: str = None):
-    """Mark an operation as completed or failed.
+    """將作業標記為已完成或失敗。
 
     Args:
-        op_id: The operation ID
-        result: The successful result (if no error)
-        error: Error message (if failed)
+        op_id: 作業 ID
+        result: 成功結果（若無錯誤）
+        error: 錯誤訊息（若失敗）
     """
     with _lock:
         op = _operations.get(op_id)
@@ -101,13 +100,13 @@ def complete_operation(op_id: str, result: Any = None, error: str = None):
 
 
 def list_operations(status: Optional[str] = None) -> list:
-    """List all operations, optionally filtered by status.
+    """列出所有作業，可選擇性依狀態過濾。
 
     Args:
-        status: Optional filter ('running', 'completed', 'failed')
+        status: 選擇性過濾條件（'running'、'completed'、'failed'）
 
     Returns:
-        List of operation summaries
+        作業摘要清單
     """
     with _lock:
         ops = _operations.values()
@@ -127,9 +126,9 @@ def list_operations(status: Optional[str] = None) -> list:
 
 
 def _cleanup_expired_operations():
-    """Remove completed operations older than TTL.
+    """移除超過 TTL 的已完成作業。
 
-    Called internally with lock already held.
+    在已持有鎖定時於內部呼叫。
     """
     now = time.time()
     expired = [

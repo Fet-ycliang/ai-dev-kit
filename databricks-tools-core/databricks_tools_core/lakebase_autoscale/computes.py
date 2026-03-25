@@ -1,8 +1,7 @@
 """
-Lakebase Autoscaling Compute (Endpoint) Operations
+Lakebase Autoscaling Compute（端點）操作
 
-Functions for creating, managing, and deleting compute endpoints
-within Lakebase Autoscaling branches.
+用於在 Lakebase Autoscaling 分支中建立、管理與刪除 compute 端點的函式。
 """
 
 import logging
@@ -22,28 +21,28 @@ def create_endpoint(
     scale_to_zero_seconds: Optional[int] = None,
 ) -> Dict[str, Any]:
     """
-    Create a compute endpoint on a branch.
+    在分支上建立 compute 端點。
 
-    Args:
-        branch_name: Branch resource name
-            (e.g., "projects/my-app/branches/production")
-        endpoint_id: Endpoint identifier (1-63 chars, lowercase letters,
-            digits, hyphens)
-        endpoint_type: Endpoint type: "ENDPOINT_TYPE_READ_WRITE" or
-            "ENDPOINT_TYPE_READ_ONLY". Default: "ENDPOINT_TYPE_READ_WRITE"
-        autoscaling_limit_min_cu: Minimum compute units (0.5-32)
-        autoscaling_limit_max_cu: Maximum compute units (0.5-112)
-        scale_to_zero_seconds: Inactivity timeout before suspending.
-            Set to 0 to disable scale-to-zero.
+    參數:
+        branch_name: 分支資源名稱
+            （例如："projects/my-app/branches/production"）
+        endpoint_id: 端點識別子（1-63 個字元，限小寫字母、
+            數字與連字號）
+        endpoint_type: 端點類型："ENDPOINT_TYPE_READ_WRITE" 或
+            "ENDPOINT_TYPE_READ_ONLY"。預設："ENDPOINT_TYPE_READ_WRITE"
+        autoscaling_limit_min_cu: 最小 compute units（0.5-32）
+        autoscaling_limit_max_cu: 最大 compute units（0.5-112）
+        scale_to_zero_seconds: 暫停前的閒置逾時秒數。
+            設為 0 可停用 scale-to-zero。
 
-    Returns:
-        Dictionary with:
-        - name: Endpoint resource name
-        - host: Connection hostname
-        - status: Creation status
+    回傳:
+        包含以下欄位的字典：
+        - name: 端點資源名稱
+        - host: 連線主機名稱
+        - status: 建立狀態
 
-    Raises:
-        Exception: If creation fails
+    引發:
+        Exception: 當建立失敗時
     """
     client = get_workspace_client()
 
@@ -104,30 +103,30 @@ def create_endpoint(
             return {
                 "name": f"{branch_name}/endpoints/{endpoint_id}",
                 "status": "ALREADY_EXISTS",
-                "error": f"Endpoint '{endpoint_id}' already exists on branch",
+                "error": f"分支上已存在端點 '{endpoint_id}'",
             }
-        raise Exception(f"Failed to create endpoint '{endpoint_id}': {error_msg}")
+        raise Exception(f"建立端點 '{endpoint_id}' 失敗：{error_msg}")
 
 
 def get_endpoint(name: str) -> Dict[str, Any]:
     """
-    Get Lakebase Autoscaling endpoint details.
+    取得 Lakebase Autoscaling 端點詳細資料。
 
-    Args:
-        name: Endpoint resource name
-            (e.g., "projects/my-app/branches/production/endpoints/ep-primary")
+    參數:
+        name: 端點資源名稱
+            （例如："projects/my-app/branches/production/endpoints/ep-primary"）
 
-    Returns:
-        Dictionary with:
-        - name: Endpoint resource name
-        - state: Current state (ACTIVE, SUSPENDED, etc.)
-        - endpoint_type: READ_WRITE or READ_ONLY
-        - host: Connection hostname
-        - min_cu: Minimum compute units
-        - max_cu: Maximum compute units
+    回傳:
+        包含以下欄位的字典：
+        - name: 端點資源名稱
+        - state: 目前狀態（ACTIVE、SUSPENDED 等）
+        - endpoint_type: READ_WRITE 或 READ_ONLY
+        - host: 連線主機名稱
+        - min_cu: 最小 compute units
+        - max_cu: 最大 compute units
 
-    Raises:
-        Exception: If API request fails
+    引發:
+        Exception: 當 API 請求失敗時
     """
     client = get_workspace_client()
 
@@ -139,9 +138,9 @@ def get_endpoint(name: str) -> Dict[str, Any]:
             return {
                 "name": name,
                 "state": "NOT_FOUND",
-                "error": f"Endpoint '{name}' not found",
+                "error": f"找不到端點 '{name}'",
             }
-        raise Exception(f"Failed to get endpoint '{name}': {error_msg}")
+        raise Exception(f"取得端點 '{name}' 失敗：{error_msg}")
 
     result: Dict[str, Any] = {"name": endpoint.name}
 
@@ -170,24 +169,24 @@ def get_endpoint(name: str) -> Dict[str, Any]:
 
 def list_endpoints(branch_name: str) -> List[Dict[str, Any]]:
     """
-    List all endpoints on a branch.
+    列出分支上的所有端點。
 
-    Args:
-        branch_name: Branch resource name
-            (e.g., "projects/my-app/branches/production")
+    參數:
+        branch_name: 分支資源名稱
+            （例如："projects/my-app/branches/production"）
 
-    Returns:
-        List of endpoint dictionaries with name, state, type, CU settings.
+    回傳:
+        包含 name、state、type 與 CU 設定的端點字典清單。
 
-    Raises:
-        Exception: If API request fails
+    引發:
+        Exception: 當 API 請求失敗時
     """
     client = get_workspace_client()
 
     try:
         response = client.postgres.list_endpoints(parent=branch_name)
     except Exception as e:
-        raise Exception(f"Failed to list endpoints for '{branch_name}': {str(e)}")
+        raise Exception(f"列出 '{branch_name}' 的端點失敗：{str(e)}")
 
     result = []
     endpoints = list(response) if response else []
@@ -226,20 +225,20 @@ def update_endpoint(
     scale_to_zero_seconds: Optional[int] = None,
 ) -> Dict[str, Any]:
     """
-    Update a Lakebase Autoscaling endpoint (resize or configure scale-to-zero).
+    更新 Lakebase Autoscaling 端點（調整大小或設定 scale-to-zero）。
 
-    Args:
-        name: Endpoint resource name
-            (e.g., "projects/my-app/branches/production/endpoints/ep-primary")
-        autoscaling_limit_min_cu: New minimum compute units (0.5-32)
-        autoscaling_limit_max_cu: New maximum compute units (0.5-112)
-        scale_to_zero_seconds: New inactivity timeout. 0 to disable.
+    參數:
+        name: 端點資源名稱
+            （例如："projects/my-app/branches/production/endpoints/ep-primary"）
+        autoscaling_limit_min_cu: 新的最小 compute units（0.5-32）
+        autoscaling_limit_max_cu: 新的最大 compute units（0.5-112）
+        scale_to_zero_seconds: 新的閒置逾時秒數。設為 0 可停用。
 
-    Returns:
-        Dictionary with updated endpoint details
+    回傳:
+        包含更新後端點詳細資料的字典
 
-    Raises:
-        Exception: If update fails
+    引發:
+        Exception: 當更新失敗時
     """
     client = get_workspace_client()
 
@@ -267,10 +266,10 @@ def update_endpoint(
             return {
                 "name": name,
                 "status": "NO_CHANGES",
-                "error": "No fields specified for update",
+                "error": "未指定要更新的欄位",
             }
 
-        # EndpointSpec requires endpoint_type -- fetch it from the current endpoint
+        # EndpointSpec 需要 endpoint_type，因此先從目前的端點取得
         existing_ep = client.postgres.get_endpoint(name=name)
         ep_type = (
             existing_ep.spec.endpoint_type
@@ -308,28 +307,29 @@ def update_endpoint(
 
         return result
     except Exception as e:
-        raise Exception(f"Failed to update endpoint '{name}': {str(e)}")
+        raise Exception(f"更新端點 '{name}' 失敗：{str(e)}")
 
 
 def delete_endpoint(name: str, max_retries: int = 6, retry_delay: int = 10) -> Dict[str, Any]:
     """
-    Delete a Lakebase Autoscaling endpoint.
+    刪除 Lakebase Autoscaling 端點。
 
-    Retries on ``Aborted`` errors (reconciliation in progress).
+    注意：
+        遇到 ``Aborted`` 錯誤時會重試（代表 reconciliation 進行中）。
 
-    Args:
-        name: Endpoint resource name
-            (e.g., "projects/my-app/branches/production/endpoints/ep-primary")
-        max_retries: Maximum number of retries for transient errors.
-        retry_delay: Seconds to wait between retries.
+    參數:
+        name: 端點資源名稱
+            （例如："projects/my-app/branches/production/endpoints/ep-primary"）
+        max_retries: 暫時性錯誤的最大重試次數。
+        retry_delay: 每次重試之間等待的秒數。
 
-    Returns:
-        Dictionary with:
-        - name: Endpoint resource name
-        - status: "deleted" or error info
+    回傳:
+        包含以下欄位的字典：
+        - name: 端點資源名稱
+        - status: "deleted" 或錯誤資訊
 
-    Raises:
-        Exception: If deletion fails after retries
+    引發:
+        Exception: 當重試後仍刪除失敗時
     """
     import time
 
@@ -349,13 +349,13 @@ def delete_endpoint(name: str, max_retries: int = 6, retry_delay: int = 10) -> D
                 return {
                     "name": name,
                     "status": "NOT_FOUND",
-                    "error": f"Endpoint '{name}' not found",
+                    "error": f"找不到端點 '{name}'",
                 }
             if ("reconciliation" in error_msg.lower() or "aborted" in error_msg.lower()) and attempt < max_retries:
                 logger.info(
-                    f"Endpoint reconciliation in progress, retrying in {retry_delay}s "
-                    f"(attempt {attempt + 1}/{max_retries})"
+                    f"端點 reconciliation 進行中，將在 {retry_delay} 秒後重試 "
+                    f"（第 {attempt + 1}/{max_retries} 次）"
                 )
                 time.sleep(retry_delay)
                 continue
-            raise Exception(f"Failed to delete endpoint '{name}': {error_msg}")
+            raise Exception(f"刪除端點 '{name}' 失敗：{error_msg}")

@@ -1,4 +1,4 @@
-"""Database module."""
+"""資料庫模組。"""
 
 from .database import (
   create_tables,

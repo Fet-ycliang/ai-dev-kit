@@ -1,53 +1,53 @@
 ---
 name: databricks-ai-functions
-description: "Use Databricks built-in AI Functions (ai_classify, ai_extract, ai_summarize, ai_mask, ai_translate, ai_fix_grammar, ai_gen, ai_analyze_sentiment, ai_similarity, ai_parse_document, ai_query, ai_forecast) to add AI capabilities directly to SQL and PySpark pipelines without managing model endpoints. Also covers document parsing and building custom RAG pipelines (parse → chunk → index → query)."
+description: "使用 Databricks 內建 AI Functions（ai_classify, ai_extract, ai_summarize, ai_mask, ai_translate, ai_fix_grammar, ai_gen, ai_analyze_sentiment, ai_similarity, ai_parse_document, ai_query, ai_forecast）直接為 SQL 與 PySpark 管線加入 AI 功能，無需管理模型端點。也涵蓋文件解析與建立自訂 RAG 管線（parse → chunk → index → query）。"
 ---
 
 # Databricks AI Functions
 
-> **Official Docs:** https://docs.databricks.com/aws/en/large-language-models/ai-functions
-> Individual function reference: https://docs.databricks.com/aws/en/sql/language-manual/functions/
+> **官方文件：** https://docs.databricks.com/aws/en/large-language-models/ai-functions
+> 各函式參考：https://docs.databricks.com/aws/en/sql/language-manual/functions/
 
-## Overview
+## 概覽
 
-Databricks AI Functions are built-in SQL and PySpark functions that call Foundation Model APIs directly from your data pipelines — no model endpoint setup, no API keys, no boilerplate. They operate on table columns as naturally as `UPPER()` or `LENGTH()`, and are optimized for batch inference at scale.
+Databricks AI Functions 是內建的 SQL 與 PySpark 函式，可直接從資料管線呼叫基礎模型 API——無需設定模型端點、無需 API 金鑰，也無需樣板程式碼。它們能像 `UPPER()` 或 `LENGTH()` 一樣自然地作用於資料表欄位，並針對大規模批次推論進行最佳化。
 
-There are three categories:
+分為三種類別：
 
-| Category | Functions | Use when |
+| 類別 | Functions | 使用時機 |
 |---|---|---|
-| **Task-specific** | `ai_analyze_sentiment`, `ai_classify`, `ai_extract`, `ai_fix_grammar`, `ai_gen`, `ai_mask`, `ai_similarity`, `ai_summarize`, `ai_translate`, `ai_parse_document` | The task is well-defined — prefer these always |
-| **General-purpose** | `ai_query` | Complex nested JSON, custom endpoints, multimodal — **last resort only** |
-| **Table-valued** | `ai_forecast` | Time series forecasting |
+| **任務專用** | `ai_analyze_sentiment`, `ai_classify`, `ai_extract`, `ai_fix_grammar`, `ai_gen`, `ai_mask`, `ai_similarity`, `ai_summarize`, `ai_translate`, `ai_parse_document` | 任務定義明確時——請一律優先使用 |
+| **通用型** | `ai_query` | 複雜巢狀 JSON、自訂端點、多模態——僅作為最後手段 |
+| **資料表值型** | `ai_forecast` | 時間序列預測 |
 
-**Function selection rule — always prefer a task-specific function over `ai_query`:**
+**函式選擇規則——永遠優先使用任務專用函式，而不是 `ai_query`：**
 
-| Task | Use this | Fall back to `ai_query` when... |
+| 任務 | 使用此函式 | 在以下情況改用 `ai_query`... |
 |---|---|---|
-| Sentiment scoring | `ai_analyze_sentiment` | Never |
-| Fixed-label routing | `ai_classify` (2–20 labels) | Never |
-| Flat entity extraction | `ai_extract` | Output schema has nested arrays |
-| Summarization | `ai_summarize` | Never — use `max_words=0` for uncapped |
-| Grammar correction | `ai_fix_grammar` | Never |
-| Translation | `ai_translate` | Target language not in the supported list |
-| PII redaction | `ai_mask` | Never |
-| Free-form generation | `ai_gen` | Need structured JSON output |
-| Semantic similarity | `ai_similarity` | Never |
-| PDF / document parsing | `ai_parse_document` | Need image-level reasoning |
-| Complex JSON / reasoning | — | **This is the intended use case for `ai_query`** |
+| 情緒評分 | `ai_analyze_sentiment` | 不需要 |
+| 固定標籤路由 | `ai_classify` (2–20 個標籤) | 不需要 |
+| 平面實體擷取 | `ai_extract` | 輸出結構描述含有巢狀陣列 |
+| 摘要 | `ai_summarize` | 不需要——要無上限請用 `max_words=0` |
+| 文法修正 | `ai_fix_grammar` | 不需要 |
+| 翻譯 | `ai_translate` | 目標語言不在支援清單中 |
+| PII 遮罩 | `ai_mask` | 不需要 |
+| 自由格式生成 | `ai_gen` | 需要結構化 JSON 輸出 |
+| 語意相似度 | `ai_similarity` | 不需要 |
+| PDF／文件解析 | `ai_parse_document` | 需要影像層級推理 |
+| 複雜 JSON／推理 | — | **這就是 `ai_query` 的預期使用情境** |
 
-## Prerequisites
+## 前置條件
 
-- Databricks SQL warehouse (**not Classic**) or cluster with DBR **15.1+**
-- DBR **15.4 ML LTS** recommended for batch workloads
-- DBR **17.1+** required for `ai_parse_document`
-- `ai_forecast` requires a **Pro or Serverless** SQL warehouse
-- Workspace in a supported AWS/Azure region for batch AI inference
-- Models run under Apache 2.0 or LLAMA 3.3 Community License — customers are responsible for compliance
+- Databricks SQL warehouse（**非 Classic**）或 DBR **15.1+** 的叢集
+- 批次工作負載建議使用 DBR **15.4 ML LTS**
+- `ai_parse_document` 需要 DBR **17.1+**
+- `ai_forecast` 需要 **Pro 或 Serverless** SQL warehouse
+- 工作區必須位於支援批次 AI 推論的 AWS/Azure 區域
+- 模型依 Apache 2.0 或 LLAMA 3.3 Community License 執行——客戶需自行負責合規性
 
-## Quick Start
+## 快速入門
 
-Classify, extract, and score sentiment from a text column in a single query:
+在單一查詢中，對文字欄位進行分類、擷取與情緒評分：
 
 ```sql
 SELECT
@@ -68,16 +68,16 @@ df = (
       .withColumn("entities",  expr("ai_extract(ticket_text, array('product', 'error_code', 'date'))"))
       .withColumn("sentiment", expr("ai_analyze_sentiment(ticket_text)"))
 )
-# Access nested STRUCT fields from ai_extract
+# 從 ai_extract 存取巢狀 STRUCT 欄位
 df.select("ticket_id", "priority", "sentiment",
           "entities.product", "entities.error_code", "entities.date").display()
 ```
 
-## Common Patterns
+## 常見模式
 
-### Pattern 1: Text Analysis Pipeline
+### 模式 1：文字分析管線
 
-Chain multiple task-specific functions to enrich a text column in one pass:
+將多個任務專用函式串接起來，一次豐富化文字欄位：
 
 ```sql
 SELECT
@@ -91,7 +91,7 @@ SELECT
 FROM raw_feedback;
 ```
 
-### Pattern 2: PII Redaction Before Storage
+### 模式 2：儲存前先做 PII 遮罩
 
 ```python
 from pyspark.sql.functions import expr
@@ -106,9 +106,9 @@ df_clean = (
 df_clean.write.format("delta").mode("append").saveAsTable("catalog.schema.messages_safe")
 ```
 
-### Pattern 3: Document Ingestion from a Unity Catalog Volume
+### 模式 3：從 Unity Catalog Volume 進行文件擷取
 
-Parse PDFs/Office docs, then enrich with task-specific functions:
+解析 PDF/Office 文件，再用任務專用函式進行豐富化：
 
 ```python
 from pyspark.sql.functions import expr
@@ -126,19 +126,19 @@ df = (
 )
 ```
 
-### Pattern 4: Semantic Matching / Deduplication
+### 模式 4：語意比對／去重
 
 ```sql
--- Find near-duplicate company names
+-- 找出近似重複的公司名稱
 SELECT a.id, b.id, ai_similarity(a.name, b.name) AS score
 FROM companies a
 JOIN companies b ON a.id < b.id
 WHERE ai_similarity(a.name, b.name) > 0.85;
 ```
 
-### Pattern 5: Complex JSON Extraction with `ai_query` (last resort)
+### 模式 5：使用 `ai_query` 擷取複雜 JSON（最後手段）
 
-Use only when the output schema has nested arrays or requires multi-step reasoning that no task-specific function handles:
+只有在輸出結構描述包含巢狀陣列，或需要任務專用函式無法處理的多步驟推理時才使用：
 
 ```python
 from pyspark.sql.functions import expr, from_json, col
@@ -148,7 +148,7 @@ df = (
     .withColumn("ai_response", expr("""
         ai_query(
             'databricks-claude-sonnet-4',
-            concat('Extract invoice as JSON with nested itens array: ', text_blocks),
+            concat('將發票擷取為包含巢狀 itens 陣列的 JSON： ', text_blocks),
             responseFormat => '{"type":"json_object"}',
             failOnError     => false
         )
@@ -161,7 +161,7 @@ df = (
 )
 ```
 
-### Pattern 6: Time Series Forecasting
+### 模式 6：時間序列預測
 
 ```sql
 SELECT *
@@ -171,25 +171,25 @@ FROM ai_forecast(
     time_col  => 'date',
     value_col => 'sales'
 );
--- Returns: date, sales_forecast, sales_upper, sales_lower
+-- 回傳：date, sales_forecast, sales_upper, sales_lower
 ```
 
-## Reference Files
+## 參考檔案
 
-- [1-task-functions.md](1-task-functions.md) — Full syntax, parameters, SQL + PySpark examples for all 9 task-specific functions (`ai_analyze_sentiment`, `ai_classify`, `ai_extract`, `ai_fix_grammar`, `ai_gen`, `ai_mask`, `ai_similarity`, `ai_summarize`, `ai_translate`) and `ai_parse_document`
-- [2-ai-query.md](2-ai-query.md) — `ai_query` complete reference: all parameters, structured output with `responseFormat`, multimodal `files =>`, UDF patterns, and error handling
-- [3-ai-forecast.md](3-ai-forecast.md) — `ai_forecast` parameters, single-metric, multi-group, multi-metric, and confidence interval patterns
-- [4-document-processing-pipeline.md](4-document-processing-pipeline.md) — End-to-end batch document processing pipeline using AI Functions in a Lakeflow Declarative Pipeline; includes `config.yml` centralization, function selection logic, custom RAG pipeline (parse → chunk → Vector Search), and DSPy/LangChain guidance for near-real-time variants
+- [1-task-functions.md](1-task-functions.md) — 所有 9 個任務專用函式（`ai_analyze_sentiment`, `ai_classify`, `ai_extract`, `ai_fix_grammar`, `ai_gen`, `ai_mask`, `ai_similarity`, `ai_summarize`, `ai_translate`）與 `ai_parse_document` 的完整語法、參數、SQL + PySpark 範例
+- [2-ai-query.md](2-ai-query.md) — `ai_query` 完整參考：所有參數、使用 `responseFormat` 的結構化輸出、多模態 `files =>`、UDF 模式與錯誤處理
+- [3-ai-forecast.md](3-ai-forecast.md) — `ai_forecast` 的參數、單一指標、多群組、多指標與信賴區間模式
+- [4-document-processing-pipeline.md](4-document-processing-pipeline.md) — 在 Lakeflow 宣告式管線中使用 AI Functions 的端到端批次文件處理管線；包含 `config.yml` 集中化、函式選擇邏輯、自訂 RAG 管線（parse → chunk → Vector Search），以及近即時變體的 DSPy/LangChain 指引
 
-## Common Issues
+## 常見問題
 
-| Issue | Solution |
+| 問題 | 解決方案 |
 |---|---|
-| `ai_parse_document` not found | Requires DBR **17.1+**. Check cluster runtime. |
-| `ai_forecast` fails | Requires **Pro or Serverless** SQL warehouse — not available on Classic or Starter. |
-| All functions return NULL | Input column is NULL. Filter with `WHERE col IS NOT NULL` before calling. |
-| `ai_translate` fails for a language | Supported: English, German, French, Italian, Portuguese, Hindi, Spanish, Thai. Use `ai_query` with a multilingual model for others. |
-| `ai_classify` returns unexpected labels | Use clear, mutually exclusive label names. Fewer labels (2–5) produces more reliable results. |
-| `ai_query` raises on some rows in a batch job | Add `failOnError => false` — returns a STRUCT with `.response` and `.error` instead of raising. |
-| Batch job runs slowly | Use DBR **15.4 ML LTS** cluster (not serverless or interactive) for optimized batch inference throughput. |
-| Want to swap models without editing pipeline code | Store all model names and prompts in `config.yml` — see [4-document-processing-pipeline.md](4-document-processing-pipeline.md) for the pattern. |
+| 找不到 `ai_parse_document` | 需要 DBR **17.1+**。請檢查叢集 runtime。 |
+| `ai_forecast` 失敗 | 需要 **Pro 或 Serverless** SQL warehouse——Classic 或 Starter 不提供。 |
+| 所有函式都回傳 NULL | 輸入欄位為 NULL。呼叫前先用 `WHERE col IS NOT NULL` 篩選。 |
+| `ai_translate` 無法處理某語言 | 支援：英文、德文、法文、義大利文、葡萄牙文、印地文、西班牙文、泰文。其他語言請用搭配多語言模型的 `ai_query`。 |
+| `ai_classify` 回傳非預期標籤 | 請使用清楚且互斥的標籤名稱。標籤越少（2–5 個），結果越可靠。 |
+| `ai_query` 在批次工作某些資料列上拋錯 | 加上 `failOnError => false`——它會回傳帶有 `.response` 與 `.error` 的 STRUCT，而不是直接拋錯。 |
+| 批次工作執行很慢 | 請使用 DBR **15.4 ML LTS** 叢集（非 serverless 或互動式），以取得最佳化的批次推論吞吐量。 |
+| 想在不修改 pipeline 程式碼的情況下切換模型 | 將所有模型名稱與提示詞存放在 `config.yml`——模式請參閱 [4-document-processing-pipeline.md](4-document-processing-pipeline.md)。 |

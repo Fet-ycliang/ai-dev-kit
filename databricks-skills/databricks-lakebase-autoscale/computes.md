@@ -1,23 +1,23 @@
-# Lakebase Autoscaling Computes
+# Lakebase 自動擴展計算
 
-## Overview
+## 概觀
 
-A compute is a virtualized service that runs Postgres for a branch. Each branch has one primary read-write compute and can have optional read replicas. Computes support autoscaling, scale-to-zero, and granular sizing from 0.5 to 112 CU.
+計算是運行分支 Postgres 的虛擬化服務。每個分支有一個主要讀寫計算，可以有選用的讀取副本。計算支援自動擴展、縮放至零和從 0.5 到 112 CU 的細粒度調整。
 
-## Compute Sizing
+## 計算大小調整
 
-Each Compute Unit (CU) allocates approximately 2 GB of RAM.
+每個計算單位 (CU) 分配約 2 GB 的 RAM。
 
-### Available Sizes
+### 可用大小
 
-| Category | Range | Notes |
+| 類別 | 範圍 | 備註 |
 |----------|-------|-------|
-| **Autoscale computes** | 0.5-32 CU | Dynamic scaling within range (max-min <= 8 CU) |
-| **Large fixed-size** | 36-112 CU | Fixed size, no autoscaling |
+| **自動擴展計算** | 0.5-32 CU | 在範圍內動態擴展（最大-最小 <= 8 CU） |
+| **大型固定大小** | 36-112 CU | 固定大小，無自動擴展 |
 
-### Representative Sizes
+### 代表性大小
 
-| Compute Units | RAM | Max Connections |
+| 計算單位 | RAM | 最大連線數 |
 |--------------|-----|-----------------|
 | 0.5 CU | ~1 GB | 104 |
 | 1 CU | ~2 GB | 209 |
@@ -28,9 +28,9 @@ Each Compute Unit (CU) allocates approximately 2 GB of RAM.
 | 64 CU | ~128 GB | 4,000 |
 | 112 CU | ~224 GB | 4,000 |
 
-**Note:** Lakebase Provisioned used ~16 GB per CU. Autoscaling uses ~2 GB per CU for more granular scaling.
+**注意：** Lakebase Provisioned 使用每 CU 約 16 GB。自動擴展使用每 CU 約 2 GB 以提供更細粒度的擴展。
 
-## Creating a Compute
+## 建立計算
 
 ```python
 from databricks.sdk import WorkspaceClient
@@ -38,7 +38,7 @@ from databricks.sdk.service.postgres import Endpoint, EndpointSpec, EndpointType
 
 w = WorkspaceClient()
 
-# Create a read-write compute endpoint
+# 建立讀寫計算端點
 result = w.postgres.create_endpoint(
     parent="projects/my-app/branches/production",
     endpoint=Endpoint(
@@ -51,8 +51,8 @@ result = w.postgres.create_endpoint(
     endpoint_id="my-compute"
 ).wait()
 
-print(f"Endpoint created: {result.name}")
-print(f"Host: {result.status.hosts.host}")
+print(f"端點已建立：{result.name}")
+print(f"主機：{result.status.hosts.host}")
 ```
 
 ### CLI
@@ -69,24 +69,24 @@ databricks postgres create-endpoint \
     }'
 ```
 
-**Important:** Each branch can have only one read-write compute.
+**重要：** 每個分支只能有一個讀寫計算。
 
-## Getting Compute Details
+## 取得計算詳細資訊
 
 ```python
 endpoint = w.postgres.get_endpoint(
     name="projects/my-app/branches/production/endpoints/my-compute"
 )
 
-print(f"Endpoint: {endpoint.name}")
-print(f"Type: {endpoint.status.endpoint_type}")
-print(f"State: {endpoint.status.current_state}")
-print(f"Host: {endpoint.status.hosts.host}")
-print(f"Min CU: {endpoint.status.autoscaling_limit_min_cu}")
-print(f"Max CU: {endpoint.status.autoscaling_limit_max_cu}")
+print(f"端點：{endpoint.name}")
+print(f"類型：{endpoint.status.endpoint_type}")
+print(f"狀態：{endpoint.status.current_state}")
+print(f"主機：{endpoint.status.hosts.host}")
+print(f"最小 CU：{endpoint.status.autoscaling_limit_min_cu}")
+print(f"最大 CU：{endpoint.status.autoscaling_limit_max_cu}")
 ```
 
-## Listing Computes
+## 列出計算
 
 ```python
 endpoints = list(w.postgres.list_endpoints(
@@ -94,19 +94,19 @@ endpoints = list(w.postgres.list_endpoints(
 ))
 
 for ep in endpoints:
-    print(f"Endpoint: {ep.name}")
-    print(f"  Type: {ep.status.endpoint_type}")
-    print(f"  CU Range: {ep.status.autoscaling_limit_min_cu}-{ep.status.autoscaling_limit_max_cu}")
+    print(f"端點：{ep.name}")
+    print(f"  類型：{ep.status.endpoint_type}")
+    print(f"  CU 範圍：{ep.status.autoscaling_limit_min_cu}-{ep.status.autoscaling_limit_max_cu}")
 ```
 
-## Resizing a Compute
+## 調整計算大小
 
-Use `update_mask` to specify which fields to update:
+使用 `update_mask` 指定要更新的欄位：
 
 ```python
 from databricks.sdk.service.postgres import Endpoint, EndpointSpec, FieldMask
 
-# Update min and max CU
+# 更新最小和最大 CU
 w.postgres.update_endpoint(
     name="projects/my-app/branches/production/endpoints/my-compute",
     endpoint=Endpoint(
@@ -126,20 +126,20 @@ w.postgres.update_endpoint(
 ### CLI
 
 ```bash
-# Update single field
+# 更新單一欄位
 databricks postgres update-endpoint \
     projects/my-app/branches/production/endpoints/my-compute \
     spec.autoscaling_limit_max_cu \
     --json '{"spec": {"autoscaling_limit_max_cu": 8.0}}'
 
-# Update multiple fields
+# 更新多個欄位
 databricks postgres update-endpoint \
     projects/my-app/branches/production/endpoints/my-compute \
     "spec.autoscaling_limit_min_cu,spec.autoscaling_limit_max_cu" \
     --json '{"spec": {"autoscaling_limit_min_cu": 2.0, "autoscaling_limit_max_cu": 8.0}}'
 ```
 
-## Deleting a Compute
+## 刪除計算
 
 ```python
 w.postgres.delete_endpoint(
@@ -147,62 +147,62 @@ w.postgres.delete_endpoint(
 ).wait()
 ```
 
-## Autoscaling
+## 自動擴展
 
-Autoscaling dynamically adjusts compute resources based on workload demand.
+自動擴展根據工作負載需求動態調整計算資源。
 
-### Configuration
+### 設定
 
-- **Range:** 0.5-32 CU
-- **Constraint:** Max - Min cannot exceed 8 CU
-- **Valid examples:** 4-8 CU, 8-16 CU, 16-24 CU
-- **Invalid example:** 0.5-32 CU (range of 31.5 CU)
+- **範圍：** 0.5-32 CU
+- **限制：** 最大值 - 最小值不能超過 8 CU
+- **有效範例：** 4-8 CU、8-16 CU、16-24 CU
+- **無效範例：** 0.5-32 CU（範圍為 31.5 CU）
 
-### Best Practices
+### 最佳實務
 
-- Set minimum CU large enough to cache your working set in memory
-- Performance may be degraded until compute scales up and caches data
-- Connection limits are based on the maximum CU in the range
+- 設定最小 CU 足夠大以在記憶體中快取工作集
+- 在計算擴展並快取資料之前，效能可能會降低
+- 連線限制基於範圍中的最大 CU
 
-## Scale-to-Zero
+## 縮放至零
 
-Automatically suspends compute after a period of inactivity.
+在閒置一段時間後自動暫停計算。
 
-| Setting | Description |
+| 設定 | 說明 |
 |---------|-------------|
-| **Enabled** | Compute suspends after inactivity timeout (saves cost) |
-| **Disabled** | Always-active compute (eliminates wake-up latency) |
+| **啟用** | 計算在閒置逾時後暫停（節省成本） |
+| **停用** | 始終活躍的計算（消除喚醒延遲） |
 
-**Default behavior:**
-- `production` branch: Scale-to-zero **disabled** (always active)
-- Other branches: Scale-to-zero can be configured
+**預設行為：**
+- `production` 分支：縮放至零**停用**（始終活躍）
+- 其他分支：縮放至零可配置
 
-**Default inactivity timeout:** 5 minutes
-**Minimum inactivity timeout:** 60 seconds
+**預設閒置逾時：** 5 分鐘
+**最小閒置逾時：** 60 秒
 
-### Wake-up Behavior
+### 喚醒行為
 
-When a connection arrives on a suspended compute:
-1. Compute starts automatically (reactivation takes a few hundred milliseconds)
-2. The connection request is handled transparently once active
-3. Compute restarts at minimum autoscaling size (if autoscaling enabled)
-4. Applications should implement connection retry logic for the brief reactivation period
+當連線到達暫停計算時：
+1. 計算自動啟動（重新啟動需要幾百毫秒）
+2. 連線請求在活躍後被透明地處理
+3. 計算以最小自動擴展大小重新啟動（如果啟用自動擴展）
+4. 應用程式應在簡短重新啟動期間實現連線重試邏輯
 
-### Session Context After Reactivation
+### 重新啟動後的工作階段內容
 
-When a compute suspends and reactivates, session context is **reset**:
-- In-memory statistics and cache contents are cleared
-- Temporary tables and prepared statements are lost
-- Session-specific configuration settings reset
-- Connection pools and active transactions are terminated
+當計算暫停並重新啟動時，工作階段內容**重設**：
+- 記憶體中的統計資訊和快取內容被清除
+- 臨時資料表和準備的陳述式遺失
+- 工作階段特定設定重設
+- 連線池和活躍事務被終止
 
-If your application requires persistent session data, consider disabling scale-to-zero.
+如果應用程式需要持久工作階段資料，考慮停用縮放至零。
 
-## Sizing Guidance
+## 大小調整指南
 
-| Factor | Recommendation |
+| 因素 | 建議 |
 |--------|---------------|
-| Query complexity | Complex analytical queries benefit from larger computes |
-| Concurrent connections | More connections need more CPU and memory |
-| Data volume | Larger datasets may need more memory for performance |
-| Response time | Critical apps may require larger computes |
+| 查詢複雜性 | 複雜分析查詢受益於更大的計算 |
+| 並行連線 | 更多連線需要更多 CPU 和記憶體 |
+| 資料量 | 更大資料集可能需要更多記憶體以提高效能 |
+| 響應時間 | 關鍵應用可能需要更大計算 |

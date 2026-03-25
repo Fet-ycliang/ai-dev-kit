@@ -1,8 +1,8 @@
 /**
- * Types matching the backend API and DB models.
+ * 與後端 API 與資料庫模型對應的型別。
  */
 
-/** Current user info from GET /api/me */
+/** 來自 GET /api/me 的目前使用者資訊 */
 export interface UserInfo {
   user: string;
   workspace_url: string | null;
@@ -11,7 +11,7 @@ export interface UserInfo {
   lakebase_error: string | null;
 }
 
-/** Project from API (projects list/detail) */
+/** 來自 API 的專案（專案列表 / 詳細資料） */
 export interface Project {
   id: string;
   name: string;
@@ -20,7 +20,7 @@ export interface Project {
   conversation_count: number;
 }
 
-/** Conversation summary (list) or full (detail with messages) */
+/** 對話摘要（列表）或完整內容（含訊息的詳細資料） */
 export interface Conversation {
   id: string;
   project_id: string;
@@ -36,7 +36,7 @@ export interface Conversation {
   message_count?: number;
 }
 
-/** Single message in a conversation */
+/** 對話中的單一訊息 */
 export interface Message {
   id: string;
   conversation_id: string;
@@ -46,7 +46,7 @@ export interface Message {
   is_error: boolean;
 }
 
-/** Databricks cluster from GET /api/clusters */
+/** 來自 GET /api/clusters 的 Databricks cluster */
 export interface Cluster {
   cluster_id: string;
   cluster_name: string | null;
@@ -54,7 +54,7 @@ export interface Cluster {
   creator_user_name?: string | null;
 }
 
-/** Databricks SQL warehouse from GET /api/warehouses */
+/** 來自 GET /api/warehouses 的 Databricks SQL warehouse */
 export interface Warehouse {
   warehouse_id: string;
   warehouse_name: string | null;
@@ -64,21 +64,21 @@ export interface Warehouse {
   is_serverless?: boolean;
 }
 
-/** Todo item from agent TodoWrite tool */
+/** 來自代理 TodoWrite 工具的待辦項目 */
 export interface TodoItem {
   id?: string;
   content: string;
   status: 'pending' | 'in_progress' | 'completed';
 }
 
-/** Skill with enabled status from GET .../skills/available */
+/** 來自 GET .../skills/available、帶有啟用狀態的 Skill */
 export interface AvailableSkill {
   name: string;
   description: string;
   enabled: boolean;
 }
 
-/** Active or recent execution from GET .../executions */
+/** 來自 GET .../executions 的進行中或最近執行資料 */
 export interface Execution {
   id: string;
   conversation_id: string;

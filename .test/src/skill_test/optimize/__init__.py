@@ -1,10 +1,10 @@
-"""GEPA-powered skill optimization using optimize_anything API.
+"""使用 optimize_anything API 的 GEPA 技能優化。
 
-Public API:
-    optimize_skill()              - End-to-end optimize a SKILL.md (and optionally tools)
-    create_skillbench_evaluator() - Create a judge-based evaluator for a skill
-    OptimizationResult            - Dataclass with optimization results
-    PRESETS                       - GEPA config presets (quick, standard, thorough)
+公開 API：
+    optimize_skill()              - 端對端優化 SKILL.md（以及可選的工具）
+    create_skillbench_evaluator() - 為技能建立基於評判器的評估器
+    OptimizationResult            - 包含優化結果的 Dataclass
+    PRESETS                       - GEPA 配置預設（quick、standard、thorough）
 """
 
 from .runner import optimize_skill, OptimizationResult

@@ -1,7 +1,7 @@
 """
-SQL Warehouse Operations
+SQL Warehouse 作業
 
-Functions for listing and selecting SQL warehouses.
+用於列出與選擇 SQL warehouses 的函式。
 """
 
 import logging
@@ -16,41 +16,41 @@ logger = logging.getLogger(__name__)
 
 def list_warehouses(limit: int = 20) -> List[Dict[str, Any]]:
     """
-    List SQL warehouses, with online (RUNNING) warehouses first.
+    列出 SQL warehouses，並優先顯示線上（RUNNING）的 warehouses。
 
-    Args:
-        limit: Maximum number of warehouses to return (default: 20)
+    參數:
+        limit: 要回傳的 warehouse 最大數量（預設：20）
 
-    Returns:
-        List of warehouse dictionaries with keys:
+    回傳:
+        由 warehouse 字典組成的清單，包含以下鍵值：
         - id: Warehouse ID
-        - name: Warehouse name
-        - state: Current state (RUNNING, STOPPED, STARTING, etc.)
-        - cluster_size: Size of the warehouse
-        - auto_stop_mins: Auto-stop timeout in minutes
-        - creator_name: Who created the warehouse
-        - warehouse_type: Type of warehouse (PRO, CLASSIC)
-        - enable_serverless_compute: Whether serverless compute is enabled
+        - name: Warehouse 名稱
+        - state: 目前狀態（RUNNING、STOPPED、STARTING 等）
+        - cluster_size: Warehouse 大小
+        - auto_stop_mins: 自動停止逾時時間（分鐘）
+        - creator_name: 建立此 warehouse 的人
+        - warehouse_type: Warehouse 類型（PRO、CLASSIC）
+        - enable_serverless_compute: 是否啟用 serverless compute
 
-    Raises:
-        Exception: If API request fails
+    引發:
+        Exception: 當 API 請求失敗時
     """
     client = get_workspace_client()
 
     try:
         warehouses = list(client.warehouses.list())
     except Exception as e:
-        raise Exception(f"Failed to list SQL warehouses: {str(e)}. Check that you have permission to view warehouses.")
+        raise Exception(f"列出 SQL warehouses 失敗：{str(e)}。請確認您具有檢視 warehouses 的權限。")
 
-    # Sort: RUNNING first, then by name
+    # 排序：先顯示 RUNNING，再依名稱排序
     def sort_key(w):
-        # RUNNING = 0 (first), others = 1
+        # RUNNING = 0（優先），其他 = 1
         state_priority = 0 if w.state == State.RUNNING else 1
         return (state_priority, w.name.lower() if w.name else "")
 
     warehouses.sort(key=sort_key)
 
-    # Convert to dicts and limit
+    # 轉換為 dict 並套用數量限制
     result = []
     for w in warehouses[:limit]:
         result.append(
@@ -70,17 +70,17 @@ def list_warehouses(limit: int = 20) -> List[Dict[str, Any]]:
 
 
 def _sort_within_tier(warehouses: list, current_user: Optional[str]) -> list:
-    """Sort warehouses within a tier: serverless first, then user-owned.
+    """在同一層級內排序 warehouses：先 serverless，再目前使用者擁有的。
 
-    This is a *soft* preference — no warehouses are removed. Within the same
-    priority bucket, serverless warehouses are tried first, then user-owned.
+    這是*軟性*偏好，不會移除任何 warehouse。在相同優先級群組中，
+    會先嘗試 serverless warehouses，再嘗試目前使用者建立的 warehouses。
 
-    Args:
-        warehouses: List of SDK warehouse objects.
-        current_user: Current user's username/email, or None.
+    參數:
+        warehouses: SDK warehouse 物件清單。
+        current_user: 目前使用者的使用者名稱／電子郵件，或 None。
 
-    Returns:
-        Reordered list (serverless first, then user-owned, then the rest).
+    回傳:
+        重新排序後的清單（先 serverless，再目前使用者擁有，其餘最後）。
     """
     if not warehouses:
         return warehouses
@@ -96,24 +96,25 @@ def _sort_within_tier(warehouses: list, current_user: Optional[str]) -> list:
 
 def get_best_warehouse() -> Optional[str]:
     """
-    Select the best available SQL warehouse based on priority rules.
+    依據優先順序規則選擇最佳可用的 SQL warehouse。
 
-    Within each priority tier, serverless warehouses are preferred first
-    (instant start, auto-scale, no idle costs), then warehouses created
-    by the current user. No warehouses are excluded.
+    在每個優先層級中，會優先選擇 serverless warehouses
+    （可即時啟動、自動調整規模、沒有閒置成本），其次是由目前使用者建立的
+    warehouses。不會排除任何 warehouse。
 
-    Priority:
-    1. Running warehouse named "Shared endpoint" or "dbdemos-shared-endpoint"
-    2. Any running warehouse with 'shared' in name
-    3. Any running warehouse
-    4. Stopped warehouse with 'shared' in name
-    5. Any stopped warehouse
+    注意:
+        優先順序：
+        1. 名稱為 "Shared endpoint" 或 "dbdemos-shared-endpoint" 的執行中 warehouse
+        2. 名稱中包含 'shared' 的任一執行中 warehouse
+        3. 任一執行中 warehouse
+        4. 名稱中包含 'shared' 的已停止 warehouse
+        5. 任一已停止 warehouse
 
-    Returns:
-        Warehouse ID string, or None if no warehouses available
+    回傳:
+        Warehouse ID 字串；若沒有可用 warehouse 則為 None
 
-    Raises:
-        Exception: If API request fails
+    引發:
+        Exception: 當 API 請求失敗時
     """
     client = get_workspace_client()
     current_user = get_current_username()
@@ -121,25 +122,25 @@ def get_best_warehouse() -> Optional[str]:
     try:
         warehouses = list(client.warehouses.list())
     except Exception as e:
-        raise Exception(f"Failed to list SQL warehouses: {str(e)}. Check that you have permission to view warehouses.")
+        raise Exception(f"列出 SQL warehouses 失敗：{str(e)}。請確認您具有檢視 warehouses 的權限。")
 
     if not warehouses:
-        logger.warning("No SQL warehouses found in workspace")
+        logger.warning("在 workspace 中找不到任何 SQL warehouses")
         return None
 
-    # Categorize warehouses
-    standard_shared = []  # Specific shared endpoint names
-    online_shared = []  # Running + 'shared' in name
-    online_other = []  # Running, no 'shared'
-    offline_shared = []  # Stopped + 'shared' in name
-    offline_other = []  # Stopped, no 'shared'
+    # 將 warehouses 分類
+    standard_shared = []  # 特定 shared endpoint 名稱
+    online_shared = []  # 執行中且名稱包含 'shared'
+    online_other = []  # 執行中，但名稱不含 'shared'
+    offline_shared = []  # 已停止且名稱包含 'shared'
+    offline_other = []  # 已停止，但名稱不含 'shared'
 
     for warehouse in warehouses:
         is_running = warehouse.state == State.RUNNING
         name_lower = warehouse.name.lower() if warehouse.name else ""
         is_shared = "shared" in name_lower
 
-        # Check for standard shared endpoint names
+        # 檢查是否為標準 shared endpoint 名稱
         if is_running and warehouse.name in ("Shared endpoint", "dbdemos-shared-endpoint"):
             standard_shared.append(warehouse)
         elif is_running and is_shared:
@@ -151,14 +152,14 @@ def get_best_warehouse() -> Optional[str]:
         else:
             offline_other.append(warehouse)
 
-    # Within each tier, prefer warehouses owned by the current user
+    # 在每個層級內，優先選擇由目前使用者建立的 warehouses
     standard_shared = _sort_within_tier(standard_shared, current_user)
     online_shared = _sort_within_tier(online_shared, current_user)
     online_other = _sort_within_tier(online_other, current_user)
     offline_shared = _sort_within_tier(offline_shared, current_user)
     offline_other = _sort_within_tier(offline_other, current_user)
 
-    # Select based on priority
+    # 依優先順序選擇
     if standard_shared:
         selected = standard_shared[0]
     elif online_shared:
@@ -172,5 +173,5 @@ def get_best_warehouse() -> Optional[str]:
     else:
         return None
 
-    logger.debug(f"Selected warehouse: {selected.name} (state: {selected.state})")
+    logger.debug(f"已選擇 warehouse：{selected.name}（狀態：{selected.state}）")
     return selected.id

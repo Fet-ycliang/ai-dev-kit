@@ -1,317 +1,317 @@
-# Context Optimization Strategies
+# Context 最佳化策略
 
-A guide to managing context windows effectively in agentic systems. These strategies apply across architectures and help maintain quality while reducing token usage.
+這是一份說明如何在 agentic systems 中有效管理 context windows 的指南。這些策略可套用於不同架構，協助在降低 token 使用量的同時維持品質。
 
-## Table of Contents
+## 目錄
 
-- [Why Context Optimization Matters](#why-context-optimization-matters)
-- [Strategy 1: Tool Result Management](#strategy-1-tool-result-management)
-- [Strategy 2: Message History Compression](#strategy-2-message-history-compression)
-- [Strategy 3: Structured State vs. Message History](#strategy-3-structured-state-vs-message-history)
-- [Strategy 4: Prompt Engineering for Context Efficiency](#strategy-4-prompt-engineering-for-context-efficiency)
-- [Strategy 5: Intelligent Caching](#strategy-5-intelligent-caching)
-- [Strategy 6: Compression Triggers](#strategy-6-compression-triggers)
-- [Strategy 7: Architecture-Specific Patterns](#strategy-7-architecture-specific-patterns)
-- [Metrics for Context Optimization](#metrics-for-context-optimization)
-- [Common Pitfalls](#common-pitfalls)
-- [Implementation Priority](#implementation-priority)
-
----
-
-## Why Context Optimization Matters
-
-Context windows are finite and expensive. Poor context management leads to:
-- **Token bloat**: Paying for redundant or low-value tokens
-- **Lost context**: Important information pushed out by verbose content
-- **Quality degradation**: Model attention diluted across irrelevant content
-- **Latency**: Larger contexts = slower inference
+- [為何 Context 最佳化很重要](#為何-context-最佳化很重要)
+- [策略 1：工具結果管理](#策略-1工具結果管理)
+- [策略 2：訊息歷程壓縮](#策略-2訊息歷程壓縮)
+- [策略 3：結構化狀態與訊息歷程](#策略-3結構化狀態與訊息歷程)
+- [策略 4：為 Context 效率進行 Prompt Engineering](#策略-4為-context-效率進行-prompt-engineering)
+- [策略 5：智慧快取](#策略-5智慧快取)
+- [策略 6：壓縮觸發條件](#策略-6壓縮觸發條件)
+- [策略 7：架構特定模式](#策略-7架構特定模式)
+- [Context 最佳化指標](#context-最佳化指標)
+- [常見陷阱](#常見陷阱)
+- [實作優先順序](#實作優先順序)
 
 ---
 
-## Strategy 1: Tool Result Management
+## 為何 Context 最佳化很重要
 
-Tool calls often return verbose JSON that quickly fills context windows.
-
-### Problem
-A single tool call might return 5,000+ tokens of JSON data, but only 50 tokens are actually needed for the agent's response.
-
-### Solutions
-
-**Selective Field Extraction**
-- Before returning tool results to the agent, extract only the fields needed
-- Define "essential fields" per tool type (e.g., for a search tool: title, snippet, url)
-- Discard metadata, debugging info, and redundant fields
-
-**Result Truncation**
-- Limit array results to top N items (e.g., top 10 search results, not 100)
-- Truncate long text fields to first N characters
-- Summarize large datasets into aggregates (counts, averages, ranges)
-
-**Structured Summaries**
-- Convert raw tool output to natural language summaries
-- "Found 47 results. Top 3: [Company A] (45% growth), [Company B] (32% growth), [Company C] (28% growth)"
-- Preserves key facts, drops JSON verbosity
-
-### When to Apply
-- Immediately after tool execution, before adding to context
-- More aggressive for older tool results, preserve detail for recent ones
+Context windows 有限且成本高。糟糕的 context 管理會導致：
+- **Token 膨脹**：為重複或低價值的 token 付費
+- **Context 遺失**：重要資訊被冗長內容擠出視窗外
+- **品質下降**：模型注意力被不相關內容稀釋
+- **延遲**：context 越大，推論越慢
 
 ---
 
-## Strategy 2: Message History Compression
+## 策略 1：工具結果管理
 
-Conversation history grows with each turn. Managing it is critical for multi-turn agents.
+工具呼叫通常會回傳冗長的 JSON，很快就會填滿 context window。
 
-### Tier 1: Sliding Window
-Keep only the last N messages, drop older ones.
+### 問題
+單一次工具呼叫可能回傳超過 5,000 個 token 的 JSON 資料，但 agent 回應實際只需要 50 個 token。
 
-| Pros | Cons |
+### 解法
+
+**選擇性欄位擷取**
+- 在將工具結果回傳給 agent 前，只擷取需要的欄位
+- 依工具類型定義「必要欄位」（例如搜尋工具：title、snippet、url）
+- 捨棄 metadata、debugging 資訊與重複欄位
+
+**結果截斷**
+- 將陣列結果限制為前 N 筆（例如前 10 筆搜尋結果，而不是 100 筆）
+- 將長文字欄位截斷為前 N 個字元
+- 將大型資料集摘要為彙總資訊（計數、平均值、範圍）
+
+**結構化摘要**
+- 將原始工具輸出轉成自然語言摘要
+- 「找到 47 筆結果。前 3 名：[公司 A]（45% 成長）、[公司 B]（32% 成長）、[公司 C]（28% 成長）」
+- 保留關鍵事實，移除 JSON 的冗長性
+
+### 何時套用
+- 工具執行後立刻套用，在加入 context 前完成
+- 對較舊的工具結果可採取更積極的壓縮；較新的結果保留更多細節
+
+---
+
+## 策略 2：訊息歷程壓縮
+
+對話歷程會隨每次互動持續成長。對多輪 agent 而言，妥善管理至關重要。
+
+### 第 1 層：Sliding Window（滑動視窗）
+只保留最後 N 則訊息，捨棄更舊的內容。
+
+| 優點 | 缺點 |
 |------|------|
-| Simple to implement | Loses historical context |
-| Predictable context size | May break conversation continuity |
-| No additional latency | User references to old content fail |
+| 實作簡單 | 會失去歷史脈絡 |
+| Context 大小可預測 | 可能破壞對話連續性 |
+| 不會增加額外延遲 | 使用者引用舊內容時可能失敗 |
 
-**Best for**: Simple chat agents, short conversations, stateless interactions
+**最適合**：簡單聊天 agent、短對話、無狀態互動
 
-### Tier 2: Filter + Summarize
-Filter verbose messages, create summaries of older content.
+### 第 2 層：Filter + Summarize（過濾＋摘要）
+過濾冗長訊息，並為較舊內容建立摘要。
 
-| Pros | Cons |
+| 優點 | 缺點 |
 |------|------|
-| Preserves key information | Requires extraction logic |
-| Good compression (50-70%) | Some detail loss |
-| Maintains continuity | Added complexity |
+| 保留關鍵資訊 | 需要擷取邏輯 |
+| 壓縮效果佳（50-70%） | 部分細節會遺失 |
+| 維持連續性 | 複雜度增加 |
 
-**Best for**: Tool-calling agents, multi-step tasks, medium-length conversations
+**最適合**：會呼叫工具的 agents、多步驟任務、中等長度對話
 
-### Tier 3: Semantic Compression
-Use an LLM to summarize older conversation segments.
+### 第 3 層：語意壓縮
+使用 LLM 摘要較舊的對話片段。
 
-| Pros | Cons |
+| 優點 | 缺點 |
 |------|------|
-| Highest compression (70-85%) | Adds latency (LLM call) |
-| Preserves meaning well | Costs tokens for summary |
-| Handles complex context | May lose fine details |
+| 壓縮率最高（70-85%） | 會增加延遲（需呼叫 LLM） |
+| 能良好保留語意 | 摘要本身會消耗 token |
+| 可處理複雜 context | 可能遺失細微細節 |
 
-**Best for**: Very long conversations, periodic checkpoints, complex multi-agent workflows
+**最適合**：非常長的對話、定期檢查點、複雜的多 agent 工作流程
 
-### Hybrid Approach
-Combine tiers based on message age:
-- **Recent (last 5-10 messages)**: Keep verbatim
-- **Medium (10-30 messages back)**: Tier 2 filtering
-- **Old (30+ messages)**: Tier 3 semantic summary
+### 混合式方法
+依訊息新舊程度結合不同層級：
+- **近期（最後 5-10 則訊息）**：逐字保留
+- **中期（往前 10-30 則訊息）**：採用第 2 層過濾
+- **較舊（30+ 則訊息）**：採用第 3 層語意摘要
 
 ---
 
-## Strategy 3: Structured State vs. Message History
+## 策略 3：結構化狀態與訊息歷程
 
-Instead of passing full message history, maintain structured state that captures conversation semantics.
+與其傳遞完整訊息歷程，不如維護能捕捉對話語意的結構化狀態。
 
-### Message History Approach
+### 訊息歷程方法
 ```
-[Message 1: User asks about X]
-[Message 2: Assistant responds]
-[Message 3: Tool call result - 2000 tokens of JSON]
-[Message 4: Assistant analyzes]
-[Message 5: User follow-up about Y]
+[訊息 1：使用者詢問 X]
+[訊息 2：助理回覆]
+[訊息 3：工具呼叫結果 - 2000 tokens 的 JSON]
+[訊息 4：助理分析]
+[訊息 5：使用者追問 Y]
 ...
 ```
-Grows linearly, contains redundancy.
+會線性成長，且包含重複資訊。
 
-### Structured State Approach
+### 結構化狀態方法
 ```
 {
-  "topic": "X analysis",
-  "entities_discussed": ["Company A", "Company B"],
+  "topic": "X 分析",
+  "entities_discussed": ["公司 A", "公司 B"],
   "filters_applied": {"time_range": "Q3 2024"},
-  "key_findings": ["Finding 1", "Finding 2"],
-  "last_query": "Y follow-up"
+  "key_findings": ["發現 1", "發現 2"],
+  "last_query": "Y 追問"
 }
 ```
-Fixed size, captures semantics.
+大小固定，能保留語意。
 
-### Trade-offs
+### 權衡
 
-| Aspect | Message History | Structured State |
+| 面向 | 訊息歷程 | 結構化狀態 |
 |--------|-----------------|------------------|
-| Size growth | Linear | Bounded |
-| Context richness | High | Medium |
-| Implementation | Simple | Complex |
-| Error recovery | Easy (replay) | Harder |
-| Multi-turn coherence | Natural | Requires design |
+| 大小成長 | 線性 | 有上限 |
+| Context 豐富度 | 高 | 中 |
+| 實作 | 簡單 | 複雜 |
+| 錯誤復原 | 容易（可重播） | 較困難 |
+| 多輪一致性 | 自然 | 需要設計 |
 
-### Recommendation
-Use structured state for:
-- Long-running conversations (10+ turns)
-- Multi-agent systems (state passed between agents)
-- Streaming contexts (state can be serialized/resumed)
+### 建議
+以下情況使用結構化狀態：
+- 長時間對話（10 輪以上）
+- 多 agent 系統（狀態會在 agents 間傳遞）
+- Streaming contexts（狀態可序列化／恢復）
 
-Use message history for:
-- Short interactions (< 10 turns)
-- Simple Q&A agents
-- When full conversation context is genuinely needed
+以下情況使用訊息歷程：
+- 短互動（少於 10 輪）
+- 簡單 Q&A agents
+- 確實需要完整對話 context 時
 
 ---
 
-## Strategy 4: Prompt Engineering for Context Efficiency
+## 策略 4：為 Context 效率進行 Prompt Engineering
 
-The system prompt itself can bloat context. Optimize it.
+System prompt 本身也可能讓 context 膨脹，因此需要最佳化。
 
-### Avoid Redundancy
-- Don't repeat instructions that are implicit in examples
-- Don't include examples that cover the same case
-- Reference external docs rather than inlining them
+### 避免重複
+- 不要重複範例已隱含的指示
+- 不要放入涵蓋相同情境的多個範例
+- 盡量引用外部文件，而非直接內嵌
 
-### Use Hierarchical Instructions
+### 使用階層式指示
 ```
-## Core Rules (always apply)
-- Rule 1
-- Rule 2
+## 核心規則（永遠適用）
+- 規則 1
+- 規則 2
 
-## Situational Rules (apply when relevant)
-- If X, then Y
-- If A, then B
+## 情境規則（相關時才適用）
+- 如果 X，則 Y
+- 如果 A，則 B
 ```
-Agent can skip irrelevant sections mentally.
+Agent 可以在心智上略過不相關段落。
 
-### Dynamic Prompt Assembly
-Instead of a monolithic system prompt, assemble based on context:
-- Base instructions (always included)
-- Tool-specific guidance (only when tools are bound)
-- Domain context (only when relevant to query)
+### 動態組裝 Prompt
+不要使用單體式 system prompt，而是依 context 組裝：
+- 基礎指示（永遠包含）
+- 工具專用指引（僅在綁定工具時加入）
+- 領域 context（僅在與查詢相關時加入）
 
-### Measure Prompt Token Cost
-Track tokens used by:
-- System prompt (fixed cost per request)
-- Few-shot examples (fixed cost)
-- Conversation history (variable)
-- Tool results (variable, often largest)
-
----
-
-## Strategy 5: Intelligent Caching
-
-Avoid redundant computation and token usage through caching.
-
-### Result Caching
-- Cache tool results for identical queries
-- Set TTL based on data freshness requirements
-- Invalidate on relevant state changes
-
-### Summary Caching
-- Cache computed summaries of conversation segments
-- Reuse when that segment hasn't changed
-- Particularly valuable for Tier 3 semantic summaries
-
-### Prompt Caching (Model-Level)
-Some providers cache prompt prefixes:
-- Anthropic: Automatic prefix caching for repeated prompts
-- OpenAI: Prompt caching for identical prefix sequences
-
-Structure prompts to maximize cache hits:
-- Put stable content (system prompt, examples) first
-- Put variable content (conversation, tool results) last
+### 衡量 Prompt 的 Token 成本
+追蹤以下部分消耗的 token：
+- System prompt（每次請求的固定成本）
+- Few-shot examples（固定成本）
+- 對話歷程（變動成本）
+- 工具結果（變動成本，通常最大）
 
 ---
 
-## Strategy 6: Compression Triggers
+## 策略 5：智慧快取
 
-Don't compress on every turn—compress when needed.
+透過快取避免重複計算與重複消耗 token。
 
-### Signal-Based Triggers
-- **Token count**: Compress when estimated tokens > threshold
-- **Message count**: Compress when messages > threshold
-- **Turn count**: Compress every N turns
-- **Time-based**: Compress after N minutes of conversation
+### 結果快取
+- 針對相同查詢快取工具結果
+- 依資料新鮮度需求設定 TTL
+- 在相關狀態變更時使快取失效
 
-### Threshold Guidelines
+### 摘要快取
+- 快取已計算的對話片段摘要
+- 當該片段未變更時可重複使用
+- 對第 3 層語意摘要特別有價值
 
-| Agent Type | Token Trigger | Message Trigger |
+### Prompt 快取（模型層級）
+部分供應商會快取 prompt 前綴：
+- Anthropic：對重複 prompt 自動進行前綴快取（prefix caching）
+- OpenAI：對相同前綴序列進行 prompt 快取（prompt caching）
+
+請以下列方式設計 prompts，以提高快取命中率：
+- 將穩定內容（system prompt、範例）放前面
+- 將變動內容（對話、工具結果）放最後面
+
+---
+
+## 策略 6：壓縮觸發條件
+
+不要每一輪都壓縮——有需要時再壓縮。
+
+### 以訊號為基礎的觸發條件
+- **Token 數**：估算 token 超過門檻時壓縮
+- **訊息數**：訊息超過門檻時壓縮
+- **輪數**：每 N 輪壓縮一次
+- **時間條件**：對話持續 N 分鐘後壓縮
+
+### 門檻建議
+
+| Agent 類型 | Token 觸發條件 | 訊息觸發條件 |
 |------------|---------------|-----------------|
-| Simple Chat | 80K | 30 messages |
-| RAG Agent | 40K | 15 messages |
-| Tool-Calling | 50K | 20 messages |
-| Multi-Agent | 30K | 10 messages |
+| 簡單聊天 | 80K | 30 則訊息 |
+| RAG Agent | 40K | 15 則訊息 |
+| Tool-Calling | 50K | 20 則訊息 |
+| Multi-Agent | 30K | 10 則訊息 |
 
-### Avoid Over-Compression
-- Don't compress before you have meaningful content to compress
-- Keep recent context intact (last 5-10 messages)
-- Verify compression doesn't break agent behavior (test with evals)
-
----
-
-## Strategy 7: Architecture-Specific Patterns
-
-### For Multi-Agent Pipelines
-- Each agent should receive only the context it needs
-- Pass structured summaries between stages, not full history
-- The final "executor" stage may need more context than the "classifier"
-
-### For RAG Agents
-- Retrieved documents often dominate context
-- Limit chunks returned (top 3-5, not 10+)
-- Summarize retrieved content before adding to context
-- Consider relevance filtering before retrieval
-
-### For Streaming Agents
-- Context must be serializable for resume
-- Prefer structured state over message history
-- Compress before serialization checkpoints
+### 避免過度壓縮
+- 在尚未累積足夠有意義的內容前，不要急著壓縮
+- 保留近期 context 完整性（最後 5-10 則訊息）
+- 驗證壓縮不會破壞 agent 行為（使用 evals 測試）
 
 ---
 
-## Metrics for Context Optimization
+## 策略 7：架構特定模式
 
-Track these to measure optimization effectiveness:
+### 適用於 Multi-Agent Pipelines
+- 每個 agent 只應接收自己需要的 context
+- 階段之間應傳遞結構化摘要，而非完整歷程
+- 最終的「executor」階段可能比「classifier」階段需要更多 context
 
-| Metric | What It Measures | Target |
+### 適用於 RAG Agents
+- 擷取到的文件通常是 context 的主要占用來源
+- 限制回傳 chunk 數量（前 3-5 個，而不是 10+ 個）
+- 在加入 context 前先摘要擷取內容
+- 可在擷取前先做相關性過濾
+
+### 適用於 Streaming Agents
+- Context 必須可序列化，以便恢復
+- 優先使用結構化狀態而非訊息歷程
+- 在序列化檢查點前先壓縮
+
+---
+
+## Context 最佳化指標
+
+請追蹤以下指標來衡量最佳化成效：
+
+| 指標 | 衡量內容 | 目標 |
 |--------|------------------|--------|
-| Tokens per request | Context efficiency | Minimize |
-| Compression ratio | Before/after tokens | 0.3-0.7 |
-| Eval score post-compression | Quality maintenance | No regression |
-| Latency impact | Compression overhead | < 100ms |
-| Cache hit rate | Redundant computation avoided | > 50% |
+| 每次請求的 Tokens | Context 效率 | 最小化 |
+| 壓縮比 | 壓縮前／後 token 數 | 0.3-0.7 |
+| 壓縮後的 Eval 分數 | 品質維持情況 | 不得退步 |
+| 延遲影響 | 壓縮額外成本 | < 100ms |
+| 快取命中率 | 避免重複計算的程度 | > 50% |
 
 ---
 
-## Common Pitfalls
+## 常見陷阱
 
-### 1. Compressing Too Aggressively
-**Symptom**: Agent can't answer follow-up questions
-**Fix**: Preserve recent messages, test with multi-turn evals
+### 1. 壓縮過於激進
+**症狀**：Agent 無法回答追問問題
+**修正方式**：保留近期訊息，並以多輪 evals 測試
 
-### 2. Ignoring Tool Result Size
-**Symptom**: Single tool call fills context window
-**Fix**: Truncate/summarize tool results immediately
+### 2. 忽略工具結果大小
+**症狀**：單一次工具呼叫就填滿 context window
+**修正方式**：立即截斷／摘要工具結果
 
-### 3. Redundant Context Across Agents
-**Symptom**: Multi-agent system passes same content to every stage
-**Fix**: Tailor context per agent role
+### 3. Agents 之間重複傳遞 Context
+**症狀**：多 agent 系統在每個階段都傳遞相同內容
+**修正方式**：依 agent 角色量身提供 context
 
-### 4. No Compression Testing
-**Symptom**: Compression breaks edge cases
-**Fix**: Include compression scenarios in evaluation dataset
+### 4. 未測試壓縮效果
+**症狀**：壓縮破壞邊界案例
+**修正方式**：在 evaluation dataset 中納入壓縮情境
 
-### 5. Static Thresholds
-**Symptom**: Works for some queries, fails for others
-**Fix**: Use multi-signal triggers (tokens AND messages AND time)
-
----
-
-## Implementation Priority
-
-When implementing context optimization:
-
-1. **Start with tool results** - Often the biggest win with lowest effort
-2. **Add sliding window** - Simple message limit prevents runaway growth
-3. **Implement structured extraction** - Capture key facts before filtering
-4. **Add compression triggers** - Compress only when needed
-5. **Consider semantic summarization** - For complex, long-running conversations
+### 5. 固定門檻
+**症狀**：對某些查詢有效，對其他查詢失敗
+**修正方式**：使用多訊號觸發條件（tokens AND messages AND time）
 
 ---
 
-## References
+## 實作優先順序
 
-- Anthropic prompt caching: Automatic prefix caching for repeated prompts
-- Token estimation: ~4 characters per token heuristic for English text
-- Context window limits vary by model—check provider documentation
+實作 context 最佳化時：
+
+1. **先處理工具結果** - 通常效益最大，且投入成本最低
+2. **加入 sliding window** - 簡單的訊息上限即可避免無限制成長
+3. **實作結構化擷取** - 在過濾前先保留關鍵事實
+4. **加入壓縮觸發條件** - 只在必要時壓縮
+5. **考慮語意摘要** - 適合複雜且長時間執行的對話
+
+---
+
+## 參考資料
+
+- Anthropic prompt caching：針對重複 prompts 的自動前綴快取（prefix caching）
+- Token estimation：英文文字約可用每個 token 4 個字元的經驗法則來估算
+- Context window 限制因模型而異——請查閱供應商文件

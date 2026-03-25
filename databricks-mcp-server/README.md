@@ -1,224 +1,230 @@
 # Databricks MCP Server
 
-A simple [FastMCP](https://github.com/jlowin/fastmcp) server that exposes Databricks operations as MCP tools for AI assistants like Claude Code.
+一個基於 [FastMCP](https://github.com/jlowin/fastmcp) 的 MCP 伺服器，將 Databricks 操作公開為 MCP 工具，供 Claude Code 等 AI 程式助手使用。
 
-## Quick Start
+## 快速入門
 
-### Step 1: Clone the repository
+### 步驟一：複製儲存庫
 
 ```bash
 git clone https://github.com/databricks-solutions/ai-dev-kit.git
 cd ai-dev-kit
 ```
 
-### Step 2: Install the packages
+### 步驟二：安裝套件
 
 ```bash
-# Install the core library
+# 安裝核心函式庫
 uv pip install -e ./databricks-tools-core
 
-# Install the MCP server
+# 安裝 MCP 伺服器
 uv pip install -e ./databricks-mcp-server
 ```
 
-### Step 3: Configure Databricks authentication
+### 步驟三：設定 Databricks 認證
 
 ```bash
-# Option 1: Environment variables
+# 方式一：環境變數
 export DATABRICKS_HOST="https://your-workspace.cloud.databricks.com"
 export DATABRICKS_TOKEN="your-token"
 
-# Option 2: Use a profile from ~/.databrickscfg
+# 方式二：使用 ~/.databrickscfg 中的設定檔
 export DATABRICKS_CONFIG_PROFILE="your-profile"
 ```
 
-### Step 4: Add MCP server to Claude Code
+### 步驟四：將 MCP 伺服器加入 AI 助手
 
-For Claude Code, add to your project's `.mcp.json` (create the file if it doesn't exist).
-For Cursor, add to your project's `.cursor/mcp.json` (create the file if it doesn't exist).
+**Claude Code**：在專案的 `.mcp.json` 中加入以下設定（若不存在則新建）。
+**Cursor**：在專案的 `.cursor/mcp.json` 中加入。
 
 ```json
 {
   "mcpServers": {
     "databricks": {
       "command": "uv",
-      "args": ["run",  "--directory", "/path/to/ai-dev-kit", "python", "databricks-mcp-server/run_server.py"],
+      "args": ["run", "--directory", "/path/to/ai-dev-kit", "python", "databricks-mcp-server/run_server.py"],
       "defer_loading": true
     }
   }
 }
 ```
 
-**Replace `/path/to/ai-dev-kit`** with the actual path where you cloned the repo.
+**請將 `/path/to/ai-dev-kit`** 替換為實際的複製路徑。
 
-**Note:** `"defer_loading": true` improves startup time by not loading all tools upfront.
+> **注意：** `"defer_loading": true` 可避免啟動時載入所有工具，改善啟動速度。
 
-### Step 5 (Recommended): Install Databricks skills
+### 步驟五（建議）：安裝 Databricks Skills
 
-The MCP server works best with **Databricks skills** that teach Claude best practices:
+MCP 伺服器搭配 **Databricks Skills** 效果最佳，Skills 提供 Claude 關於最佳實踐的知識：
 
 ```bash
-# In your project directory (not ai-dev-kit)
+# 在您的專案目錄（非 ai-dev-kit）執行
 cd /path/to/your/project
 curl -sSL https://raw.githubusercontent.com/databricks-solutions/ai-dev-kit/main/databricks-skills/install_skills.sh | bash
 ```
 
-### Step 6: Start Claude Code
+### 步驟六：啟動 Claude Code
 
 ```bash
 cd /path/to/your/project
 claude
 ```
 
-Claude now has both:
-- **Skills** (knowledge) - patterns and best practices in `.claude/skills/`
-- **MCP Tools** (actions) - Databricks operations via the MCP server
+Claude 現在同時具備：
+- **Skills（知識）** — 模式與最佳實踐，位於 `.claude/skills/`
+- **MCP 工具（操作）** — 透過 MCP 伺服器執行 Databricks 操作
 
-## Available Tools
+---
 
-### SQL Operations
+## 可用工具
 
-| Tool | Description |
-|------|-------------|
-| `execute_sql` | Execute a SQL query on a Databricks SQL Warehouse |
-| `execute_sql_multi` | Execute multiple SQL statements with parallel execution |
-| `list_warehouses` | List all SQL warehouses in the workspace |
-| `get_best_warehouse` | Get the ID of the best available warehouse |
-| `get_table_details` | Get table schema and statistics |
+### SQL 操作
 
-### Compute
+| 工具 | 說明 |
+|------|------|
+| `execute_sql` | 在 Databricks SQL Warehouse 上執行 SQL 查詢 |
+| `execute_sql_multi` | 平行執行多條 SQL 語句 |
+| `list_warehouses` | 列出工作區中所有 SQL Warehouse |
+| `get_best_warehouse` | 取得最佳可用 Warehouse 的 ID |
+| `get_table_details` | 取得資料表的 Schema 與統計資訊 |
 
-| Tool | Description |
-|------|-------------|
-| `list_clusters` | List all clusters in the workspace |
-| `get_best_cluster` | Get the best available cluster for execution |
-| `execute_databricks_command` | Execute code on a Databricks cluster |
-| `run_python_file_on_databricks` | Run a local Python file on a cluster |
+### 計算（Compute）
 
-### File Operations
+| 工具 | 說明 |
+|------|------|
+| `list_clusters` | 列出工作區中所有叢集 |
+| `get_best_cluster` | 取得最佳可用叢集 |
+| `execute_databricks_command` | 在 Databricks 叢集上執行程式碼 |
+| `run_python_file_on_databricks` | 將本地 Python 檔案上傳並在叢集上執行 |
 
-| Tool | Description |
-|------|-------------|
-| `upload_folder` | Upload a local folder to Databricks workspace (parallel) |
-| `upload_file` | Upload a single file to workspace |
+### 檔案操作
+
+| 工具 | 說明 |
+|------|------|
+| `upload_folder` | 平行上傳本地資料夾至 Databricks Workspace |
+| `upload_file` | 上傳單一檔案至 Workspace |
 
 ### Jobs
 
-| Tool | Description |
-|------|-------------|
-| `create_job` | Create a new job with tasks (serverless by default) |
-| `get_job` | Get detailed job configuration |
-| `list_jobs` | List jobs with optional name filter |
-| `find_job_by_name` | Find job by exact name, returns job ID |
-| `update_job` | Update job configuration |
-| `delete_job` | Delete a job |
-| `run_job_now` | Trigger a job run, returns run ID |
-| `get_run` | Get run status and details |
-| `get_run_output` | Get run output and logs |
-| `list_runs` | List runs with filters |
-| `cancel_run` | Cancel a running job |
-| `wait_for_run` | Wait for run completion |
+| 工具 | 說明 |
+|------|------|
+| `create_job` | 建立新 Job（預設使用無伺服器計算） |
+| `get_job` | 取得 Job 詳細設定 |
+| `list_jobs` | 列出 Jobs（可依名稱篩選） |
+| `find_job_by_name` | 依精確名稱尋找 Job，回傳 Job ID |
+| `update_job` | 更新 Job 設定 |
+| `delete_job` | 刪除 Job |
+| `run_job_now` | 觸發 Job 執行，回傳 Run ID |
+| `get_run` | 取得 Run 狀態與詳細資訊 |
+| `get_run_output` | 取得 Run 輸出與日誌 |
+| `list_runs` | 列出 Runs（可依條件篩選） |
+| `cancel_run` | 取消執行中的 Job |
+| `wait_for_run` | 等待 Run 完成 |
 
-### Spark Declarative Pipelines (SDP)
+### Spark 宣告式管道（SDP）
 
-| Tool | Description |
-|------|-------------|
-| `create_or_update_pipeline` | Create or update pipeline by name (auto-detects existing) |
-| `get_pipeline` | Get pipeline details by ID or name; enriched with latest update status and events. Omit args to list all. |
-| `delete_pipeline` | Delete a pipeline |
-| `run_pipeline` | Start, stop, or wait for pipeline runs |
+| 工具 | 說明 |
+|------|------|
+| `create_or_update_pipeline` | 依名稱建立或更新管道（自動偵測是否已存在） |
+| `get_pipeline` | 依 ID 或名稱取得管道詳情，含最新狀態與事件；省略參數則列出所有管道 |
+| `delete_pipeline` | 刪除管道 |
+| `run_pipeline` | 啟動、停止或等待管道執行 |
 
-### Knowledge Assistants (KA)
+### 知識助手（Knowledge Assistant）
 
-| Tool | Description |
-|------|-------------|
-| `manage_ka` | Manage Knowledge Assistants (create/update, get, find by name, delete) |
+| 工具 | 說明 |
+|------|------|
+| `manage_ka` | 管理知識助手（建立/更新、查詢、依名稱尋找、刪除） |
 
 ### Genie Spaces
 
-| Tool | Description |
-|------|-------------|
-| `create_or_update_genie` | Create or update a Genie Space for SQL-based data exploration |
-| `get_genie` | Get Genie Space details by space ID |
-| `find_genie_by_name` | Find Genie Space by name, returns space ID |
-| `delete_genie` | Delete a Genie Space |
+| 工具 | 說明 |
+|------|------|
+| `create_or_update_genie` | 建立或更新 Genie Space（SQL 自然語言資料探索） |
+| `get_genie` | 依 Space ID 取得 Genie Space 詳情 |
+| `find_genie_by_name` | 依名稱尋找 Genie Space，回傳 Space ID |
+| `delete_genie` | 刪除 Genie Space |
 
-### Supervisor Agent (MAS)
+### Supervisor Agent（MAS）
 
-| Tool | Description |
-|------|-------------|
-| `manage_mas` | Manage Supervisor Agents (create/update, get, find by name, delete) |
+| 工具 | 說明 |
+|------|------|
+| `manage_mas` | 管理 Supervisor Agent（建立/更新、查詢、依名稱尋找、刪除） |
 
-### AI/BI Dashboards
+### AI/BI 儀表板
 
-| Tool | Description |
-|------|-------------|
-| `create_or_update_dashboard` | Create or update an AI/BI dashboard from JSON content |
-| `get_dashboard` | Get dashboard details by ID, or list all dashboards (omit dashboard_id) |
-| `delete_dashboard` | Soft-delete a dashboard (moves to trash) |
-| `publish_dashboard` | Publish or unpublish a dashboard (`publish=True/False`) |
+| 工具 | 說明 |
+|------|------|
+| `create_or_update_dashboard` | 從 JSON 內容建立或更新 AI/BI 儀表板 |
+| `get_dashboard` | 依 ID 取得儀表板詳情；省略 `dashboard_id` 則列出所有儀表板 |
+| `delete_dashboard` | 軟刪除儀表板（移至垃圾桶） |
+| `publish_dashboard` | 發佈或取消發佈儀表板（`publish=True/False`） |
 
-### Model Serving
+### 模型服務（Model Serving）
 
-| Tool | Description |
-|------|-------------|
-| `get_serving_endpoint_status` | Get the status of a Model Serving endpoint |
-| `query_serving_endpoint` | Query a Model Serving endpoint with chat or ML model inputs |
-| `list_serving_endpoints` | List all Model Serving endpoints in the workspace |
+| 工具 | 說明 |
+|------|------|
+| `get_serving_endpoint_status` | 取得模型服務端點狀態 |
+| `query_serving_endpoint` | 以聊天或 ML 模型輸入查詢模型服務端點 |
+| `list_serving_endpoints` | 列出工作區中所有模型服務端點 |
 
-## Architecture
+---
+
+## 架構
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│                     Claude Code                             │
+│                        Claude Code                          │
 │                                                             │
-│  Skills (knowledge)          MCP Tools (actions)            │
-│  └── .claude/skills/         └── .claude/mcp.json           │
-│      ├── sdp-writer              └── databricks server      │
-│      ├── databricks-bundles                          │
+│  Skills（知識）                  MCP 工具（操作）             │
+│  └── .claude/skills/            └── .claude/mcp.json        │
+│      ├── sdp-writer                 └── databricks server   │
+│      ├── databricks-bundles                                 │
 │      └── ...                                                │
 └──────────────────────────────┬──────────────────────────────┘
-                               │ MCP Protocol (stdio)
+                               │ MCP Protocol（stdio）
                                ▼
 ┌─────────────────────────────────────────────────────────────┐
-│              databricks-mcp-server (FastMCP)                │
+│              databricks-mcp-server（FastMCP）                │
 │                                                             │
 │  tools/sql.py ──────────────┐                               │
 │  tools/compute.py ──────────┤                               │
 │  tools/file.py ─────────────┤                               │
-│  tools/jobs.py ─────────────┼──► @mcp.tool decorators       │
+│  tools/jobs.py ─────────────┼──► @mcp.tool 裝飾器           │
 │  tools/pipelines.py ────────┤                               │
 │  tools/agent_bricks.py ─────┤                               │
 │  tools/aibi_dashboards.py ──┤                               │
 │  tools/serving.py ──────────┘                               │
 └──────────────────────────────┬──────────────────────────────┘
-                               │ Python imports
+                               │ Python 函式呼叫
                                ▼
 ┌─────────────────────────────────────────────────────────────┐
 │                   databricks-tools-core                     │
 │                                                             │
 │  sql/         compute/       jobs/         pipelines/       │
-│  └── execute  └── run_code   └── run/wait  └── create/run   │
+│  └── 執行     └── 執行程式碼  └── 執行/等待  └── 建立/執行    │
 └──────────────────────────────┬──────────────────────────────┘
                                │ Databricks SDK
                                ▼
                     ┌─────────────────────┐
                     │  Databricks         │
-                    │  Workspace          │
+                    │  工作區             │
                     └─────────────────────┘
 ```
 
-## Development
+---
 
-The server is intentionally simple - each tool file just imports functions from `databricks-tools-core` and decorates them with `@mcp.tool`.
+## 開發指南
 
-To add a new tool:
+伺服器設計刻意保持簡單——每個工具檔案只需從 `databricks-tools-core` 匯入函式，並以 `@mcp.tool` 裝飾即可。
 
-1. Add the function to `databricks-tools-core`
-2. Create a wrapper in `databricks_mcp_server/tools/`
-3. Import it in `server.py`
+**新增工具的步驟：**
 
-Example:
+1. 在 `databricks-tools-core` 新增業務函式
+2. 在 `databricks_mcp_server/tools/` 建立對應的封裝模組
+3. 在 `server.py` 匯入新模組
+
+**範例：**
 
 ```python
 # tools/my_module.py
@@ -227,22 +233,26 @@ from ..server import mcp
 
 @mcp.tool
 def my_function(arg1: str, arg2: int = 10) -> dict:
-    """Tool description shown to the AI."""
+    """工具說明，會顯示給 AI 助手參考。"""
     return _my_function(arg1=arg1, arg2=arg2)
 ```
 
-## Usage Tracking via Audit Logs
+---
 
-All API calls made through the MCP server are tagged with a custom `User-Agent` header:
+## 使用追蹤（透過稽核日誌）
+
+所有透過 MCP 伺服器發出的 API 呼叫，都會附帶自訂 `User-Agent` 標頭：
 
 ```
-databricks-ai-dev-kit/0.1.0 databricks-sdk-py/... project/<auto-detected-repo-name>
+databricks-ai-dev-kit/0.1.0 databricks-sdk-py/... project/<自動偵測的儲存庫名稱>
 ```
 
-The project name is auto-detected from the git remote URL (no configuration needed). This makes every call filterable in the `system.access.audit` system table.
+專案名稱從 git remote URL 自動偵測（無需手動設定）。所有呼叫均可在 `system.access.audit` 系統資料表中依此篩選查詢。
 
-> **Note:** Audit log entries may take 2–10 minutes to appear. The workspace must have Unity Catalog enabled to query `system.access.audit`.
+> **注意：** 稽核日誌最多需要 2–10 分鐘才會出現。工作區須啟用 Unity Catalog 才能查詢 `system.access.audit`。
 
-## License
+---
 
-© Databricks, Inc. See [LICENSE.md](../LICENSE.md).
+## 授權條款
+
+© Databricks, Inc. 詳見 [LICENSE.md](../LICENSE.md)。

@@ -1,62 +1,62 @@
-# MLflow 3 Prompt Optimization with GEPA
+# 使用 GEPA 的 MLflow 3 Prompt 最佳化
 
-Patterns for automated prompt improvement using `optimize_prompts()` with the GEPA (Genetic-Pareto) optimizer. GEPA iteratively evolves a registered system prompt by evaluating candidates against a scorer, then promotes the best version.
+使用 GEPA（Genetic-Pareto）最佳化器搭配 `optimize_prompts()` 進行自動化 Prompt 改進的模式。GEPA 會透過 scorer 評估候選版本，逐步演化已註冊的 system prompt，然後提升最佳版本。
 
-**Using an aligned judge as the scorer is recommended.** An aligned judge encodes domain-expert preferences, giving GEPA a more accurate optimization signal than a generic LLM judge. See `patterns-judge-alignment.md` for the full alignment workflow.
+**建議使用對齊後的 judge 作為 scorer。** 對齊後的 judge 會編碼領域專家的偏好，相較於通用 LLM judge，能為 GEPA 提供更準確的最佳化訊號。完整的對齊工作流程請參閱 `patterns-judge-alignment.md`。
 
-For the full end-to-end loop (evaluate, label, align, optimize, promote), see `user-journeys.md` Journey 10. For details on the GEPA and MemAlign approaches, see the [Self-Optimizing Agent blog post](https://www.databricks.com/blog/self-optimizing-football-chatbot-guided-domain-experts-databricks).
+如需完整的端對端迴圈（evaluate、label、align、optimize、promote），請參閱 `user-journeys.md` 的 Journey 10。若要了解 GEPA 與 MemAlign 方法的細節，請參閱 [Self-Optimizing Agent 部落格文章](https://www.databricks.com/blog/self-optimizing-football-chatbot-guided-domain-experts-databricks)。
 
-**Read `GOTCHAS.md` before implementing -- especially the GEPA sections.**
+**實作前請先閱讀 `GOTCHAS.md`，尤其是 GEPA 相關章節。**
 
 ---
 
-## Pattern 1: Build Optimization Dataset (inputs + expectations required)
+## 模式 1：建立最佳化資料集（必須包含 inputs + expectations）
 
-GEPA requires both `inputs` AND `expectations` in every record. This is different from the eval dataset which only needs `inputs`. The `expectations` field is what GEPA uses during reflection to reason about why the current prompt is underperforming.
+GEPA 要求每筆記錄都同時包含 `inputs` 與 `expectations`。這與只需要 `inputs` 的 eval 資料集不同。`expectations` 欄位是 GEPA 在反思時用來推理目前 prompt 為何表現不佳的依據。
 
 ```python
-# optimization dataset must have both inputs AND expectations
+# 最佳化資料集必須同時包含 inputs 與 expectations
 optimization_dataset = [
     {
         "inputs": {
-            "input": [{"role": "user", "content": "What are the tendencies on 3rd and short?"}]
+            "input": [{"role": "user", "content": "3 檔短碼數時有哪些傾向？"}]
         },
         "expectations": {
             "expected_response": (
-                "The agent should identify key players and their 3rd-and-short involvement, "
-                "provide relevant statistics, and give tactical recommendations. "
-                "If data quality issues exist, they should be stated explicitly."
+                "代理程式應識別關鍵球員及其在 3 檔短碼數情境中的參與情況，"
+                "提供相關統計資料，並給出戰術建議。"
+                "如果存在資料品質問題，應明確說明。"
             )
         }
     },
     {
         "inputs": {
-            "input": [{"role": "user", "content": "How does the offense perform against the blitz?"}]
+            "input": [{"role": "user", "content": "進攻方在遭遇 blitz 時的表現如何？"}]
         },
         "expectations": {
             "expected_response": (
-                "The agent should analyze performance metrics vs. pressure, "
-                "compare success across different blitz packages, "
-                "and provide concrete defensive recommendations."
+                "代理程式應分析面對壓迫時的表現指標，"
+                "比較不同 blitz 套件下的成功情況，"
+                "並提供具體的防守建議。"
             )
         }
     },
-    # Add 15-20 representative examples covering key use cases
+    # 新增 15 到 20 個涵蓋關鍵使用案例的代表性範例
 ]
 
-# Persist to MLflow dataset
+# 持久化到 MLflow 資料集
 from mlflow.genai.datasets import create_dataset
 
 optim_dataset = create_dataset(name=OPTIMIZATION_DATASET_NAME)
 optim_dataset = optim_dataset.merge_records(optimization_dataset)
-print(f"Created optimization dataset with {len(optimization_dataset)} records")
+print(f"已建立最佳化資料集，共 {len(optimization_dataset)} 筆記錄")
 ```
 
 ---
 
-## Pattern 2: Run optimize_prompts() with GEPA
+## 模式 2：使用 GEPA 執行 optimize_prompts()
 
-Use a scorer (ideally an aligned judge from `patterns-judge-alignment.md`) to drive GEPA prompt optimization of the registered system prompt.
+使用 scorer（理想情況下是來自 `patterns-judge-alignment.md` 的對齊後 judge）來驅動已註冊 system prompt 的 GEPA Prompt 最佳化。
 
 ```python
 import mlflow
@@ -65,15 +65,15 @@ from mlflow.genai.scorers import get_scorer
 
 mlflow.set_experiment(experiment_id=EXPERIMENT_ID)
 
-# Load prompt from registry (must be registered before optimization)
+# 從 registry 載入 prompt（最佳化前必須先完成註冊）
 system_prompt = mlflow.genai.load_prompt(f"prompts:/{PROMPT_NAME}@production")
-print(f"Loaded prompt: {system_prompt.uri}")
+print(f"已載入 prompt: {system_prompt.uri}")
 
-# Load scorer -- an aligned judge is recommended for domain-accurate optimization
-# See patterns-judge-alignment.md for how to create one
+# 載入 scorer -- 建議使用對齊後的 judge 以進行符合領域需求的最佳化
+# 如何建立 scorer，請參閱 patterns-judge-alignment.md
 aligned_judge = get_scorer(name=ALIGNED_JUDGE_NAME, experiment_id=EXPERIMENT_ID)
 
-# Define predict_fn -- loads prompt from registry on each call so GEPA can swap it
+# 定義 predict_fn -- 每次呼叫時都從 registry 載入 prompt，讓 GEPA 可以替換它
 def predict_fn(input):
     prompt = mlflow.genai.load_prompt(system_prompt.uri)
     system_content = prompt.format()
@@ -85,24 +85,24 @@ def predict_fn(input):
     ]
     return AGENT.predict({"input": messages})
 
-# Define aggregation to normalize judge feedback (Feedback.value) to 0-1 for GEPA
+# 定義 aggregation，將 judge feedback（Feedback.value）正規化為 0 到 1 供 GEPA 使用
 def objective_function(scores: dict) -> float:
     feedback = scores.get(ALIGNED_JUDGE_NAME)
     if feedback and hasattr(feedback, "feedback") and hasattr(feedback.feedback, "value"):
         try:
-            return float(feedback.feedback.value) / 5.0  # Normalize 1-5 scale to 0-1
+            return float(feedback.feedback.value) / 5.0  # 將 1 到 5 的量表正規化為 0 到 1
         except (ValueError, TypeError):
             return 0.5
     return 0.5
 
-# Run optimization
+# 執行最佳化
 result = mlflow.genai.optimize_prompts(
     predict_fn=predict_fn,
-    train_data=optimization_dataset,  # Must have inputs + expectations
+    train_data=optimization_dataset,  # 必須包含 inputs + expectations
     prompt_uris=[system_prompt.uri],
     optimizer=GepaPromptOptimizer(
         reflection_model=REFLECTION_MODEL,
-        max_metric_calls=75,            # Reduce for faster runs; increase for quality
+        max_metric_calls=75,            # 若要更快完成可降低；若要提升品質可增加
         display_progress_bar=True,
     ),
     scorers=[aligned_judge],
@@ -110,23 +110,23 @@ result = mlflow.genai.optimize_prompts(
 )
 
 optimized_prompt = result.optimized_prompts[0]
-print(f"Initial score: {result.initial_eval_score}")
-print(f"Final score:   {result.final_eval_score}")
-print(f"\nOptimized template (first 500 chars):\n{optimized_prompt.template[:500]}...")
+print(f"初始分數: {result.initial_eval_score}")
+print(f"最終分數:   {result.final_eval_score}")
+print(f"\n最佳化後的範本（前 500 個字元）：\n{optimized_prompt.template[:500]}...")
 ```
 
 ---
 
-## Pattern 3: Register Optimized Prompt and Conditionally Promote
+## 模式 3：註冊最佳化後的 Prompt，並視情況提升
 
-Only promote to the "production" alias if the optimized prompt outperforms the baseline.
+只有在最佳化後的 prompt 表現優於基準時，才提升到 `production` alias。
 
 ```python
-# Register new prompt version with optimization metadata
+# 以最佳化中繼資料註冊新的 prompt 版本
 new_prompt_version = mlflow.genai.register_prompt(
     name=PROMPT_NAME,
     template=optimized_prompt.template,
-    commit_message=f"GEPA optimization using {ALIGNED_JUDGE_NAME}",
+    commit_message=f"使用 {ALIGNED_JUDGE_NAME} 進行 GEPA 最佳化",
     tags={
         "initial_score": str(result.initial_eval_score),
         "final_score": str(result.final_eval_score),
@@ -134,9 +134,9 @@ new_prompt_version = mlflow.genai.register_prompt(
         "judge": ALIGNED_JUDGE_NAME,
     },
 )
-print(f"Registered prompt version: {new_prompt_version.version}")
+print(f"已註冊 prompt 版本: {new_prompt_version.version}")
 
-# Conditional promotion -- only update production alias if score improved
+# 條件式提升 -- 僅在分數改善時更新 production alias
 def promote_if_improved(prompt_name, result, new_prompt_version):
     if result.final_eval_score > result.initial_eval_score:
         mlflow.genai.set_prompt_alias(
@@ -144,20 +144,20 @@ def promote_if_improved(prompt_name, result, new_prompt_version):
             alias="production",
             version=new_prompt_version.version,
         )
-        print(f"Promoted version {new_prompt_version.version} to production "
-              f"({result.initial_eval_score:.3f} -> {result.final_eval_score:.3f})")
+        print(f"已將版本 {new_prompt_version.version} 提升到 production "
+              f"（{result.initial_eval_score:.3f} -> {result.final_eval_score:.3f}）")
     else:
-        print(f"No improvement ({result.initial_eval_score:.3f} -> "
-              f"{result.final_eval_score:.3f}). Production alias unchanged.")
+        print(f"沒有改善（{result.initial_eval_score:.3f} -> "
+              f"{result.final_eval_score:.3f}）。production alias 維持不變。")
 
 promote_if_improved(PROMPT_NAME, result, new_prompt_version)
 ```
 
 ---
 
-## Tips for Prompt Optimization
+## Prompt 最佳化建議
 
-- The optimization dataset should cover the diversity of queries your agent will handle. Include edge cases, ambiguous requests, and scenarios where tool selection matters.
-- Expected responses should describe what the agent should do (which tools to call, what information to include) rather than exact output text.
-- Start with `max_metric_calls` set to between 50 and 100. Higher values explore more candidates but increase cost and runtime.
-- The GEPA optimizer learns from failure modes. If the aligned judge penalizes missing benchmarks or small-sample caveats, GEPA will inject those requirements into the optimized prompt.
+- 最佳化資料集應涵蓋代理程式會處理的查詢多樣性。請納入邊界案例、模稜兩可的請求，以及工具選擇很重要的情境。
+- 預期回應應描述代理程式應該做什麼（要呼叫哪些工具、應包含哪些資訊），而不是精確的輸出文字。
+- 建議先將 `max_metric_calls` 設定在 50 到 100 之間。較高的值會探索更多候選版本，但也會增加成本與執行時間。
+- GEPA 最佳化器會從失敗模式中學習。如果對齊後的 judge 會對缺少 benchmark 或小樣本警語進行扣分，GEPA 就會把這些要求注入最佳化後的 prompt 中。

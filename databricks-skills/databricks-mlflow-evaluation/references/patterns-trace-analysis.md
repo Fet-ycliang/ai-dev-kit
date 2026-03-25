@@ -1,61 +1,61 @@
-# MLflow 3 Trace Analysis Patterns
+# MLflow 3 Trace 分析模式
 
-Working code patterns for analyzing MLflow traces across agent architectures.
+跨 Agent 架構分析 MLflow trace 的實用程式碼模式。
 
-## When to Use MCP vs Python SDK
+## 何時使用 MCP vs Python SDK
 
-| Use Case | Recommended Approach |
-|----------|---------------------|
-| Interactive trace exploration | **MLflow MCP Server** - Quick searches, field extraction |
-| Agent-based analysis | **MLflow MCP Server** - Sub-agents search and tag traces |
-| Evaluation script generation | **MLflow Python SDK** - Generate runnable Python code |
-| Custom analysis pipelines | **MLflow Python SDK** - Full control, complex aggregation |
-| Dataset building from traces | **MLflow Python SDK** - Convert traces to eval format |
-| CI/CD integration | **MLflow Python SDK** - Standalone scripts |
+| 使用情境 | 建議方式 |
+|---------|---------|
+| 互動式 trace 探索 | **MLflow MCP Server**——快速搜尋、欄位提取 |
+| Agent 驅動的分析 | **MLflow MCP Server**——子 agent 搜尋並標記 trace |
+| 產生評估腳本 | **MLflow Python SDK**——產生可執行的 Python 程式碼 |
+| 自訂分析管道 | **MLflow Python SDK**——完整控制、複雜聚合 |
+| 從 trace 建立 dataset | **MLflow Python SDK**——將 trace 轉換為評估格式 |
+| CI/CD 整合 | **MLflow Python SDK**——獨立腳本 |
 
-### MLflow MCP Server (for Agent Use)
+### MLflow MCP Server（供 Agent 使用）
 
-Best for interactive exploration and agent-based trace analysis:
-- `search_traces` - Filter and search with `extract_fields`
-- `get_trace` - Deep dive with selective field extraction
-- `set_trace_tag` - Tag traces for later dataset building
-- `log_feedback` - Store analysis findings persistently
-- `log_expectation` - Store ground truth for evaluation
+最適合互動式探索與 Agent 驅動的 trace 分析：
+- `search_traces` — 以 `extract_fields` 篩選與搜尋
+- `get_trace` — 以選擇性欄位提取深入分析
+- `set_trace_tag` — 標記 trace 供後續建立 dataset 使用
+- `log_feedback` — 將分析發現持久化儲存
+- `log_expectation` — 儲存基準答案供評估使用
 
-### MLflow Python SDK (for Code Generation)
+### MLflow Python SDK（供產生程式碼使用）
 
-Best for generating runnable evaluation scripts:
-- `mlflow.search_traces()` - Programmatic trace access
-- `mlflow.genai.evaluate()` - Run evaluations
-- `MlflowClient()` - Full API access
-- DataFrame operations - Complex aggregation and analysis
-
----
-
-## Table of Contents
-
-| # | Pattern | Description |
-|---|---------|-------------|
-| 1 | [Fetching Traces](#pattern-1-fetching-traces-from-mlflow) | Get traces from experiment |
-| 2 | [Get Single Trace](#pattern-2-get-single-trace-by-id) | Fetch specific trace by ID |
-| 3 | [Span Hierarchy](#pattern-3-span-hierarchy-analysis) | Analyze parent-child structure |
-| 4 | [Latency by Span Type](#pattern-4-latency-breakdown-by-span-type) | LLM, TOOL, RETRIEVER breakdown |
-| 5 | [Latency by Component](#pattern-5-latency-breakdown-by-component-name) | Stage/component timing |
-| 6 | [Bottleneck Detection](#pattern-6-bottleneck-detection) | Find slowest components |
-| 7 | [Error Detection](#pattern-7-error-pattern-detection) | Find and categorize errors |
-| 8 | [Tool Call Analysis](#pattern-8-tool-call-analysis) | Analyze tool/function calls |
-| 9 | [LLM Call Analysis](#pattern-9-llm-call-analysis) | Token usage and latency |
-| 10 | [Trace Comparison](#pattern-10-trace-comparison) | Compare multiple traces |
-| 11 | [Trace Report](#pattern-11-generate-trace-analysis-report) | Comprehensive report generation |
-| 12 | [MCP Server Usage](#pattern-12-using-mlflow-mcp-server-for-trace-analysis) | Quick trace lookups via MCP |
-| 13 | [Architecture Detection](#pattern-13-architecture-detection) | Auto-detect agent type |
-| 14 | [Assessments via MCP](#pattern-14-using-assessments-for-persistent-analysis) | Store findings in MLflow |
+最適合產生可執行的評估腳本：
+- `mlflow.search_traces()` — 程式化 trace 存取
+- `mlflow.genai.evaluate()` — 執行評估
+- `MlflowClient()` — 完整 API 存取
+- DataFrame 操作 — 複雜聚合與分析
 
 ---
 
-## Pattern 1: Fetching Traces from MLflow
+## 目錄
 
-Get traces from an experiment for analysis.
+| # | 模式 | 說明 |
+|---|------|------|
+| 1 | [取得 Trace](#pattern-1-從-mlflow-取得-trace) | 從 experiment 取得 trace |
+| 2 | [取得單一 Trace](#pattern-2-依-id-取得單一-trace) | 依 ID 取得特定 trace |
+| 3 | [Span 階層](#pattern-3-span-階層分析) | 分析親子結構 |
+| 4 | [依 Span 類型分析延遲](#pattern-4-依-span-類型分析延遲) | LLM、TOOL、RETRIEVER 延遲細分 |
+| 5 | [依元件分析延遲](#pattern-5-依元件名稱分析延遲) | 各階段／元件的時間分析 |
+| 6 | [瓶頸偵測](#pattern-6-瓶頸偵測) | 找出最慢的元件 |
+| 7 | [錯誤偵測](#pattern-7-錯誤模式偵測) | 找出並分類錯誤 |
+| 8 | [工具呼叫分析](#pattern-8-工具呼叫分析) | 分析工具／函式呼叫 |
+| 9 | [LLM 呼叫分析](#pattern-9-llm-呼叫分析) | Token 使用量與延遲 |
+| 10 | [Trace 比較](#pattern-10-trace-比較) | 比較多個 trace |
+| 11 | [Trace 報告](#pattern-11-產生-trace-分析報告) | 產生完整報告 |
+| 12 | [MCP Server 使用](#pattern-12-使用-mlflow-mcp-server-進行-trace-分析) | 透過 MCP 快速查詢 trace |
+| 13 | [架構偵測](#pattern-13-架構偵測) | 自動偵測 agent 類型 |
+| 14 | [透過 MCP 使用 Assessment](#pattern-14-使用-assessment-進行持久化分析) | 在 MLflow 中儲存分析發現 |
+
+---
+
+## Pattern 1: 從 MLflow 取得 Trace
+
+從 experiment 取得 trace 進行分析。
 
 ```python
 import mlflow
@@ -63,20 +63,20 @@ from mlflow import MlflowClient
 
 client = MlflowClient()
 
-# Get traces from experiment by ID
+# 依 experiment ID 取得 trace
 traces = client.search_traces(
     experiment_ids=["your_experiment_id"],
     max_results=100
 )
 
-# Get traces from experiment by name
+# 依 experiment 名稱取得 trace
 experiment = mlflow.get_experiment_by_name("/Users/user@domain.com/my-experiment")
 traces = client.search_traces(
     experiment_ids=[experiment.experiment_id],
     max_results=50
 )
 
-# Filter traces by time range
+# 依時間範圍篩選 trace
 from datetime import datetime, timedelta
 yesterday = int((datetime.now() - timedelta(days=1)).timestamp() * 1000)
 traces = client.search_traces(
@@ -87,46 +87,46 @@ traces = client.search_traces(
 
 ---
 
-## Pattern 2: Get Single Trace by ID
+## Pattern 2: 依 ID 取得單一 Trace
 
-Fetch a specific trace for detailed analysis.
+取得特定 trace 進行詳細分析。
 
 ```python
 from mlflow import MlflowClient
 
 client = MlflowClient()
 
-# Get trace by ID
+# 依 ID 取得 trace
 trace = client.get_trace(trace_id="tr-abc123def456")
 
-# Access trace info
+# 存取 trace 資訊
 print(f"Trace ID: {trace.info.trace_id}")
-print(f"Status: {trace.info.status}")
-print(f"Execution time: {trace.info.execution_time_ms}ms")
+print(f"狀態：{trace.info.status}")
+print(f"執行時間：{trace.info.execution_time_ms}ms")
 
-# Access trace data (spans)
+# 存取 trace 資料（span）
 spans = trace.data.spans
-print(f"Total spans: {len(spans)}")
+print(f"Span 總數：{len(spans)}")
 ```
 
 ---
 
-## Pattern 3: Span Hierarchy Analysis
+## Pattern 3: Span 階層分析
 
-Analyze the hierarchical structure of spans in a trace.
+分析 trace 中 span 的階層結構。
 
 ```python
 from mlflow.entities import Trace
 from typing import Dict, List, Any
 
 def analyze_span_hierarchy(trace: Trace) -> Dict[str, Any]:
-    """Analyze span hierarchy and structure.
+    """分析 span 階層與結構。
 
-    Works for any agent architecture (DSPy, LangGraph, etc.)
+    適用於任何 agent 架構（DSPy、LangGraph 等）。
     """
     spans = trace.data.spans if hasattr(trace, 'data') else trace.search_spans()
 
-    # Build parent-child relationships
+    # 建立親子關係
     span_by_id = {s.span_id: s for s in spans}
     children = {}
     root_spans = []
@@ -140,7 +140,7 @@ def analyze_span_hierarchy(trace: Trace) -> Dict[str, Any]:
             children[span.parent_id].append(span)
 
     def build_tree(span, depth=0):
-        """Recursively build span tree."""
+        """遞迴建立 span 樹狀結構。"""
         duration_ms = (span.end_time_ns - span.start_time_ns) / 1e6
         node = {
             "name": span.name,
@@ -159,17 +159,17 @@ def analyze_span_hierarchy(trace: Trace) -> Dict[str, Any]:
         "hierarchy": [build_tree(root) for root in root_spans]
     }
 
-# Usage
+# 使用方式
 hierarchy = analyze_span_hierarchy(trace)
-print(f"Root spans: {hierarchy['root_count']}")
-print(f"Total spans: {hierarchy['total_spans']}")
+print(f"根 span 數：{hierarchy['root_count']}")
+print(f"Span 總數：{hierarchy['total_spans']}")
 ```
 
 ---
 
-## Pattern 4: Latency Breakdown by Span Type
+## Pattern 4: 依 Span 類型分析延遲
 
-Analyze latency distribution across span types.
+分析各 span 類型的延遲分佈。
 
 ```python
 from mlflow.entities import Trace, SpanType
@@ -177,9 +177,9 @@ from typing import Dict, List
 from collections import defaultdict
 
 def latency_by_span_type(trace: Trace) -> Dict[str, Dict]:
-    """Break down latency by span type.
+    """依 span 類型細分延遲。
 
-    Returns latency stats for each span type (LLM, TOOL, RETRIEVER, etc.)
+    回傳各 span 類型（LLM、TOOL、RETRIEVER 等）的延遲統計。
     """
     spans = trace.data.spans if hasattr(trace, 'data') else trace.search_spans()
 
@@ -207,17 +207,17 @@ def latency_by_span_type(trace: Trace) -> Dict[str, Dict]:
 
     return results
 
-# Usage
+# 使用方式
 latency_stats = latency_by_span_type(trace)
 for span_type, stats in sorted(latency_stats.items(), key=lambda x: -x[1]["total_ms"]):
-    print(f"{span_type}: {stats['total_ms']}ms total ({stats['count']} spans)")
+    print(f"{span_type}: {stats['total_ms']}ms 合計（{stats['count']} 個 span）")
 ```
 
 ---
 
-## Pattern 5: Latency Breakdown by Component Name
+## Pattern 5: 依元件名稱分析延遲
 
-Analyze latency by component/stage names (architecture-agnostic).
+依元件／階段名稱分析延遲（架構無關）。
 
 ```python
 from mlflow.entities import Trace
@@ -228,14 +228,14 @@ def latency_by_component(
     trace: Trace,
     component_patterns: List[str] = None
 ) -> Dict[str, Dict]:
-    """Break down latency by component name patterns.
+    """依元件名稱模式細分延遲。
 
     Args:
-        trace: MLflow trace to analyze
-        component_patterns: Optional list of patterns to look for.
-                           If None, extracts all unique span names.
+        trace: 要分析的 MLflow trace
+        component_patterns: 選填，要比對的模式清單。
+                           若為 None，則提取所有唯一的 span 名稱。
 
-    Works with any architecture - DSPy stages, LangGraph nodes, etc.
+    適用於任何架構——DSPy 階段、LangGraph 節點等。
     """
     spans = trace.data.spans if hasattr(trace, 'data') else trace.search_spans()
 
@@ -246,7 +246,7 @@ def latency_by_component(
         span_name = span.name.lower()
 
         if component_patterns:
-            # Match against patterns
+            # 與模式比對
             for pattern in component_patterns:
                 if pattern.lower() in span_name:
                     component_latencies[pattern].append({
@@ -255,7 +255,7 @@ def latency_by_component(
                     })
                     break
         else:
-            # Use span name directly
+            # 直接使用 span 名稱
             component_latencies[span.name].append({
                 "duration_ms": duration_ms
             })
@@ -272,23 +272,23 @@ def latency_by_component(
 
     return results
 
-# Usage - DSPy multi-agent
+# 使用方式——DSPy 多 agent
 dspy_components = ["classifier", "rewriter", "gatherer", "executor"]
 stats = latency_by_component(trace, dspy_components)
 
-# Usage - LangGraph
+# 使用方式——LangGraph
 langgraph_components = ["planner", "executor", "tool_call", "compress"]
 stats = latency_by_component(trace, langgraph_components)
 
-# Usage - auto-detect all components
+# 使用方式——自動偵測所有元件
 stats = latency_by_component(trace)
 ```
 
 ---
 
-## Pattern 6: Bottleneck Detection
+## Pattern 6: 瓶頸偵測
 
-Find the slowest components in a trace.
+找出 trace 中最慢的元件。
 
 ```python
 from mlflow.entities import Trace
@@ -299,22 +299,21 @@ def find_bottlenecks(
     top_n: int = 5,
     exclude_patterns: List[str] = None
 ) -> List[Dict]:
-    """Find the slowest spans in a trace.
+    """找出 trace 中最慢的 span。
 
     Args:
-        trace: MLflow trace to analyze
-        top_n: Number of slowest spans to return
-        exclude_patterns: Span name patterns to exclude (e.g., wrapper spans)
+        trace: 要分析的 MLflow trace
+        top_n: 要回傳的最慢 span 數量
+        exclude_patterns: 要排除的 span 名稱模式（例如包裝用的 span）
 
-    Returns:
-        List of slowest spans with timing info
+    回傳含時間資訊的最慢 span 清單。
     """
     spans = trace.data.spans if hasattr(trace, 'data') else trace.search_spans()
     exclude_patterns = exclude_patterns or ["forward", "predict", "root"]
 
     span_timings = []
     for span in spans:
-        # Skip excluded patterns
+        # 跳過符合排除模式的 span
         span_name_lower = span.name.lower()
         if any(p in span_name_lower for p in exclude_patterns):
             continue
@@ -327,32 +326,32 @@ def find_bottlenecks(
             "span_id": span.span_id
         })
 
-    # Sort by duration descending
+    # 依延遲由高到低排序
     span_timings.sort(key=lambda x: -x["duration_ms"])
 
     return span_timings[:top_n]
 
-# Usage
+# 使用方式
 bottlenecks = find_bottlenecks(trace, top_n=5)
-print("Top 5 Slowest Spans:")
+print("前 5 個最慢的 Span：")
 for i, b in enumerate(bottlenecks, 1):
-    print(f"  {i}. {b['name']} ({b['span_type']}): {b['duration_ms']}ms")
+    print(f"  {i}. {b['name']}（{b['span_type']}）：{b['duration_ms']}ms")
 ```
 
 ---
 
-## Pattern 7: Error Pattern Detection
+## Pattern 7: 錯誤模式偵測
 
-Find and analyze error patterns in traces.
+找出並分析 trace 中的錯誤模式。
 
 ```python
 from mlflow.entities import Trace, SpanStatusCode
 from typing import Dict, List
 
 def detect_errors(trace: Trace) -> Dict[str, List]:
-    """Detect error patterns in a trace.
+    """偵測 trace 中的錯誤模式。
 
-    Returns categorized errors with context.
+    回傳分類後的錯誤及其 context。
     """
     spans = trace.data.spans if hasattr(trace, 'data') else trace.search_spans()
 
@@ -364,15 +363,15 @@ def detect_errors(trace: Trace) -> Dict[str, List]:
     }
 
     for span in spans:
-        # Check span status
+        # 檢查 span 狀態
         if span.status and span.status.status_code == SpanStatusCode.ERROR:
             errors["failed_spans"].append({
                 "name": span.name,
                 "span_type": str(span.span_type),
-                "error_message": span.status.description if span.status.description else "Unknown error"
+                "error_message": span.status.description if span.status.description else "未知錯誤"
             })
 
-        # Check for exceptions in events
+        # 檢查 event 中的例外
         if span.events:
             for event in span.events:
                 if "exception" in event.name.lower():
@@ -382,7 +381,7 @@ def detect_errors(trace: Trace) -> Dict[str, List]:
                         "attributes": event.attributes
                     })
 
-        # Check for empty outputs (potential issue)
+        # 檢查空輸出（潛在問題）
         if span.outputs is None or span.outputs == {} or span.outputs == []:
             errors["empty_outputs"].append({
                 "name": span.name,
@@ -391,39 +390,39 @@ def detect_errors(trace: Trace) -> Dict[str, List]:
 
     return errors
 
-# Usage
+# 使用方式
 errors = detect_errors(trace)
 if errors["failed_spans"]:
-    print(f"Found {len(errors['failed_spans'])} failed spans")
+    print(f"找到 {len(errors['failed_spans'])} 個失敗的 span")
     for e in errors["failed_spans"]:
         print(f"  - {e['name']}: {e['error_message']}")
 ```
 
 ---
 
-## Pattern 8: Tool Call Analysis
+## Pattern 8: 工具呼叫分析
 
-Analyze tool/function calls in a trace.
+分析 trace 中的工具／函式呼叫。
 
 ```python
 from mlflow.entities import Trace, SpanType
 from typing import Dict, List
 
 def analyze_tool_calls(trace: Trace) -> Dict[str, Any]:
-    """Analyze tool calls in a trace.
+    """分析 trace 中的工具呼叫。
 
-    Works with UC functions, LangChain tools, or any TOOL span type.
+    適用於 UC functions、LangChain tools 或任何 TOOL span 類型。
     """
     spans = trace.data.spans if hasattr(trace, 'data') else trace.search_spans()
 
-    # Find tool spans
+    # 找出 tool span
     tool_spans = [s for s in spans if s.span_type == SpanType.TOOL]
 
     tool_calls = []
     for span in tool_spans:
         duration_ms = (span.end_time_ns - span.start_time_ns) / 1e6
 
-        # Extract tool name (handle fully qualified names)
+        # 提取工具名稱（處理完整限定名稱）
         tool_name = span.name
         if "." in tool_name:
             tool_name_short = tool_name.split(".")[-1]
@@ -439,7 +438,7 @@ def analyze_tool_calls(trace: Trace) -> Dict[str, Any]:
             "success": span.status.status_code != SpanStatusCode.ERROR if span.status else True
         })
 
-    # Aggregate stats
+    # 彙總統計
     tool_stats = {}
     for tc in tool_calls:
         name = tc["tool_name"]
@@ -457,31 +456,31 @@ def analyze_tool_calls(trace: Trace) -> Dict[str, Any]:
         "stats": tool_stats
     }
 
-# Usage
+# 使用方式
 tool_analysis = analyze_tool_calls(trace)
-print(f"Total tool calls: {tool_analysis['total_tool_calls']}")
+print(f"工具呼叫總次數：{tool_analysis['total_tool_calls']}")
 for tool, stats in tool_analysis['stats'].items():
-    print(f"  {tool}: {stats['count']} calls, {stats['total_ms']}ms total")
+    print(f"  {tool}: {stats['count']} 次呼叫，合計 {stats['total_ms']}ms")
 ```
 
 ---
 
-## Pattern 9: LLM Call Analysis
+## Pattern 9: LLM 呼叫分析
 
-Analyze LLM calls in a trace.
+分析 trace 中的 LLM 呼叫。
 
 ```python
 from mlflow.entities import Trace, SpanType
 from typing import Dict, List, Any
 
 def analyze_llm_calls(trace: Trace) -> Dict[str, Any]:
-    """Analyze LLM calls in a trace.
+    """分析 trace 中的 LLM 呼叫。
 
-    Extracts model info, token usage, and latency.
+    提取模型資訊、Token 使用量及延遲。
     """
     spans = trace.data.spans if hasattr(trace, 'data') else trace.search_spans()
 
-    # Find LLM/CHAT_MODEL spans
+    # 找出 LLM/CHAT_MODEL span
     llm_spans = [s for s in spans
                  if s.span_type in [SpanType.LLM, SpanType.CHAT_MODEL]]
 
@@ -489,7 +488,7 @@ def analyze_llm_calls(trace: Trace) -> Dict[str, Any]:
     for span in llm_spans:
         duration_ms = (span.end_time_ns - span.start_time_ns) / 1e6
 
-        # Extract token info from attributes
+        # 從 attributes 提取 token 資訊
         attributes = span.attributes or {}
 
         llm_calls.append({
@@ -501,7 +500,7 @@ def analyze_llm_calls(trace: Trace) -> Dict[str, Any]:
             "total_tokens": attributes.get("mlflow.chat_model.total_tokens"),
         })
 
-    # Calculate totals
+    # 計算總計
     total_input = sum(c["input_tokens"] or 0 for c in llm_calls)
     total_output = sum(c["output_tokens"] or 0 for c in llm_calls)
     total_latency = sum(c["duration_ms"] for c in llm_calls)
@@ -514,34 +513,34 @@ def analyze_llm_calls(trace: Trace) -> Dict[str, Any]:
         "calls": llm_calls
     }
 
-# Usage
+# 使用方式
 llm_analysis = analyze_llm_calls(trace)
-print(f"LLM calls: {llm_analysis['total_llm_calls']}")
-print(f"Total tokens: {llm_analysis['total_input_tokens']} in / {llm_analysis['total_output_tokens']} out")
-print(f"LLM latency: {llm_analysis['total_latency_ms']}ms")
+print(f"LLM 呼叫次數：{llm_analysis['total_llm_calls']}")
+print(f"Token 總計：{llm_analysis['total_input_tokens']} 輸入 / {llm_analysis['total_output_tokens']} 輸出")
+print(f"LLM 延遲：{llm_analysis['total_latency_ms']}ms")
 ```
 
 ---
 
-## Pattern 10: Trace Comparison
+## Pattern 10: Trace 比較
 
-Compare multiple traces to identify patterns.
+比較多個 trace 以識別規律。
 
 ```python
 from mlflow.entities import Trace
 from typing import List, Dict, Any
 
 def compare_traces(traces: List[Trace]) -> Dict[str, Any]:
-    """Compare multiple traces to identify patterns.
+    """比較多個 trace 以識別規律。
 
-    Useful for before/after comparisons or batch analysis.
+    適用於前後對比或批次分析。
     """
     trace_stats = []
 
     for trace in traces:
         spans = trace.data.spans if hasattr(trace, 'data') else trace.search_spans()
 
-        # Get root span for total time
+        # 取根 span 計算總時間
         root_spans = [s for s in spans if s.parent_id is None]
         total_ms = 0
         if root_spans:
@@ -555,7 +554,7 @@ def compare_traces(traces: List[Trace]) -> Dict[str, Any]:
             "status": str(trace.info.status)
         })
 
-    # Calculate aggregates
+    # 計算彙總指標
     latencies = [t["total_ms"] for t in trace_stats]
 
     return {
@@ -568,29 +567,29 @@ def compare_traces(traces: List[Trace]) -> Dict[str, Any]:
         "traces": trace_stats
     }
 
-# Usage
+# 使用方式
 comparison = compare_traces(traces)
-print(f"Analyzed {comparison['trace_count']} traces")
-print(f"Avg latency: {comparison['avg_latency_ms']}ms")
-print(f"Success rate: {comparison['success_rate']:.1%}")
+print(f"分析了 {comparison['trace_count']} 個 trace")
+print(f"平均延遲：{comparison['avg_latency_ms']}ms")
+print(f"成功率：{comparison['success_rate']:.1%}")
 ```
 
 ---
 
-## Pattern 11: Generate Trace Analysis Report
+## Pattern 11: 產生 Trace 分析報告
 
-Combine multiple analysis patterns into a comprehensive report.
+將多種分析模式組合成完整的報告。
 
 ```python
 from mlflow.entities import Trace
 from typing import Dict, Any
 
 def generate_trace_report(trace: Trace) -> Dict[str, Any]:
-    """Generate comprehensive trace analysis report.
+    """產生完整的 trace 分析報告。
 
-    Combines hierarchy, latency, errors, and bottleneck analysis.
+    整合階層、延遲、錯誤及瓶頸分析。
     """
-    # Import analysis functions (from patterns above)
+    # 引入上述分析函式
     hierarchy = analyze_span_hierarchy(trace)
     latency_by_type = latency_by_span_type(trace)
     bottlenecks = find_bottlenecks(trace, top_n=3)
@@ -598,7 +597,7 @@ def generate_trace_report(trace: Trace) -> Dict[str, Any]:
     tool_analysis = analyze_tool_calls(trace)
     llm_analysis = analyze_llm_calls(trace)
 
-    # Get root span info
+    # 取根 span 資訊
     spans = trace.data.spans if hasattr(trace, 'data') else trace.search_spans()
     root_spans = [s for s in spans if s.parent_id is None]
     total_ms = 0
@@ -630,69 +629,69 @@ def generate_recommendations(
     llm_analysis: Dict,
     total_ms: float
 ) -> List[str]:
-    """Generate actionable recommendations from analysis."""
+    """從分析結果產生可行動的改善建議。"""
     recommendations = []
 
-    # Latency recommendations
+    # 延遲建議
     if bottlenecks and bottlenecks[0]["duration_ms"] > total_ms * 0.5:
         b = bottlenecks[0]
         recommendations.append(
-            f"BOTTLENECK: '{b['name']}' takes {b['duration_ms']/total_ms*100:.0f}% of total time. "
-            f"Consider optimizing this component."
+            f"瓶頸：'{b['name']}' 佔總時間的 {b['duration_ms']/total_ms*100:.0f}%。"
+            f"建議優化此元件。"
         )
 
-    # LLM recommendations
+    # LLM 呼叫建議
     if llm_analysis["total_llm_calls"] > 5:
         recommendations.append(
-            f"HIGH LLM CALLS: {llm_analysis['total_llm_calls']} LLM calls detected. "
-            f"Consider batching or reducing calls."
+            f"LLM 呼叫次數過多：偵測到 {llm_analysis['total_llm_calls']} 次 LLM 呼叫。"
+            f"考慮批次處理或減少呼叫次數。"
         )
 
-    # Error recommendations
+    # 錯誤建議
     if errors["failed_spans"]:
         recommendations.append(
-            f"ERRORS: {len(errors['failed_spans'])} failed spans detected. "
-            f"Review: {[e['name'] for e in errors['failed_spans'][:3]]}"
+            f"錯誤：偵測到 {len(errors['failed_spans'])} 個失敗的 span。"
+            f"請檢查：{[e['name'] for e in errors['failed_spans'][:3]]}"
         )
 
     if not recommendations:
-        recommendations.append("No major issues detected. Trace looks healthy.")
+        recommendations.append("未偵測到主要問題。Trace 狀態良好。")
 
     return recommendations
 
-# Usage
+# 使用方式
 report = generate_trace_report(trace)
 print(f"Trace {report['summary']['trace_id']}")
-print(f"Duration: {report['summary']['total_duration_ms']}ms")
-print(f"Spans: {report['summary']['total_spans']}")
-print("\nRecommendations:")
+print(f"執行時間：{report['summary']['total_duration_ms']}ms")
+print(f"Span 數：{report['summary']['total_spans']}")
+print("\n改善建議：")
 for rec in report['recommendations']:
     print(f"  - {rec}")
 ```
 
 ---
 
-## Pattern 12: Using MLflow MCP Server for Trace Analysis
+## Pattern 12: 使用 MLflow MCP Server 進行 Trace 分析
 
-Use the MLflow MCP server for quick trace lookups.
+使用 MLflow MCP server 快速查詢 trace。
 
 ```python
-# Via Claude Code, use MCP server tools:
+# 透過 Claude Code，使用 MCP server 工具：
 
-# Search traces in an experiment
+# 在 experiment 中搜尋 trace
 mcp__mlflow-mcp__search_traces(
     experiment_id="your_experiment_id",
     max_results=10,
     output="table"
 )
 
-# Get detailed trace info
+# 取得詳細 trace 資訊
 mcp__mlflow-mcp__get_trace(
     trace_id="tr-abc123",
     extract_fields="info.trace_id,info.status,data.spans.*.name"
 )
 
-# Filter by status
+# 依狀態篩選
 mcp__mlflow-mcp__search_traces(
     experiment_id="123",
     filter_string="status = 'OK'",
@@ -702,24 +701,24 @@ mcp__mlflow-mcp__search_traces(
 
 ---
 
-## Pattern 13: Architecture Detection
+## Pattern 13: 架構偵測
 
-Auto-detect agent architecture from trace structure.
+從 trace 結構自動偵測 agent 架構。
 
 ```python
 from mlflow.entities import Trace, SpanType
 from typing import Dict, Any
 
 def detect_architecture(trace: Trace) -> Dict[str, Any]:
-    """Detect agent architecture from trace patterns.
+    """從 trace 模式偵測 agent 架構。
 
-    Returns architecture type and key characteristics.
+    回傳架構類型與關鍵特徵。
     """
     spans = trace.data.spans if hasattr(trace, 'data') else trace.search_spans()
     span_names = [s.name.lower() for s in spans]
     span_types = [s.span_type for s in spans]
 
-    # Architecture indicators
+    # 架構指示器
     indicators = {
         "dspy_multi_agent": any(
             p in " ".join(span_names)
@@ -734,7 +733,7 @@ def detect_architecture(trace: Trace) -> Dict[str, Any]:
         "simple_chat": len(set(span_types)) <= 2 and SpanType.CHAT_MODEL in span_types,
     }
 
-    # Determine primary architecture
+    # 判斷主要架構
     if indicators["dspy_multi_agent"]:
         arch_type = "dspy_multi_agent"
     elif indicators["langgraph"]:
@@ -757,37 +756,37 @@ def detect_architecture(trace: Trace) -> Dict[str, Any]:
         }
     }
 
-# Usage
+# 使用方式
 arch = detect_architecture(trace)
-print(f"Detected architecture: {arch['architecture']}")
-print(f"Span types: {arch['span_type_distribution']}")
+print(f"偵測到的架構：{arch['architecture']}")
+print(f"Span 類型分佈：{arch['span_type_distribution']}")
 ```
 
 ---
 
-## Best Practices
+## 最佳實踐
 
-### 1. Always Handle Missing Data
+### 1. 永遠處理缺少的資料
 ```python
-# Traces may have incomplete data
+# Trace 可能含有不完整的資料
 spans = trace.data.spans if hasattr(trace, 'data') else []
 duration = (span.end_time_ns - span.start_time_ns) / 1e6 if span.end_time_ns else 0
 ```
 
-### 2. Normalize Span Names
+### 2. 正規化 Span 名稱
 ```python
-# Handle fully qualified names (UC functions, etc.)
+# 處理完整限定名稱（UC functions 等）
 def normalize_name(name: str) -> str:
     return name.split(".")[-1] if "." in name else name
 ```
 
-### 3. Use Appropriate Filters
+### 3. 使用適當的篩選條件
 ```python
-# Exclude wrapper spans for accurate bottleneck detection
+# 排除包裝用的 span，以取得準確的瓶頸偵測結果
 exclude = ["forward", "predict", "__init__", "root"]
 ```
 
-### 4. Cache Expensive Analysis
+### 4. 快取耗費資源的分析
 ```python
 from functools import lru_cache
 
@@ -799,14 +798,14 @@ def get_trace_analysis(trace_id: str):
 
 ---
 
-## Pattern 14: Using Assessments for Persistent Analysis
+## Pattern 14: 使用 Assessment 進行持久化分析
 
-Store analysis findings directly in MLflow for later use. Use MCP tools during agent sessions.
+將分析發現直接儲存至 MLflow 供後續使用。Agent 工作階段中使用 MCP 工具。
 
-### Log Analysis Feedback (via MCP)
+### 記錄分析 Feedback（透過 MCP）
 
 ```
-# Store a finding during agent analysis
+# 在 agent 分析過程中儲存發現
 mcp__mlflow-mcp__log_feedback(
     trace_id="tr-abc123",
     name="bottleneck_detected",
@@ -816,10 +815,10 @@ mcp__mlflow-mcp__log_feedback(
 )
 ```
 
-### Log Expected Behavior / Ground Truth (via MCP)
+### 記錄預期行為／基準答案（透過 MCP）
 
 ```
-# When you know what the correct output should be
+# 當您知道正確輸出應該是什麼時
 mcp__mlflow-mcp__log_expectation(
     trace_id="tr-abc123",
     name="expected_output",
@@ -827,7 +826,7 @@ mcp__mlflow-mcp__log_expectation(
 )
 ```
 
-### Retrieve Assessments (via MCP)
+### 取得 Assessment（透過 MCP）
 
 ```
 mcp__mlflow-mcp__get_assessment(
@@ -836,12 +835,12 @@ mcp__mlflow-mcp__get_assessment(
 )
 ```
 
-### Search Tagged Traces for Dataset Building (via MCP)
+### 搜尋已標記的 Trace 以建立 Dataset（透過 MCP）
 
-After tagging traces during analysis, search for them later:
+分析過程中標記 trace 後，可在之後搜尋：
 
 ```
-# Find all traces tagged as evaluation candidates
+# 找出所有標記為評估候選的 trace
 mcp__mlflow-mcp__search_traces(
     experiment_id="123",
     filter_string="tags.eval_candidate = 'error_case'",
@@ -849,20 +848,20 @@ mcp__mlflow-mcp__search_traces(
 )
 ```
 
-### Convert Tagged Traces to Dataset (Python SDK)
+### 將已標記的 Trace 轉換為 Dataset（Python SDK）
 
-When generating evaluation code, use Python SDK to build datasets:
+產生評估程式碼時，使用 Python SDK 建立 dataset：
 
 ```python
 import mlflow
 
-# Search for tagged traces
+# 搜尋已標記的 trace
 traces = mlflow.search_traces(
     filter_string="tags.eval_candidate = 'error_case'",
     max_results=100
 )
 
-# Convert to evaluation dataset format
+# 轉換為評估 dataset 格式
 eval_data = []
 for _, trace in traces.iterrows():
     eval_data.append({
@@ -871,7 +870,7 @@ for _, trace in traces.iterrows():
         "metadata": {"source_trace": trace["trace_id"]}
     })
 
-# Use in evaluation
+# 用於評估
 results = mlflow.genai.evaluate(
     data=eval_data,
     scorers=[...]

@@ -11,16 +11,16 @@ import { formatRelativeTime } from '@/lib/utils';
 
 type SortMode = 'recent' | 'conversations';
 
-/* ─── Deterministic color from string ─── */
+/* ─── 從字串產生固定顏色 ─── */
 const CARD_PALETTES = [
-  { from: '#FF3621', to: '#FF6B4A' },  // red
-  { from: '#E8590C', to: '#FF922B' },  // orange
-  { from: '#D6336C', to: '#F06595' },  // pink
-  { from: '#7048E8', to: '#9775FA' },  // violet
-  { from: '#1C7ED6', to: '#4DABF7' },  // blue
-  { from: '#0CA678', to: '#38D9A9' },  // teal
-  { from: '#E03131', to: '#FF6B6B' },  // crimson
-  { from: '#6741D9', to: '#B197FC' },  // purple
+  { from: '#FF3621', to: '#FF6B4A' },  // 紅色
+  { from: '#E8590C', to: '#FF922B' },  // 橘色
+  { from: '#D6336C', to: '#F06595' },  // 粉紅色
+  { from: '#7048E8', to: '#9775FA' },  // 紫羅蘭色
+  { from: '#1C7ED6', to: '#4DABF7' },  // 藍色
+  { from: '#0CA678', to: '#38D9A9' },  // 藍綠色
+  { from: '#E03131', to: '#FF6B6B' },  // 緋紅色
+  { from: '#6741D9', to: '#B197FC' },  // 紫色
 ];
 
 function hashString(str: string): number {
@@ -35,7 +35,7 @@ function getCardPalette(id: string) {
   return CARD_PALETTES[hashString(id) % CARD_PALETTES.length];
 }
 
-/* ─── Animated mesh gradient canvas ─── */
+/* ─── 動態網格漸層畫布 ─── */
 function MeshGradient() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
@@ -111,7 +111,7 @@ function MeshGradient() {
   );
 }
 
-/* ─── Floating grid of subtle dots ─── */
+/* ─── 漂浮的細緻點陣網格 ─── */
 function DotGrid() {
   return (
     <div
@@ -157,10 +157,10 @@ export default function HomePage() {
     try {
       const project = await createProject(newProjectName.trim());
       setNewProjectName('');
-      toast.success('Project created');
+      toast.success('專案已建立');
       navigate(`/projects/${project.id}`);
     } catch (error) {
-      toast.error('Failed to create project');
+      toast.error('建立專案失敗');
       console.error(error);
     } finally {
       setIsCreating(false);
@@ -169,13 +169,13 @@ export default function HomePage() {
 
   const handleDeleteProject = async (e: React.MouseEvent, projectId: string) => {
     e.stopPropagation();
-    if (!confirm('Delete this project and all its conversations?')) return;
+    if (!confirm('確定要刪除此專案及其所有對話紀錄嗎？')) return;
 
     try {
       await deleteProject(projectId);
-      toast.success('Project deleted');
+      toast.success('專案已刪除');
     } catch (error) {
-      toast.error('Failed to delete project');
+      toast.error('刪除專案失敗');
       console.error(error);
     }
   };
@@ -194,9 +194,9 @@ export default function HomePage() {
 
     try {
       await renameProject(renamingId, renameValue.trim());
-      toast.success('Project renamed');
+      toast.success('專案已重新命名');
     } catch (error) {
-      toast.error('Failed to rename project');
+      toast.error('重新命名專案失敗');
       console.error(error);
     }
     setRenamingId(null);
@@ -220,7 +220,7 @@ export default function HomePage() {
   return (
     <MainLayout>
       <div className="flex-1 overflow-y-auto">
-        {/* ─── Hero section ─── */}
+        {/* ─── Hero 區塊 ─── */}
         <section className="relative overflow-hidden">
           <div className="absolute inset-0 bg-[var(--color-background)]" />
           <MeshGradient />
@@ -240,8 +240,8 @@ export default function HomePage() {
               AI Dev Kit
             </h1>
             <p className="mx-auto mt-4 max-w-2xl text-lg text-[var(--color-text-muted)] leading-relaxed">
-              Build, deploy, and manage Databricks resources with an AI-powered coding agent.
-              Create a project to get started.
+              透過 AI 驅動的程式設計代理，建置、部署並管理 Databricks 資源。
+              建立一個專案以開始使用。
             </p>
 
             <form
@@ -251,7 +251,7 @@ export default function HomePage() {
               <Input
                 value={newProjectName}
                 onChange={(e) => setNewProjectName(e.target.value)}
-                placeholder="New project name..."
+                placeholder="新專案名稱..."
                 className="flex-1 h-12 text-base bg-[var(--color-bg-secondary)]/80 backdrop-blur border-[var(--color-border)] shadow-sm"
               />
               <Button
@@ -264,7 +264,7 @@ export default function HomePage() {
                 ) : (
                   <>
                     <Plus className="h-4 w-4" />
-                    Create
+                    建立
                   </>
                 )}
               </Button>
@@ -274,11 +274,11 @@ export default function HomePage() {
           <div className="absolute bottom-0 left-0 right-0 h-24 bg-gradient-to-t from-[var(--color-background)] to-transparent" />
         </section>
 
-        {/* ─── Projects section ─── */}
+        {/* ─── 專案區塊 ─── */}
         <section className="relative z-10 mx-auto max-w-5xl px-6 pb-16">
           <div className="flex items-center justify-between mb-5">
             <h2 className="text-lg font-semibold text-[var(--color-text-heading)]">
-              Your Projects
+              我的專案
               <span className="ml-2 text-sm font-normal text-[var(--color-text-muted)]">
                 ({projects.length})
               </span>
@@ -295,7 +295,7 @@ export default function HomePage() {
                   }`}
                 >
                   <Clock className="h-3 w-3" />
-                  Recent
+                  最近
                 </button>
                 <button
                   onClick={() => setSortMode('conversations')}
@@ -306,7 +306,7 @@ export default function HomePage() {
                   }`}
                 >
                   <BarChart3 className="h-3 w-3" />
-                  Most Active
+                  最多對話
                 </button>
               </div>
             )}
@@ -316,7 +316,7 @@ export default function HomePage() {
             <div className="rounded-2xl border border-dashed border-[var(--color-border)] bg-[var(--color-bg-secondary)]/50 py-16 text-center">
               <Folder className="mx-auto h-10 w-10 text-[var(--color-text-muted)] opacity-40" />
               <p className="mt-3 text-sm text-[var(--color-text-muted)]">
-                No projects yet. Create one above to get started.
+                尚無專案。請在上方建立一個以開始使用。
               </p>
             </div>
           ) : (
@@ -332,14 +332,14 @@ export default function HomePage() {
                     onClick={() => !isRenaming && navigate(`/projects/${project.id}`)}
                     className="group relative flex flex-col rounded-2xl border border-[var(--color-border)]/60 bg-[var(--color-bg-secondary)] cursor-pointer transition-all duration-200 hover:border-[var(--color-border)] hover:shadow-xl hover:shadow-black/[0.04] hover:-translate-y-0.5 overflow-hidden"
                   >
-                    {/* Gradient accent bar */}
+                    {/* 漸層強調列 */}
                     <div
                       className="h-1 opacity-70 group-hover:opacity-100 transition-opacity"
                       style={{ background: `linear-gradient(to right, ${palette.from}, ${palette.to})` }}
                     />
 
                     <div className="p-5 flex flex-col flex-1">
-                      {/* Top row: monogram + actions */}
+                      {/* 頂部列：字首圖示 + 操作 */}
                       <div className="flex items-start justify-between mb-4">
                         <div
                           className="flex h-11 w-11 items-center justify-center rounded-xl text-white font-bold text-lg"
@@ -351,21 +351,21 @@ export default function HomePage() {
                           <button
                             onClick={(e) => startRename(e, project)}
                             className="p-1.5 rounded-lg text-[var(--color-text-muted)] hover:text-[var(--color-text-heading)] hover:bg-[var(--color-bg-tertiary)]"
-                            title="Rename"
+                            title="重新命名"
                           >
                             <Pencil className="h-3.5 w-3.5" />
                           </button>
                           <button
                             onClick={(e) => handleDeleteProject(e, project.id)}
                             className="p-1.5 rounded-lg text-[var(--color-text-muted)] hover:text-[var(--color-error)] hover:bg-[var(--color-error)]/10"
-                            title="Delete"
+                            title="刪除"
                           >
                             <Trash2 className="h-3.5 w-3.5" />
                           </button>
                         </div>
                       </div>
 
-                      {/* Project name — editable or static */}
+                      {/* 專案名稱 — 可編輯或靜態顯示 */}
                       {isRenaming ? (
                         <form
                           onSubmit={confirmRename}
@@ -401,15 +401,15 @@ export default function HomePage() {
                         </h3>
                       )}
 
-                      {/* Spacer */}
+                      {/* 間距 */}
                       <div className="flex-1 min-h-4" />
 
-                      {/* Bottom stats */}
+                      {/* 底部統計資訊 */}
                       <div className="flex items-center justify-between pt-4 border-t border-[var(--color-border)]/40">
                         <div className="flex items-center gap-1.5 text-xs text-[var(--color-text-muted)]">
                           <MessageSquare className="h-3.5 w-3.5" />
                           <span>
-                            {project.conversation_count} conversation{project.conversation_count !== 1 ? 's' : ''}
+                            {project.conversation_count} 則對話
                           </span>
                         </div>
                         <div className="flex items-center gap-2">

@@ -1,25 +1,25 @@
 """
-Jobs Module - Databricks Jobs API
+Jobs 模組 - Databricks Jobs API
 
-This module provides functions for managing Databricks jobs and job runs.
-Uses serverless compute by default for optimal performance and cost.
+此模組提供用於管理 Databricks jobs 與 job runs 的函式。
+預設使用無伺服器運算，以獲得最佳效能與成本效益。
 
-Core Operations:
-- Job CRUD: create_job, update_job, delete_job, get_job, list_jobs, find_job_by_name
-- Run Management: run_job_now, get_run, get_run_output, cancel_run, list_runs
-- Run Monitoring: wait_for_run (blocks until completion)
+核心作業：
+- Job CRUD：create_job、update_job、delete_job、get_job、list_jobs、find_job_by_name
+- Run 管理：run_job_now、get_run、get_run_output、cancel_run、list_runs
+- Run 監控：wait_for_run（會阻塞直到完成）
 
-Data Models:
-- JobRunResult: Detailed run result with status, timing, and error info
-- JobStatus, RunLifecycleState, RunResultState: Status enums
-- JobError: Exception class for job-related errors
+資料模型：
+- JobRunResult：包含狀態、時間資訊與錯誤資訊的詳細 run 結果
+- JobStatus、RunLifecycleState、RunResultState：狀態列舉
+- JobError：job 相關錯誤的例外類別
 
-Example Usage:
+範例：
     >>> from databricks_tools_core.jobs import (
     ...     create_job, run_job_now, wait_for_run
     ... )
     >>>
-    >>> # Create a job
+    >>> # 建立 job
     >>> tasks = [{
     ...     "task_key": "main",
     ...     "notebook_task": {
@@ -29,14 +29,14 @@ Example Usage:
     ... }]
     >>> job = create_job(name="my_etl_job", tasks=tasks)
     >>>
-    >>> # Run the job and wait for completion
+    >>> # 執行 job 並等待完成
     >>> run_id = run_job_now(job_id=job["job_id"])
     >>> result = wait_for_run(run_id=run_id)
     >>> if result.success:
-    ...     print(f"Job completed in {result.duration_seconds}s")
+    ...     print(f"Job 已在 {result.duration_seconds}s 內完成")
 """
 
-# Import all public functions and classes
+# 匯入所有公開函式與類別
 from .models import (
     JobStatus,
     RunLifecycleState,
@@ -64,20 +64,20 @@ from .runs import (
 )
 
 __all__ = [
-    # Models and Enums
+    # 模型與列舉
     "JobStatus",
     "RunLifecycleState",
     "RunResultState",
     "JobRunResult",
     "JobError",
-    # Job CRUD Operations
+    # Job CRUD 作業
     "list_jobs",
     "get_job",
     "find_job_by_name",
     "create_job",
     "update_job",
     "delete_job",
-    # Run Operations
+    # Run 作業
     "run_job_now",
     "get_run",
     "get_run_output",

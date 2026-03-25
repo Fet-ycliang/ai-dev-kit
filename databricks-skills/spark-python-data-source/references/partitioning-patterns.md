@@ -1,12 +1,12 @@
-# Partitioning Patterns
+# 分割區模式
 
-Strategies for distributing reads across Spark executors for parallel processing.
+分配讀取到 Spark 執行器供平行處理的策略。
 
-## Time-Based Partitioning
+## 基於時間的分割區
 
-For APIs with temporal data or streaming sources.
+對於具時間序列資料或串流來源的 API。
 
-### Fixed Duration Partitions
+### 固定持續時間分割區
 
 ```python
 from pyspark.sql.datasource import InputPartition
@@ -19,11 +19,11 @@ class TimeRangePartition(InputPartition):
 
 class TimeBasedReader:
     def __init__(self, options, schema):
-        self.partition_duration = int(options.get("partition_duration", "3600"))  # seconds
-        # Parse start/end time from options
+        self.partition_duration = int(options.get("partition_duration", "3600"))  # 秒
+        # 從選項分析開始/結束時間
 
     def partitions(self):
-        """Split time range into fixed-duration partitions."""
+        """將時間範圍分割成固定持續時間分割區。"""
         partitions = []
         current = self.start_time
         delta = timedelta(seconds=self.partition_duration)
@@ -36,7 +36,7 @@ class TimeBasedReader:
         return partitions
 
     def read(self, partition):
-        """Query data for specific time range."""
+        """查詢特定時間範圍的資料。"""
         response = self._query_api(
             start=partition.start_time,
             end=partition.end_time
@@ -45,9 +45,9 @@ class TimeBasedReader:
             yield self._convert_to_row(item)
 ```
 
-### Auto-Subdividing for Large Results
+### 自動細分用於大型結果
 
-Handle APIs with result size limits by automatically subdividing large partitions:
+透過自動細分大型分割區處理結果大小限制的 API：
 
 ```python
 class AutoSubdivideReader:
@@ -56,11 +56,11 @@ class AutoSubdivideReader:
         self.max_retries = int(options.get("max_retries", "5"))
 
     def read(self, partition):
-        """Read with automatic subdivision on size limit errors."""
+        """在大小限制錯誤時自動細分進行讀取。"""
         try:
             response = self._execute_query(partition.start_time, partition.end_time)
 
-            # Check if response is partial due to size limits
+            # 檢查回應是否因大小限制為部分
             if self._is_size_limit_error(response):
                 yield from self._read_with_subdivision(partition)
                 return
@@ -71,16 +71,16 @@ class AutoSubdivideReader:
             raise
 
     def _read_with_subdivision(self, partition):
-        """Recursively subdivide large partitions."""
+        """遞迴細分大型分割區。"""
         duration = (partition.end_time - partition.start_time).total_seconds()
 
         if duration <= self.min_partition_seconds:
             raise Exception(
-                f"Cannot subdivide further. Duration {duration}s at minimum. "
-                f"Consider more selective query or increase min_partition_seconds."
+                f"無法進一步細分。持續時間 {duration}s 達最低。"
+                f"考慮更具選擇性的查詢或提高 min_partition_seconds。"
             )
 
-        # Split in half
+        # 分成兩半
         midpoint = partition.start_time + timedelta(seconds=duration / 2)
 
         first_half = TimeRangePartition(partition.start_time, midpoint)
@@ -90,7 +90,7 @@ class AutoSubdivideReader:
         yield from self.read(second_half)
 
     def _is_size_limit_error(self, response):
-        """Detect result size limit errors."""
+        """偵測結果大小限制錯誤。"""
         size_limit_codes = [
             "QueryExecutionResultSizeLimitExceeded",
             "ResponsePayloadTooLarge",
@@ -107,11 +107,11 @@ class AutoSubdivideReader:
         return False
 ```
 
-## Token-Range Partitioning
+## 權杖範圍分割區
 
-For distributed databases using consistent hashing (Cassandra, ScyllaDB).
+對於使用一致性雜湊的分散式資料庫（Cassandra、ScyllaDB）。
 
-### Cassandra Token-Range Pattern
+### Cassandra 權杖範圍模式
 
 ```python
 from collections import namedtuple
@@ -120,15 +120,15 @@ class TokenRangePartition(InputPartition):
     def __init__(self, partition_id, start_token, end_token, pk_columns,
                  is_wrap_around=False, min_token=None):
         self.partition_id = partition_id
-        self.start_token = start_token  # None = unbounded
-        self.end_token = end_token      # None = unbounded
+        self.start_token = start_token  # 無 = 無限制
+        self.end_token = end_token      # 無 = 無限制
         self.pk_columns = pk_columns
         self.is_wrap_around = is_wrap_around
         self.min_token = min_token
 
 class TokenRangeReader:
     def _get_token_ranges(self, token_map):
-        """Compute token ranges from cluster token ring."""
+        """從叢集權杖環計算權杖範圍。"""
         if not token_map or not token_map.ring:
             return []
 
@@ -138,13 +138,13 @@ class TokenRangeReader:
 
         for i in range(len(ring)):
             start = ring[i]
-            end = ring[(i + 1) % len(ring)]  # Wrap around
+            end = ring[(i + 1) % len(ring)]  # 環繞
             ranges.append(TokenRange(start=start, end=end))
 
         return ranges
 
     def partitions(self):
-        """Create partitions following TokenRangesScan.java logic."""
+        """遵循 TokenRangesScan.java 邏輯建立分割區。"""
         if not self.token_ranges:
             return []
 
@@ -160,11 +160,11 @@ class TokenRangeReader:
             end_value = token_range.end.value if hasattr(token_range.end, 'value') else str(token_range.end)
 
             if start_value == end_value:
-                # Case 1: Single-node cluster (entire ring)
+                # 情況 1：單一節點叢集（整個環）
                 partition = TokenRangePartition(
                     partition_id=partition_id,
                     start_token=min_token,
-                    end_token=None,  # Unbounded
+                    end_token=None,  # 無限制
                     pk_columns=self.pk_columns,
                     is_wrap_around=True,
                     min_token=min_token
@@ -173,8 +173,8 @@ class TokenRangeReader:
                 partition_id += 1
 
             elif i == 0:
-                # Case 2: First range - split into TWO partitions
-                # Partition 1: token <= minToken (wrap-around)
+                # 情況 2：第一個範圍 - 分成兩個分割區
+                # 分割區 1：token <= minToken（環繞）
                 partition1 = TokenRangePartition(
                     partition_id=partition_id,
                     start_token=None,
@@ -186,7 +186,7 @@ class TokenRangeReader:
                 partitions.append(partition1)
                 partition_id += 1
 
-                # Partition 2: token > start AND token <= end
+                # 分割區 2：token > start AND token <= end
                 partition2 = TokenRangePartition(
                     partition_id=partition_id,
                     start_token=start_value,
@@ -199,7 +199,7 @@ class TokenRangeReader:
                 partition_id += 1
 
             elif end_value == min_token:
-                # Case 3: Range ending at minToken - no upper bound
+                # 情況 3：以 minToken 結束的範圍 - 無上界
                 partition = TokenRangePartition(
                     partition_id=partition_id,
                     start_token=start_value,
@@ -212,7 +212,7 @@ class TokenRangeReader:
                 partition_id += 1
 
             else:
-                # Case 4: Normal range - both bounds
+                # 情況 4：一般範圍 - 兩個邊界
                 partition = TokenRangePartition(
                     partition_id=partition_id,
                     start_token=start_value,
@@ -227,10 +227,10 @@ class TokenRangeReader:
         return partitions
 
     def read(self, partition):
-        """Build query with token range predicates."""
+        """使用權杖範圍述詞建立查詢。"""
         pk_cols_str = ", ".join(partition.pk_columns)
 
-        # Build WHERE clause based on bounds
+        # 根據邊界建立 WHERE 子句
         if partition.start_token is None:
             where_clause = f"token({pk_cols_str}) <= {partition.end_token}"
         elif partition.end_token is None:
@@ -243,14 +243,14 @@ class TokenRangeReader:
 
         query = f"SELECT {columns} FROM {table} WHERE {where_clause}"
 
-        # Execute and yield results
+        # 執行並產生結果
         for row in self._execute_query(query):
             yield row
 ```
 
-## ID-Range Partitioning
+## 編號範圍分割區
 
-For APIs with pagination or sequential IDs.
+對於具分頁或循序編號的 API。
 
 ```python
 class IdRangePartition(InputPartition):
@@ -265,8 +265,8 @@ class IdRangeReader:
         self.page_size = int(options.get("page_size", "1000"))
 
     def partitions(self):
-        """Split by ID ranges."""
-        # Get total count from API
+        """按編號範圍分割。"""
+        # 從 API 取得總計數
         total = self._get_total_count()
         partition_size = total // self.num_partitions
 
@@ -279,7 +279,7 @@ class IdRangeReader:
         return partitions
 
     def read(self, partition):
-        """Paginate through ID range."""
+        """逐頁瀏覽編號範圍。"""
         current_id = partition.start_id
 
         while current_id < partition.end_id:
@@ -294,26 +294,26 @@ class IdRangeReader:
             current_id += self.page_size
 ```
 
-## Partition Count Guidelines
+## 分割區計數指南
 
-**For Batch Reads:**
-- Start with 2-4x number of executor cores
-- Adjust based on data volume and partition size
-- Consider external system load limits
+**用於批次讀取：**
+- 從執行器核心數 2-4 倍開始
+- 根據資料量和分割區大小調整
+- 考慮外部系統負載限制
 
-**For Streaming Reads:**
-- Use fixed-duration partitions (e.g., 1 hour)
-- Let Spark handle parallelism across micro-batches
-- Balance latency vs throughput
+**用於串流讀取：**
+- 使用固定持續時間分割區（如 1 小時）
+- 讓 Spark 處理微批次平行處理
+- 平衡延遲與輸送量
 
-**For Token-Range:**
-- One partition per token range (determined by cluster)
-- Naturally distributes based on data distribution
-- May split first range into two partitions
+**用於權杖範圍：**
+- 每個權杖範圍一個分割區（由叢集決定）
+- 根據資料分佈自然分佈
+- 可能分割第一個範圍成兩個分割區
 
-## Performance Considerations
+## 效能考慮
 
-1. **Partition Size**: Aim for 128MB - 1GB per partition
-2. **API Rate Limits**: Respect rate limits with concurrency controls
-3. **Network Overhead**: Larger partitions reduce round-trips
-4. **Skew Handling**: Monitor for data skew, repartition if needed
+1. **分割區大小**：每個分割區以 128MB - 1GB 為目標
+2. **API 速率限制**：使用並行控制尊重速率限制
+3. **網路負荷**：更大分割區減少往返次數
+4. **偏斜處理**：監控資料偏斜，必要時重新分割

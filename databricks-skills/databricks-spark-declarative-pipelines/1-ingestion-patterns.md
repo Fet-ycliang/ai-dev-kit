@@ -1,16 +1,16 @@
-# Data Ingestion Patterns for SDP
+# SDP 的資料擷取模式
 
-Covers data ingestion patterns for Spark Declarative Pipelines including Auto Loader for cloud storage and streaming sources like Kafka and Event Hub.
+涵蓋 Spark Declarative Pipelines 的資料擷取模式，包括用於雲端儲存體的 Auto Loader，以及 Kafka 和 Event Hub 等串流來源。
 
-**Language Support**: SQL (primary), Python via modern `pyspark.pipelines` API. See [5-python-api.md](5-python-api.md) for Python syntax.
+**語言支援**：SQL（主要）、透過現代 `pyspark.pipelines` API 的 Python。Python 語法請參閱 [5-python-api.md](5-python-api.md)。
 
 ---
 
-## Auto Loader (Cloud Files)
+## Auto Loader（Cloud Files）
 
-Auto Loader incrementally processes new data files as they arrive in cloud storage. In a streaming table query you **must use the `STREAM` keyword with `read_files`**; `read_files` then leverages Auto Loader. See [read_files — Usage in streaming tables](https://docs.databricks.com/aws/en/sql/language-manual/functions/read_files#usage-in-streaming-tables).
+Auto Loader 會在新資料檔案抵達雲端儲存體時，以增量方式進行處理。在 streaming table 查詢中，你**必須在 `read_files` 前使用 `STREAM` 關鍵字**；接著 `read_files` 會利用 Auto Loader。請參閱 [read_files — Usage in streaming tables](https://docs.databricks.com/aws/en/sql/language-manual/functions/read_files#usage-in-streaming-tables)。
 
-### Basic Pattern
+### 基本模式
 
 ```sql
 CREATE OR REPLACE STREAMING TABLE bronze_orders AS
@@ -26,9 +26,9 @@ FROM STREAM read_files(
 );
 ```
 
-### Bronze feeding AUTO CDC
+### 作為 AUTO CDC 上游的 Bronze
 
-If the bronze table feeds a downstream **AUTO CDC** flow (e.g. `FROM stream(bronze_orders_cdc)`), use **`FROM STREAM read_files(...)`** so the source is streaming. Otherwise you may get: *"Cannot create a streaming table append once flow from a batch query."* Same requirement as above: in a streaming table query you must use the `STREAM` keyword with `read_files`.
+如果 bronze 資料表會提供給下游的 **AUTO CDC** flow（例如 `FROM stream(bronze_orders_cdc)`），請使用 **`FROM STREAM read_files(...)`**，讓來源保持為串流。否則你可能會看到：*"Cannot create a streaming table append once flow from a batch query."* 與上方相同，在 streaming table 查詢中，你必須在 `read_files` 前使用 `STREAM` 關鍵字。
 
 ```sql
 CREATE OR REPLACE STREAMING TABLE bronze_orders_cdc AS
@@ -42,7 +42,7 @@ FROM STREAM read_files(
 );
 ```
 
-### Schema Evolution
+### Schema 演進
 
 ```sql
 CREATE OR REPLACE STREAMING TABLE bronze_customers AS
@@ -53,13 +53,13 @@ FROM STREAM read_files(
   '/mnt/raw/customers/',
   format => 'json',
   schemaHints => 'customer_id STRING, email STRING',
-  mode => 'PERMISSIVE'  -- Handles schema changes gracefully
+  mode => 'PERMISSIVE'  -- 可平順處理 schema 變更
 );
 ```
 
-### File Formats
+### 檔案格式
 
-**JSON**:
+**JSON**：
 ```sql
 FROM read_files(
   's3://bucket/data/',
@@ -68,7 +68,7 @@ FROM read_files(
 )
 ```
 
-**CSV**:
+**CSV**：
 ```sql
 FROM read_files(
   '/mnt/raw/data/',
@@ -79,7 +79,7 @@ FROM read_files(
 )
 ```
 
-**Parquet** (schema auto-inferred):
+**Parquet**（自動推斷 schema）：
 ```sql
 FROM read_files(
   'abfss://container@storage.dfs.core.windows.net/data/',
@@ -87,7 +87,7 @@ FROM read_files(
 )
 ```
 
-**Avro**:
+**Avro**：
 ```sql
 FROM read_files(
   '/mnt/raw/events/',
@@ -96,9 +96,9 @@ FROM read_files(
 )
 ```
 
-### Schema Inference
+### Schema 推斷
 
-**Explicit hints** (recommended for production):
+**明確提示**（正式環境建議）：
 ```sql
 FROM read_files(
   '/mnt/raw/sales/',
@@ -107,16 +107,16 @@ FROM read_files(
 )
 ```
 
-**Partial hints** (infer remaining columns):
+**部分提示**（其餘欄位自動推斷）：
 ```sql
 FROM read_files(
   '/mnt/raw/data/',
   format => 'json',
-  schemaHints => 'id STRING, critical_field DECIMAL(10,2)'  -- Others auto-inferred
+  schemaHints => 'id STRING, critical_field DECIMAL(10,2)'  -- 其餘欄位自動推斷
 )
 ```
 
-Add this to the pipeline configuration in `resources/*_etl.pipeline.yml`:
+在 `resources/*_etl.pipeline.yml` 的 pipeline 設定中加入下列內容：
 ```yaml
 configuration:
   bronze_schema: ${var.bronze_schema}
@@ -125,19 +125,19 @@ configuration:
   schema_location_base: ${var.schema_location_base}
 ```
 
-And define variables in `databricks.yml`:
+並在 `databricks.yml` 中定義變數：
 ```yaml
 variables:
   catalog:
-    description: The catalog to use
+    description: 要使用的 catalog
   bronze_schema:
-    description: The bronze schema to use
+    description: 要使用的 bronze schema
   silver_schema:
-    description: The silver schema to use
+    description: 要使用的 silver schema
   gold_schema:
-    description: The gold schema to use
+    description: 要使用的 gold schema
   schema_location_base:
-    description: Base path for Auto Loader schema metadata
+    description: Auto Loader schema 中繼資料的基礎路徑
 
 targets:
   dev:
@@ -157,7 +157,7 @@ targets:
       schema_location_base: /Volumes/my_catalog/pipeline_metadata/my_pipeline_metadata/schemas
 ```
 
-Then access these in Python code with:
+接著可在 Python 程式碼中這樣存取：
 ```python
 bronze_schema = spark.conf.get("bronze_schema")
 silver_schema = spark.conf.get("silver_schema")
@@ -165,14 +165,12 @@ gold_schema = spark.conf.get("gold_schema")
 schema_location_base = spark.conf.get("schema_location_base")
 ```
 
+### Rescue Data 與隔離區
 
-
-### Rescue Data and Quarantine
-
-Handle malformed records with `_rescued_data`:
+使用 `_rescued_data` 處理格式異常的記錄：
 
 ```sql
--- Flag records with parsing errors
+-- 標記出現解析錯誤的記錄
 CREATE OR REPLACE STREAMING TABLE bronze_events AS
 SELECT
   *,
@@ -184,20 +182,20 @@ FROM read_files(
   schemaHints => 'event_id STRING, event_time TIMESTAMP'
 );
 
--- Quarantine for investigation
+-- 建立隔離區供調查
 CREATE OR REPLACE STREAMING TABLE bronze_events_quarantine AS
 SELECT * FROM STREAM bronze_events WHERE _rescued_data IS NOT NULL;
 
--- Clean data for downstream
+-- 供下游使用的乾淨資料
 CREATE OR REPLACE STREAMING TABLE silver_events_clean AS
 SELECT * FROM STREAM bronze_events WHERE _rescued_data IS NULL;
 ```
 
 ---
 
-## Streaming Sources (Kafka, Event Hub, Kinesis)
+## 串流來源（Kafka、Event Hub、Kinesis）
 
-### Kafka Source
+### Kafka 來源
 
 ```sql
 CREATE OR REPLACE STREAMING TABLE bronze_kafka_events AS
@@ -213,14 +211,14 @@ FROM read_stream(
   format => 'kafka',
   kafka.bootstrap.servers => '${kafka_brokers}',
   subscribe => 'events-topic',
-  startingOffsets => 'latest',  -- or 'earliest'
+  startingOffsets => 'latest',  -- 或 'earliest'
   kafka.security.protocol => 'SASL_SSL',
   kafka.sasl.mechanism => 'PLAIN',
   kafka.sasl.jaas.config => 'kafkashaded.org.apache.kafka.common.security.plain.PlainLoginModule required username="${kafka_username}" password="${kafka_password}";'
 );
 ```
 
-### Kafka with Multiple Topics
+### Kafka 搭配多個 Topic
 
 ```sql
 FROM read_stream(
@@ -267,10 +265,10 @@ FROM read_stream(
 );
 ```
 
-### Parse JSON from Streaming Sources
+### 解析串流來源中的 JSON
 
 ```sql
--- Parse JSON from Kafka value
+-- 解析 Kafka value 中的 JSON
 CREATE OR REPLACE STREAMING TABLE silver_kafka_parsed AS
 SELECT
   from_json(
@@ -281,7 +279,7 @@ SELECT
   _ingested_at
 FROM STREAM bronze_kafka_events;
 
--- Flatten parsed JSON
+-- 攤平解析後的 JSON
 CREATE OR REPLACE STREAMING TABLE silver_kafka_flattened AS
 SELECT
   event_data.event_id,
@@ -296,28 +294,28 @@ FROM STREAM silver_kafka_parsed;
 
 ---
 
-## Authentication
+## 認證
 
-### Using Databricks Secrets
+### 使用 Databricks Secrets
 
-**Kafka**:
+**Kafka**：
 ```sql
 kafka.sasl.jaas.config => 'kafkashaded.org.apache.kafka.common.security.plain.PlainLoginModule required username="{{secrets/kafka/username}}" password="{{secrets/kafka/password}}";'
 ```
 
-**Event Hub**:
+**Event Hub**：
 ```sql
 eventhubs.connectionString => '{{secrets/eventhub/connection-string}}'
 ```
 
-### Using Pipeline Variables
+### 使用 Pipeline 變數
 
-Reference variables in SQL:
+在 SQL 中引用變數：
 ```sql
 kafka.bootstrap.servers => '${kafka_brokers}'
 ```
 
-Define in pipeline configuration:
+在 pipeline 設定中定義：
 ```yaml
 variables:
   kafka_brokers:
@@ -326,18 +324,18 @@ variables:
 
 ---
 
-## Key Patterns
+## 關鍵模式
 
-### 1. Always Add Ingestion Timestamp
+### 1. 一律加入擷取時間戳記
 
 ```sql
 SELECT
   *,
-  current_timestamp() AS _ingested_at  -- Track when data entered system
+  current_timestamp() AS _ingested_at  -- 追蹤資料進入系統的時間
 FROM read_files(...)
 ```
 
-### 2. Include File Metadata for Debugging
+### 2. 納入檔案中繼資料以便偵錯
 
 ```sql
 SELECT
@@ -348,24 +346,24 @@ SELECT
 FROM read_files(...)
 ```
 
-### 3. Use Schema Hints for Production
+### 3. 正式環境使用 Schema Hints
 
 ```sql
--- ✅ Explicit schema prevents surprises
+-- ✅ 明確 schema 可避免意外
 FROM read_files(
   '/mnt/data/',
   format => 'json',
   schemaHints => 'id STRING, amount DECIMAL(10,2), date DATE'
 )
 
--- ❌ Fully inferred schemas can drift
+-- ❌ 完全自動推斷的 schema 可能發生漂移
 FROM read_files('/mnt/data/', format => 'json')
 ```
 
-### 4. Handle Rescue Data for Quality
+### 4. 使用 Rescue Data 維護資料品質
 
 ```sql
--- Route errors to quarantine, clean to downstream
+-- 將錯誤資料送往隔離區，乾淨資料送往下游
 CREATE OR REPLACE STREAMING TABLE bronze_data_quarantine AS
 SELECT * FROM STREAM bronze_data WHERE has_errors;
 
@@ -373,71 +371,71 @@ CREATE OR REPLACE STREAMING TABLE silver_data AS
 SELECT * FROM STREAM bronze_data WHERE NOT has_errors;
 ```
 
-### 5. Starting Positions
+### 5. 起始位置
 
-**Development**: `startingOffsets => 'latest'` (new data only)
-**Backfill**: `startingOffsets => 'earliest'` (all available data)
-**Recovery**: Checkpoints handle automatically
+**開發**：`startingOffsets => 'latest'`（僅新資料）
+**回補**：`startingOffsets => 'earliest'`（所有可用資料）
+**復原**：Checkpoints 會自動處理
 
 ---
 
-## Common Issues
+## 常見問題
 
-| Issue | Solution |
+| 問題 | 解法 |
 |-------|----------|
-| Files not picked up | Verify format matches files and path is correct |
-| Schema evolution breaking | Use `mode => 'PERMISSIVE'` and monitor `_rescued_data` |
-| Kafka lag increasing | Check downstream bottlenecks, increase parallelism |
-| Duplicate events | Implement deduplication in silver layer (see [2-streaming-patterns.md](2-streaming-patterns.md)) |
-| Parsing errors | Use rescue data pattern to quarantine malformed records |
+| 檔案未被擷取 | 確認 format 與檔案一致，且路徑正確 |
+| Schema 演進造成中斷 | 使用 `mode => 'PERMISSIVE'` 並監控 `_rescued_data` |
+| Kafka lag 持續增加 | 檢查下游瓶頸並提高平行度 |
+| 重複事件 | 在 silver 層實作去重（請參閱 [2-streaming-patterns.md](2-streaming-patterns.md)） |
+| 解析錯誤 | 使用 rescue data 模式將格式異常的記錄送往隔離區 |
 
 ---
 
-## Python API Examples
+## Python API 範例
 
-For Python, use modern `pyspark.pipelines` API. See [5-python-api.md](5-python-api.md) for complete guidance.
+對於 Python，請使用現代 `pyspark.pipelines` API。完整指引請參閱 [5-python-api.md](5-python-api.md)。
 
-**IMPORTANT for Python**: When using `spark.readStream.format("cloudFiles")` for cloud storage ingestion, you **must specify a `cloudFiles.schemaLocation`** for Auto Loader schema metadata.
+**Python 重要事項**：使用 `spark.readStream.format("cloudFiles")` 進行雲端儲存體擷取時，你**必須指定 `cloudFiles.schemaLocation`** 來儲存 Auto Loader 的 schema 中繼資料。
 
-### Schema Location Best Practice (Python Only)
+### Schema Location 最佳實務（僅限 Python）
 
-**Never use the source data volume for schema storage** - this causes permission conflicts and pollutes your raw data.
+**絕對不要使用來源資料的 volume 來儲存 schema** —— 這會造成權限衝突，並污染原始資料。
 
-#### Prompt User for Schema Location
+#### 提示使用者提供 Schema Location
 
-When creating Python pipelines with Auto Loader, **always ask the user** where to store schema metadata:
+建立使用 Auto Loader 的 Python 管線時，**一定要詢問使用者**要把 schema 中繼資料存放在哪裡：
 
-**Recommended pattern:**
+**建議模式：**
 ```
 /Volumes/{catalog}/{schema}/{pipeline_name}_metadata/schemas/{table_name}
 ```
 
-**Example prompt:**
+**提示範例：**
 ```
-"Where would you like to store Auto Loader schema metadata?
+你希望將 Auto Loader 的 schema 中繼資料儲存在哪裡？
 
-I recommend:
+我建議：
   /Volumes/my_catalog/pipeline_metadata/orders_pipeline_metadata/schemas/
 
-This path:
-- Keeps source data clean
-- Prevents permission issues
-- Makes pipeline state easy to manage
-- Can be parameterized per environment (dev/prod)
+此路徑：
+- 保持來源資料乾淨
+- 避免權限問題
+- 讓 pipeline 狀態更容易管理
+- 可依環境（dev/prod）參數化
 
-You may need to create the volume 'pipeline_metadata' first if it doesn't exist.
+如果還不存在，你可能需要先建立 `pipeline_metadata` volume。
 
-Would you like to use this path?"
+你要使用這個路徑嗎？
 ```
 
-### Auto Loader (Python)
+### Auto Loader（Python）
 
 ```python
 from pyspark import pipelines as dp
 from pyspark.sql import functions as F
 
-# Get schema location from pipeline configuration
-# Suggested format: /Volumes/{catalog}/{schema}/{pipeline_name}_metadata/schemas
+# 從 pipeline 設定取得 schema location
+# 建議格式：/Volumes/{catalog}/{schema}/{pipeline_name}_metadata/schemas
 schema_location_base = spark.conf.get("schema_location_base")
 
 @dp.table(name="bronze_orders", cluster_by=["order_date"])
@@ -454,13 +452,13 @@ def bronze_orders():
     )
 ```
 
-**Pipeline Configuration** (in `pipeline.yml`):
+**Pipeline 設定**（位於 `pipeline.yml`）：
 ```yaml
 configuration:
   schema_location_base: /Volumes/my_catalog/pipeline_metadata/orders_pipeline_metadata/schemas
 ```
 
-### Kafka (Python)
+### Kafka（Python）
 
 ```python
 @dp.table(name="bronze_kafka_events")
@@ -482,10 +480,10 @@ def bronze_kafka_events():
     )
 ```
 
-### Quarantine (Python)
+### 隔離區（Python）
 
 ```python
-# Get schema location from pipeline configuration
+# 從 pipeline 設定取得 schema location
 schema_location_base = spark.conf.get("schema_location_base")
 
 @dp.table(name="bronze_events", cluster_by=["ingestion_date"])

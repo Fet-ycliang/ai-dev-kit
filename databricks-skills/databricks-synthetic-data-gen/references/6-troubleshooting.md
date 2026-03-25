@@ -1,49 +1,49 @@
-# Troubleshooting Guide
+# 疑難排除指南
 
-Common issues and solutions for synthetic data generation.
+合成資料產生的常見問題和解決方案。
 
-## Environment Issues
+## 環境問題
 
-### ModuleNotFoundError: faker (or other library)
+### ModuleNotFoundError: faker（或其他程式庫）
 
-**Problem:** Dependencies not available in execution environment.
+**問題：** 依賴性在執行環境中不可用。
 
-**Solutions by execution mode:**
+**依執行模式提供解決方案：**
 
-| Mode | Solution |
-|------|----------|
-| **DB Connect 16.4+** | Use `DatabricksEnv().withDependencies("faker", "pandas", ...)` |
-| **Older DB Connect with Serverless** | Create job with `environments` parameter |
-| **Databricks Runtime** | Use Databricks CLI to  install `faker holidays` |
-| **Classic cluster** | Use Databricks CLI to install libraries. `databricks libraries install --json '{"cluster_id": "<cluster_id>", "libraries": [{"pypi": {"package": "faker"}}, {"pypi": {"package": "holidays"}}]}'` |
+| 模式 | 解決方案 |
+|------|---------|
+| **DB Connect 16.4+** | 使用 `DatabricksEnv().withDependencies("faker", "pandas", ...)` |
+| **舊版 DB Connect 搭配無伺服器** | 建立具有 `environments` 參數的工作 |
+| **Databricks Runtime** | 使用 Databricks CLI 安裝 `faker holidays` |
+| **經典叢集** | 使用 Databricks CLI 安裝程式庫。`databricks libraries install --json '{"cluster_id": "<cluster_id>", "libraries": [{"pypi": {"package": "faker"}}, {"pypi": {"package": "holidays"}}]}'` |
 
 ```python
-# For DB Connect 16.4+
+# 對 DB Connect 16.4+
 from databricks.connect import DatabricksSession, DatabricksEnv
 
 env = DatabricksEnv().withDependencies("faker", "pandas", "numpy", "holidays")
 spark = DatabricksSession.builder.withEnvironment(env).serverless(True).getOrCreate()
 ```
 
-### DatabricksEnv not found
+### DatabricksEnv 未找到
 
-**Problem:** Using older databricks-connect version.
+**問題：** 使用舊版 databricks-connect 版本。
 
-**Solution:** Upgrade to 16.4+ or use job-based approach:
+**解決方案：** 升級到 16.4+ 或使用工作型方法：
 
 ```bash
-# Upgrade (prefer uv, fall back to pip)
+# 升級（偏好 uv，回退到 pip）
 uv pip install "databricks-connect>=16.4,<17.4"
-# or: pip install "databricks-connect>=16.4,<17.4"
+# 或：pip install "databricks-connect>=16.4,<17.4"
 
-# Or use job with environments parameter instead
+# 或改用具 environments 參數的工作
 ```
 
-### serverless_compute_id error
+### serverless_compute_id 錯誤
 
-**Problem:** Missing serverless configuration.
+**問題：** 遺失無伺服器設定。
 
-**Solution:** Add to `~/.databrickscfg`:
+**解決方案：** 新增到 `~/.databrickscfg`：
 
 ```ini
 [DEFAULT]
@@ -54,81 +54,81 @@ auth_type = databricks-cli
 
 ---
 
-## Execution Issues
+## 執行問題
 
-### CRITICAL: cache() and persist() NOT supported on serverless
+### 重要：無伺服器上不支援 cache() 和 persist()
 
-**Problem:** Using `.cache()` or `.persist()` on serverless compute fails with:
+**問題：** 在無伺服器計算上使用 `.cache()` 或 `.persist()` 失敗，錯誤為：
 ```
 AnalysisException: [NOT_SUPPORTED_WITH_SERVERLESS] PERSIST TABLE is not supported on serverless compute.
 ```
 
-**Why this happens:** Serverless compute does not support caching DataFrames in memory. This is a fundamental limitation of the serverless architecture.
+**為什麼發生：** 無伺服器計算不支援在記憶體中快取 DataFrame。這是無伺服器架構的基本限制。
 
-**Solution:** Write master tables to Delta first, then read them back for FK joins:
+**解決方案：** 先將主表格寫入 Delta，然後讀取以進行外鍵連接：
 
 ```python
-# BAD - will fail on serverless
+# 不好 - 會在無伺服器上失敗
 customers_df = spark.range(0, N_CUSTOMERS)...
-customers_df.cache()  # ❌ FAILS: "PERSIST TABLE is not supported on serverless compute"
+customers_df.cache()  # ❌ 失敗：「PERSIST TABLE is not supported on serverless compute」
 
-# GOOD - write to Delta, then read back
+# 好 - 寫入 Delta，然後讀取
 customers_df = spark.range(0, N_CUSTOMERS)...
 customers_df.write.mode("overwrite").saveAsTable(f"{CATALOG}.{SCHEMA}.customers")
-customer_lookup = spark.table(f"{CATALOG}.{SCHEMA}.customers")  # ✓ Read from Delta
+customer_lookup = spark.table(f"{CATALOG}.{SCHEMA}.customers")  # ✓ 從 Delta 讀取
 ```
 
-**Best practice for referential integrity:**
-1. Generate master table (e.g., customers)
-2. Write to Delta table
-3. Read back for FK lookup joins
-4. Generate child tables (e.g., orders, tickets) with valid FKs
-5. Write child tables to Delta
+**參照完整性最佳實踐：**
+1. 產生主表格（例如顧客）
+2. 寫入 Delta 表格
+3. 讀取以進行外鍵查詢連接
+4. 使用有效外鍵產生子表格（例如訂單、票務）
+5. 將子表格寫入 Delta
 
 ---
 
-### Serverless job fails to start
+### 無伺服器工作無法啟動
 
-**Possible causes:**
-1. Workspace doesn't have serverless enabled
-2. Unity Catalog permissions missing
-3. Invalid environment configuration
+**可能原因：**
+1. 工作區未啟用無伺服器
+2. 統一目錄權限遺失
+3. 無效的環境設定
 
-**Solutions:**
+**解決方案：**
 ```python
-# Verify serverless is available
-# Try creating a simple job first to test
+# 驗證無伺服器可用
+# 先嘗試建立簡單工作進行測試
 
-# Check Unity Catalog permissions
+# 檢查統一目錄權限
 spark.sql("SELECT current_catalog(), current_schema()")
 ```
 
-### Classic cluster startup slow (3-8 minutes)
+### 經典叢集啟動緩慢（3-8 分鐘）
 
-**Problem:** Clusters take time to start.
+**問題：** 叢集需要時間啟動。
 
-**Solution:** Switch to serverless:
+**解決方案：** 切換到無伺服器：
 
 ```python
-# Instead of:
+# 不是：
 # spark = DatabricksSession.builder.clusterId("xxx").getOrCreate()
 
-# Use:
+# 使用：
 spark = DatabricksSession.builder.serverless(True).getOrCreate()
 ```
 
-### "Either base environment or version must be provided"
+### 「必須提供基礎環境或版本」
 
-**Problem:** Missing `client` in job environment spec.
+**問題：** 工作環境規格中遺失 `client`。
 
-**Solution:** Add `"client": "4"` to the spec:
+**解決方案：** 在規格中新增 `"client": "4"`：
 
 ```python
 {
   "environments": [{
     "environment_key": "datagen_env",
     "spec": {
-      "client": "4",  # Required!
+      "client": "4",  # 必需！
       "dependencies": ["faker", "numpy", "pandas"]
     }
   }]
@@ -137,28 +137,28 @@ spark = DatabricksSession.builder.serverless(True).getOrCreate()
 
 ---
 
-## Data Generation Issues
+## 資料產生問題
 
-### AttributeError: 'function' object has no attribute 'partitionBy'
+### AttributeError：'function' 物件沒有屬性 'partitionBy'
 
-**Problem:** Using `F.window` instead of `Window` for analytical window functions.
+**問題：** 對分析視窗函式使用 `F.window` 而不是 `Window`。
 
 ```python
-# WRONG - F.window is for time-based tumbling/sliding windows (streaming)
+# 錯誤 - F.window 用於基於時間的翻轉/滑動視窗（串流）
 window_spec = F.window.partitionBy("account_id").orderBy("contact_id")
-# Error: AttributeError: 'function' object has no attribute 'partitionBy'
+# 錯誤：AttributeError：'function' 物件沒有屬性 'partitionBy'
 
-# CORRECT - Window is for analytical window specifications
+# 正確 - Window 用於分析視窗規格
 from pyspark.sql.window import Window
 window_spec = Window.partitionBy("account_id").orderBy("contact_id")
 ```
 
-**When to use Window:** For analytical functions like `row_number()`, `rank()`, `lead()`, `lag()`:
+**何時使用 Window：** 用於分析函式，例如 `row_number()`、`rank()`、`lead()`、`lag()`：
 
 ```python
 from pyspark.sql.window import Window
 
-# Mark first contact per account as primary
+# 將每個帳戶的第一個聯絡人標記為主要
 window_spec = Window.partitionBy("account_id").orderBy("contact_id")
 contacts_df = contacts_df.withColumn(
     "is_primary",
@@ -168,69 +168,69 @@ contacts_df = contacts_df.withColumn(
 
 ---
 
-### Faker UDF is slow
+### Faker UDF 很慢
 
-**Problem:** Single-row UDFs don't parallelize well.
+**問題：** 單列 UDF 無法良好平行化。
 
-**Solution:** Use `pandas_udf` for batch processing:
+**解決方案：** 使用 `pandas_udf` 進行批次處理：
 
 ```python
-# SLOW - scalar UDF
+# 慢 - 標量 UDF
 @F.udf(returnType=StringType())
 def slow_fake_name():
     return Faker().name()
 
-# FAST - pandas UDF (batch processing)
+# 快 - pandas UDF（批次處理）
 @F.pandas_udf(StringType())
 def fast_fake_name(ids: pd.Series) -> pd.Series:
     fake = Faker()
     return pd.Series([fake.name() for _ in range(len(ids))])
 ```
 
-### Out of memory with large data
+### 大型資料記憶體不足
 
-**Problem:** Not enough partitions for data size.
+**問題：** 資料大小的分區不足。
 
-**Solution:** Increase partitions:
+**解決方案：** 增加分區：
 
 ```python
-# For large datasets (1M+ rows)
-customers_df = spark.range(0, N_CUSTOMERS, numPartitions=64)  # Increase from default
+# 針對大型資料集（1M+ 列）
+customers_df = spark.range(0, N_CUSTOMERS, numPartitions=64)  # 從預設值增加
 ```
 
-| Data Size | Recommended Partitions |
-|-----------|----------------------|
+| 資料大小 | 建議分區數 |
+|---------|----------|
 | < 100K | 8 |
 | 100K - 500K | 16 |
 | 500K - 1M | 32 |
 | 1M+ | 64+ |
 
-### Context corrupted on classic cluster
+### 經典叢集上的內容已損毀
 
-**Problem:** Stale execution context.
+**問題：** 陳舊的執行內容。
 
-**Solution:** Create fresh context (omit context_id), reinstall libraries:
+**解決方案：** 建立新鮮內容（省略 context_id），重新安裝程式庫：
 
 ```python
-# Don't reuse context_id if you see strange errors
-# Let it create a new context
+# 如果看到奇怪的錯誤，不要重複使用 context_id
+# 讓它建立新內容
 ```
 
-### Referential integrity violations
+### 參照完整性違規
 
-**Problem:** Foreign keys reference non-existent parent records.
+**問題：** 外鍵參考不存在的父記錄。
 
-**Solution:** Write master table to Delta first, then read back for FK joins:
+**解決方案：** 先將主表格寫入 Delta，然後讀取以進行外鍵連接：
 
 ```python
-# 1. Generate and WRITE master table (do NOT use cache with serverless!)
+# 1. 產生並寫入主表格（不要搭配無伺服器計算使用 cache！）
 customers_df = spark.range(0, N_CUSTOMERS)...
 customers_df.write.mode("overwrite").saveAsTable(f"{CATALOG}.{SCHEMA}.customers")
 
-# 2. Read back for FK lookups
+# 2. 讀取以進行外鍵查詢
 customer_lookup = spark.table(f"{CATALOG}.{SCHEMA}.customers").select("customer_id", "tier")
 
-# 3. Generate child table with valid FKs
+# 3. 使用有效外鍵產生子表格
 orders_df = spark.range(0, N_ORDERS).join(
     customer_lookup,
     on=<mapping_condition>,
@@ -238,31 +238,31 @@ orders_df = spark.range(0, N_ORDERS).join(
 )
 ```
 
-> **WARNING:** Do NOT use `.cache()` or `.persist()` with serverless compute. See the dedicated section above.
+> **警告：** 不要搭配無伺服器計算使用 `.cache()` 或 `.persist()`。請參閱上面的專用章節。
 
 ---
 
-## Data Quality Issues
+## 資料品質問題
 
-### Uniform distributions (unrealistic)
+### 均勻分佈（不逼真）
 
-**Problem:** All customers have similar order counts, amounts are evenly distributed.
+**問題：** 所有顧客都有相似的訂單計數，金額均勻分佈。
 
-**Solution:** Use non-linear distributions:
+**解決方案：** 使用非線性分佈：
 
 ```python
-# BAD - uniform
+# 不好 - 均勻
 amounts = np.random.uniform(10, 1000, N)
 
-# GOOD - log-normal (realistic)
+# 好 - 對數常態（逼真）
 amounts = np.random.lognormal(mean=5, sigma=0.8, N)
 ```
 
-### Missing time-based patterns
+### 遺失基於時間的模式
 
-**Problem:** Data doesn't reflect weekday/weekend or seasonal patterns.
+**問題：** 資料不反映工作日/週末或季節模式。
 
-**Solution:** Add multipliers:
+**解決方案：** 新增乘數：
 
 ```python
 import holidays
@@ -271,54 +271,54 @@ US_HOLIDAYS = holidays.US(years=[2024, 2025])
 
 def get_multiplier(date):
     mult = 1.0
-    if date.weekday() >= 5:  # Weekend
+    if date.weekday() >= 5:  # 週末
         mult *= 0.6
     if date in US_HOLIDAYS:
         mult *= 0.3
     return mult
 ```
 
-### Incoherent row attributes
+### 列屬性不一致
 
-**Problem:** Enterprise customer has low-value orders, critical ticket has slow resolution.
+**問題：** Enterprise 顧客有低價值訂單，critical 票務解決緩慢。
 
-**Solution:** Correlate attributes:
+**解決方案：** 相關聯屬性：
 
 ```python
-# Priority based on tier
+# 基於層級的優先順序
 if tier == 'Enterprise':
     priority = np.random.choice(['Critical', 'High'], p=[0.4, 0.6])
 else:
     priority = np.random.choice(['Medium', 'Low'], p=[0.6, 0.4])
 
-# Resolution based on priority
+# 基於優先順序的解決
 resolution_scale = {'Critical': 4, 'High': 12, 'Medium': 36, 'Low': 72}
 resolution_hours = np.random.exponential(scale=resolution_scale[priority])
 ```
 
 ---
 
-## Validation Steps
+## 驗證步驟
 
-After generation, verify your data:
+產生後驗證資料：
 
 ```python
-# 1. Check row counts
-print(f"Customers: {customers_df.count():,}")
-print(f"Orders: {orders_df.count():,}")
+# 1. 檢查列計數
+print(f"顧客：{customers_df.count():,}")
+print(f"訂單：{orders_df.count():,}")
 
-# 2. Verify distributions
+# 2. 驗證分佈
 customers_df.groupBy("tier").count().show()
 orders_df.describe("amount").show()
 
-# 3. Check referential integrity
+# 3. 檢查參照完整性
 orphans = orders_df.join(
     customers_df,
     orders_df.customer_id == customers_df.customer_id,
     "left_anti"
 )
-print(f"Orphan orders: {orphans.count()}")
+print(f"孤立訂單：{orphans.count()}")
 
-# 4. Verify date range
+# 4. 驗證日期範圍
 orders_df.select(F.min("order_date"), F.max("order_date")).show()
 ```

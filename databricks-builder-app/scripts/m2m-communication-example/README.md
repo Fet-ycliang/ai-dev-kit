@@ -1,8 +1,8 @@
-# M2M Communication Example -- App-to-App Integration
+# M2M Communication 範例 -- App-to-App 整合
 
-A minimal Databricks App that demonstrates calling the **Builder App** as an agent-as-a-service. It shows the full pattern: M2M OAuth authentication, agent invocation, and SSE response streaming.
+這是一個精簡的 Databricks App，示範如何把 **Builder App** 當成 agent-as-a-service 來呼叫。內容涵蓋完整流程：M2M OAuth 認證、agent 呼叫，以及 SSE 回應串流。
 
-## How It Works
+## 運作方式
 
 ```
 +------------------------+    Bearer token    +------------------------+
@@ -11,53 +11,53 @@ A minimal Databricks App that demonstrates calling the **Builder App** as an age
 +------------------------+                   +------------------------+
 ```
 
-1. This app's auto-provisioned **service principal** authenticates to the builder app using `WorkspaceClient().config.authenticate()`, which generates an M2M OAuth Bearer token.
-2. The builder app validates the token via `WorkspaceClient(token=...).current_user.me()` to resolve the caller's identity.
-3. This app invokes the agent (`POST /api/invoke_agent`), then streams events (`POST /api/stream_progress/{id}`) back to the browser.
+1. 此 app 自動建立的 **service principal** 會透過 `WorkspaceClient().config.authenticate()` 向 builder app 完成認證，並產生 M2M OAuth Bearer token。
+2. builder app 會透過 `WorkspaceClient(token=...).current_user.me()` 驗證 token，以解析呼叫端身分。
+3. 此 app 會呼叫 agent（`POST /api/invoke_agent`），再把事件串流（`POST /api/stream_progress/{id}`）回傳到瀏覽器。
 
-## Prerequisites
+## 先決條件
 
-- The **Builder App** must be deployed first (see `databricks-builder-app/README.md`)
+- 必須先部署 **Builder App**（請參閱 `databricks-builder-app/README.md`）
 - Python 3.11+
-- A Databricks workspace with apps enabled
+- 已啟用 apps 的 Databricks workspace
 
-## Setup
+## 設定
 
-### 1. Deploy the Builder App
+### 1. 部署 Builder App
 
-If not already deployed:
+若尚未部署：
 
 ```bash
 cd databricks-builder-app
 ./scripts/deploy.sh <builder-app-name>
 ```
 
-### 2. Deploy This App
+### 2. 部署此 App
 
 ```bash
-# Create the app
+# 建立 app
 databricks apps create m2m-communication-example
 
-# Copy and configure app.yaml
+# 複製並設定 app.yaml
 cp app.yaml.example app.yaml
-# Edit app.yaml: set BUILDER_APP_URL to the builder app's URL
+# 編輯 app.yaml：將 BUILDER_APP_URL 設為 builder app 的 URL
 
-# Upload and deploy
+# 上傳並部署
 databricks workspace import-dir . /Workspace/Users/<you>/apps/m2m-communication-example --overwrite
 databricks apps deploy m2m-communication-example --source-code-path /Workspace/Users/<you>/apps/m2m-communication-example
 ```
 
-### 3. Grant Permissions (Both Directions)
+### 3. 授與權限（雙向）
 
-Each app's service principal needs **CAN USE** permission on the other app. This is required because:
+每個 app 的 service principal 都必須對另一個 app 具有 **CAN USE** 權限，原因如下：
 
-- **This app's SP** needs access to the **builder app** to call its API endpoints
-- **The builder app's SP** needs access to **this app** if it ever needs to call back (and for workspace-level auth resolution)
+- **此 app 的 SP** 需要能存取 **builder app** 才能呼叫其 API 端點
+- **builder app 的 SP** 需要能存取 **此 app**，以便在需要回呼時使用（以及進行 workspace 層級的 auth 解析）
 
-Find each app's service principal name in the Databricks UI (Apps > your app > Settings), then grant permissions:
+請先在 Databricks UI 中找到各 app 的 service principal 名稱（Apps > 您的 app > Settings），再授與權限：
 
 ```bash
-# Grant this app's SP access to the builder app
+# 授與此 app 的 SP 存取 builder app
 databricks apps update-permissions <builder-app-name> --json '{
   "access_control_list": [{
     "service_principal_name": "<m2m-example-sp-name>",
@@ -65,7 +65,7 @@ databricks apps update-permissions <builder-app-name> --json '{
   }]
 }'
 
-# Grant the builder app's SP access to this app
+# 授與 builder app 的 SP 存取此 app
 databricks apps update-permissions m2m-communication-example --json '{
   "access_control_list": [{
     "service_principal_name": "<builder-app-sp-name>",
@@ -74,101 +74,101 @@ databricks apps update-permissions m2m-communication-example --json '{
 }'
 ```
 
-> **Note:** If the `users` group already has `CAN_USE` on both apps (the default), these explicit grants may not be needed. Check your app permissions to confirm.
+> **注意：** 若 `users` 群組已對兩個 app 都具有 `CAN_USE`（預設情況），這些額外授權可能不需要。請先檢查 app 權限設定。
 
-### 4. Verify
+### 4. 驗證
 
-Open this app's URL in your browser. Type a message and click **Send**. You should see the agent's response stream in real time.
+在瀏覽器開啟此 app 的 URL，輸入訊息並點選 **Send**。您應可即時看到 agent 的回應串流。
 
-## Local Development
+## 本機開發
 
-For local testing, run both apps on your machine:
+若要在本機測試，請在本機同時執行兩個 app：
 
-### Terminal 1 -- Start the Builder App
+### Terminal 1 -- 啟動 Builder App
 
 ```bash
 cd databricks-builder-app
 ./scripts/start_dev.sh
 ```
 
-The builder app runs at `http://localhost:8000`.
+builder app 會在 `http://localhost:8000` 執行。
 
-### Terminal 2 -- Start This App
+### Terminal 2 -- 啟動此 App
 
 ```bash
 cd databricks-builder-app/scripts/m2m-communication-example
 
-# Install dependencies
+# 安裝依賴
 pip install -r requirements.txt
 
-# Set environment variables
+# 設定環境變數
 export BUILDER_APP_URL=http://localhost:8000
-export DATABRICKS_TOKEN=dapi...  # Your PAT
+export DATABRICKS_TOKEN=dapi...  # 您的 PAT
 
-# Run
+# 執行
 uvicorn app:app --host 0.0.0.0 --port 8001
 ```
 
-Open `http://localhost:8001` in your browser.
+在瀏覽器開啟 `http://localhost:8001`。
 
-## API Endpoints
+## API 端點
 
-| Method | Path | Description |
-|--------|------|-------------|
-| `GET` | `/` | HTML demo UI |
-| `POST` | `/ask` | Send message, wait for full response |
-| `POST` | `/invoke` | Start agent, get `execution_id` for streaming |
-| `GET` | `/stream/{execution_id}` | SSE proxy for real-time streaming |
-| `GET` | `/health` | Health check (also pings builder app) |
+| Method | Path | 說明 |
+|--------|------|------|
+| `GET` | `/` | HTML 示範 UI |
+| `POST` | `/ask` | 傳送訊息並等待完整回應 |
+| `POST` | `/invoke` | 啟動 agent，取得可串流使用的 `execution_id` |
+| `GET` | `/stream/{execution_id}` | 即時串流的 SSE proxy |
+| `GET` | `/health` | 健康檢查（也會 ping builder app） |
 
-## File Structure
+## 檔案結構
 
 ```
 m2m-communication-example/
-+-- app.py              # FastAPI app with HTML UI + endpoints
-+-- builder_client.py   # HTTP client for builder app (auth, REST, SSE)
-+-- app.yaml.example    # Databricks Apps deployment config (copy to app.yaml)
-+-- requirements.txt    # Python dependencies
-+-- README.md           # This file
++-- app.py               # 含 HTML UI 與端點的 FastAPI app
++-- builder_client.py    # Builder App 的 HTTP client（auth、REST、SSE）
++-- app.yaml.example     # Databricks Apps 部署設定（複製成 app.yaml）
++-- requirements.txt     # Python 依賴
++-- README.md            # 本檔案
 ```
 
-## Auth Details
+## Auth 細節
 
-### In Databricks Apps (Production)
+### 在 Databricks Apps 中（正式環境）
 
-The calling app authenticates using its auto-provisioned service principal:
+呼叫端 app 會使用自動建立的 service principal 完成認證：
 
 ```python
 from databricks.sdk import WorkspaceClient
 
-# SDK automatically uses the app's SP credentials
+# SDK 會自動使用 app 的 SP 憑證
 headers = WorkspaceClient().config.authenticate()
 # headers = {"Authorization": "Bearer <m2m-oauth-token>"}
 ```
 
-The builder app resolves the caller's identity by validating the token:
+builder app 會透過驗證 token 來解析呼叫端身分：
 
 ```python
 client = WorkspaceClient(host=host, token=bearer_token)
 me = client.current_user.me()
-# Returns the service principal's identity
+# 回傳 service principal 的身分
 ```
 
-### In Local Development
+### 在本機開發中
 
-Use a Personal Access Token (PAT):
+請使用 Personal Access Token（PAT）：
 
 ```bash
 export DATABRICKS_TOKEN=dapi...
 ```
 
-The client sends it as `Authorization: Bearer <pat>`. The builder app resolves the PAT to your user identity the same way.
+client 會以 `Authorization: Bearer <pat>` 傳送該 token。builder app 會用相同方式把 PAT 解析成您的使用者身分。
 
-### Cross-Workspace (Optional)
+### Cross-Workspace（選用）
 
-By default this app authenticates to a builder app on the **same workspace** using the auto-provisioned SP. To call a builder app on a **different workspace**, set these env vars in `app.yaml`:
+預設情況下，此 app 會使用自動建立的 SP，向 **同一個 workspace** 中的 builder app 完成認證。若要呼叫 **不同 workspace** 的 builder app，請在 `app.yaml` 中設定下列環境變數：
 
-**Option A -- PAT / token:**
+**選項 A -- PAT / token：**
 
 ```yaml
 - name: BUILDER_DATABRICKS_HOST
@@ -177,7 +177,7 @@ By default this app authenticates to a builder app on the **same workspace** usi
   value: "<pat-for-remote-workspace>"
 ```
 
-**Option B -- SP credentials (recommended for production):**
+**選項 B -- SP 憑證（正式環境建議）：**
 
 ```yaml
 - name: BUILDER_DATABRICKS_HOST
@@ -188,20 +188,20 @@ By default this app authenticates to a builder app on the **same workspace** usi
   value: "<sp-client-secret>"
 ```
 
-The SP must exist on the **target** workspace and have permissions to call the builder app. When these env vars are not set, the default same-workspace auto-auth is used.
+該 SP 必須存在於 **目標** workspace，且擁有呼叫 builder app 的權限。若未設定這些環境變數，系統會使用預設的同 workspace 自動認證模式。
 
-## Troubleshooting
+## 疑難排解
 
-### "Failed to invoke agent" / 403
+### 「Failed to invoke agent」/ 403
 
-- Ensure both apps' service principals have the correct permissions (see Step 3 above)
-- Check that `BUILDER_APP_URL` is correct and reachable
+- 請確認兩個 app 的 service principal 具有正確權限（請參閱上方步驟 3）
+- 請確認 `BUILDER_APP_URL` 正確且可連線
 
-### "BUILDER_APP_URL environment variable is required"
+### 「BUILDER_APP_URL environment variable is required」
 
-- Set the `BUILDER_APP_URL` in `app.yaml` (deployed) or as an env var (local)
+- 請在 `app.yaml`（部署時）或環境變數（本機）中設定 `BUILDER_APP_URL`
 
-### Connection timeouts
+### 連線逾時
 
-- The SSE stream uses a 60s read timeout to accommodate the builder app's 50s streaming window
-- If the builder app is under heavy load, responses may take longer to start
+- SSE 串流使用 60 秒 read timeout，以配合 builder app 50 秒的串流視窗
+- 若 builder app 負載較高，回應開始時間可能會更久

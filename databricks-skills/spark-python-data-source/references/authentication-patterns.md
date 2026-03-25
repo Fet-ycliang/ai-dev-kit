@@ -1,37 +1,37 @@
-# Authentication Patterns
+# 認證模式
 
-Multi-method authentication strategies with clear priority ordering.
+具優先次序排序的多方法認證策略。
 
-## Priority-Based Authentication
+## 基於優先次序的認證
 
-Support multiple authentication methods with fallback:
+使用回復支援多種認證方法：
 
 ```python
 class AuthenticatedDataSource(DataSource):
     def __init__(self, options):
-        # Priority 1: Databricks Unity Catalog credential
+        # 優先 1：Databricks Unity Catalog 認證
         self.databricks_credential = options.get("databricks_credential")
 
-        # Priority 2: Cloud default credential (managed identity)
+        # 優先 2：雲預設認證（受管識別）
         self.default_credential = options.get("default_credential", "false").lower() == "true"
 
-        # Priority 3: Service principal
+        # 優先 3：服務主體
         self.tenant_id = options.get("tenant_id")
         self.client_id = options.get("client_id")
         self.client_secret = options.get("client_secret")
 
-        # Priority 4: API key
+        # 優先 4：API 金鑰
         self.api_key = options.get("api_key")
 
-        # Priority 5: Username/password
+        # 優先 5：使用者名稱/密碼
         self.username = options.get("username")
         self.password = options.get("password")
 
-        # Validate at least one method is configured
+        # 驗證至少設定一種方法
         self._validate_auth()
 
     def _validate_auth(self):
-        """Validate at least one auth method is configured."""
+        """驗證至少設定一種認證方法。"""
         has_databricks_cred = bool(self.databricks_credential)
         has_default_cred = self.default_credential
         has_service_principal = all([self.tenant_id, self.client_id, self.client_secret])
@@ -41,29 +41,29 @@ class AuthenticatedDataSource(DataSource):
         if not any([has_databricks_cred, has_default_cred, has_service_principal,
                     has_api_key, has_basic_auth]):
             raise AssertionError(
-                "Authentication required. Provide one of: "
-                "'databricks_credential', 'default_credential=true', "
-                "'tenant_id/client_id/client_secret', 'api_key', or 'username/password'"
+                "需要認證。提供以下其中一種："
+                "'databricks_credential'、'default_credential=true'、"
+                "'tenant_id/client_id/client_secret'、'api_key' 或 'username/password'"
             )
 ```
 
-## Azure Authentication
+## Azure 認證
 
-### Unity Catalog Service Credential
+### Unity Catalog 服務認證
 
 ```python
 def _get_azure_credential_uc(credential_name):
-    """Get credential from Unity Catalog."""
+    """從 Unity Catalog 取得認證。"""
     import databricks.service_credentials
 
     return databricks.service_credentials.getServiceCredentialsProvider(credential_name)
 ```
 
-### Default Credential (Managed Identity)
+### 預設認證（受管識別）
 
 ```python
 def _get_azure_credential_default(authority=None):
-    """Get DefaultAzureCredential for managed identity."""
+    """取得受管識別的 DefaultAzureCredential。"""
     from azure.identity import DefaultAzureCredential
 
     if authority:
@@ -71,11 +71,11 @@ def _get_azure_credential_default(authority=None):
     return DefaultAzureCredential()
 ```
 
-### Service Principal
+### 服務主體
 
 ```python
 def _get_azure_credential_sp(tenant_id, client_id, client_secret, authority=None):
-    """Get service principal credential."""
+    """取得服務主體認證。"""
     from azure.identity import ClientSecretCredential
 
     if authority:
@@ -92,11 +92,11 @@ def _get_azure_credential_sp(tenant_id, client_id, client_secret, authority=None
     )
 ```
 
-### Multi-Cloud Support
+### 多雲支援
 
 ```python
 def _get_azure_cloud_config(cloud_name):
-    """Get cloud-specific endpoints and authorities."""
+    """取得雲特定端點和權限。"""
     from azure.identity import AzureAuthorityHosts
 
     cloud_configs = {
@@ -115,19 +115,19 @@ def _get_azure_cloud_config(cloud_name):
 
     if cloud not in cloud_configs:
         valid = ", ".join(cloud_configs.keys())
-        raise ValueError(f"Invalid cloud '{cloud_name}'. Valid: {valid}")
+        raise ValueError(f"無效的雲 '{cloud_name}'。有效值：{valid}")
 
     return cloud_configs[cloud]
 
 def _create_azure_client_with_cloud(options):
-    """Create Azure client with cloud-specific configuration."""
+    """建立具雲特定組態的 Azure 用戶端。"""
     cloud_name = options.get("azure_cloud", "public")
     authority, endpoint = _get_azure_cloud_config(cloud_name)
 
-    # Get credential based on priority
+    # 根據優先次序取得認證
     credential = _get_credential(options, authority)
 
-    # Create client with cloud-specific endpoint
+    # 使用雲特定端點建立用戶端
     from azure.monitor.query import LogsQueryClient
 
     if endpoint:
@@ -135,17 +135,17 @@ def _create_azure_client_with_cloud(options):
     return LogsQueryClient(credential)
 ```
 
-## API Key Authentication
+## API 金鑰認證
 
-### Header-Based
+### 標頭型
 
 ```python
 def _get_api_key_auth(api_key):
-    """Get API key authentication headers."""
+    """取得 API 金鑰認證標頭。"""
     return {"Authorization": f"Bearer {api_key}"}
 
 def _create_session_with_api_key(api_key):
-    """Create requests session with API key."""
+    """使用 API 金鑰建立 requests 工作階段。"""
     import requests
 
     session = requests.Session()
@@ -153,27 +153,27 @@ def _create_session_with_api_key(api_key):
     return session
 ```
 
-### Query Parameter-Based
+### 查詢參數型
 
 ```python
 def _build_url_with_api_key(base_url, api_key):
-    """Add API key as query parameter."""
+    """新增 API 金鑰作為查詢參數。"""
     from urllib.parse import urlencode
 
     params = {"api_key": api_key}
     return f"{base_url}?{urlencode(params)}"
 ```
 
-## Basic Authentication
+## 基本認證
 
 ```python
 def _get_basic_auth(username, password):
-    """Get HTTP Basic Auth."""
+    """取得 HTTP 基本驗證。"""
     from requests.auth import HTTPBasicAuth
     return HTTPBasicAuth(username, password)
 
 def _create_session_with_basic_auth(username, password):
-    """Create session with basic auth."""
+    """使用基本驗證建立工作階段。"""
     import requests
 
     session = requests.Session()
@@ -181,13 +181,13 @@ def _create_session_with_basic_auth(username, password):
     return session
 ```
 
-## OAuth2 Authentication
+## OAuth2 認證
 
-### Client Credentials Flow
+### 客戶端認證流
 
 ```python
 def _get_oauth2_token(token_url, client_id, client_secret, scope):
-    """Get OAuth2 token using client credentials."""
+    """使用客戶端認證取得 OAuth2 權杖。"""
     import requests
 
     response = requests.post(
@@ -213,7 +213,7 @@ class OAuth2Writer:
         self._token_expiry = None
 
     def _get_valid_token(self):
-        """Get valid token, refresh if expired."""
+        """取得有效權杖，如過期則重新整理。"""
         from datetime import datetime, timedelta
 
         if not self._token or datetime.now() >= self._token_expiry:
@@ -223,13 +223,13 @@ class OAuth2Writer:
                 self.client_secret,
                 self.scope
             )
-            # Assume 1 hour expiry if not provided
+            # 假設未提供時為 1 小時有效期
             self._token_expiry = datetime.now() + timedelta(hours=1)
 
         return self._token
 
     def write(self, iterator):
-        """Write with OAuth2 authentication."""
+        """使用 OAuth2 認證寫入。"""
         import requests
 
         token = self._get_valid_token()
@@ -239,29 +239,29 @@ class OAuth2Writer:
             requests.post(self.url, json=row.asDict(), headers=headers)
 ```
 
-## Complete Authentication Factory
+## 完整認證工廠
 
 ```python
 def get_credential(options):
     """
-    Get credential based on configuration priority.
+    根據組態優先次序取得認證。
 
-    Priority:
+    優先次序：
     1. databricks_credential
     2. default_credential
-    3. Service principal (tenant_id/client_id/client_secret)
-    4. API key
-    5. Username/password
+    3. 服務主體 (tenant_id/client_id/client_secret)
+    4. API 金鑰
+    5. 使用者名稱/密碼
     """
 
-    # Priority 1: Databricks credential
+    # 優先 1：Databricks 認證
     if options.get("databricks_credential"):
         import databricks.service_credentials
         return databricks.service_credentials.getServiceCredentialsProvider(
             options["databricks_credential"]
         )
 
-    # Priority 2: Cloud default credential
+    # 優先 2：雲預設認證
     if options.get("default_credential", "false").lower() == "true":
         authority = options.get("authority")
         if authority:
@@ -270,7 +270,7 @@ def get_credential(options):
         from azure.identity import DefaultAzureCredential
         return DefaultAzureCredential()
 
-    # Priority 3: Service principal
+    # 優先 3：服務主體
     if all(k in options for k in ["tenant_id", "client_id", "client_secret"]):
         from azure.identity import ClientSecretCredential
         authority = options.get("authority")
@@ -287,21 +287,21 @@ def get_credential(options):
             client_secret=options["client_secret"]
         )
 
-    # Priority 4: API key
+    # 優先 4：API 金鑰
     if "api_key" in options:
         return {"Authorization": f"Bearer {options['api_key']}"}
 
-    # Priority 5: Basic auth
+    # 優先 5：基本驗證
     if "username" in options and "password" in options:
         from requests.auth import HTTPBasicAuth
         return HTTPBasicAuth(options["username"], options["password"])
 
-    raise ValueError("No valid authentication method configured")
+    raise ValueError("未設定有效的認證方法")
 ```
 
-## Security Best Practices
+## 安全最佳實踐
 
-### Never Log Sensitive Values
+### 永不記錄機密值
 
 ```python
 class SecureDataSource(DataSource):
@@ -310,14 +310,14 @@ class SecureDataSource(DataSource):
             "password", "api_key", "client_secret", "token", "access_token"
         }
 
-        # Store actual values
+        # 儲存實際值
         self.options = options
 
-        # Create sanitized version for logging
+        # 建立記錄用的清理版本
         self._safe_options = self._sanitize_options(options)
 
     def _sanitize_options(self, options):
-        """Mask sensitive values for logging."""
+        """遮罩機密值用於記錄。"""
         safe = {}
         for key, value in options.items():
             if key.lower() in self._sensitive_keys:
@@ -330,11 +330,11 @@ class SecureDataSource(DataSource):
         return f"SecureDataSource({self._safe_options})"
 ```
 
-### Use Secrets Management
+### 使用機密管理
 
 ```python
 def _load_secrets_from_dbutils(scope, keys):
-    """Load secrets from Databricks secrets."""
+    """從 Databricks 機密載入機密。"""
     try:
         from pyspark.dbutils import DBUtils
         from pyspark.sql import SparkSession
@@ -349,9 +349,9 @@ def _load_secrets_from_dbutils(scope, keys):
         return secrets
 
     except Exception as e:
-        raise ValueError(f"Failed to load secrets from scope '{scope}': {e}")
+        raise ValueError(f"無法從範圍 '{scope}' 載入機密：{e}")
 
-# Usage
+# 用法
 if "secret_scope" in options:
     secrets = _load_secrets_from_dbutils(
         options["secret_scope"],

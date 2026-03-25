@@ -1,4 +1,4 @@
-"""Warehouse management endpoints."""
+"""Warehouse 管理端點。"""
 
 import logging
 
@@ -14,26 +14,26 @@ router = APIRouter()
 
 @router.get('/warehouses')
 async def get_warehouses(request: Request):
-  """Get available Databricks SQL warehouses.
+  """取得可用的 Databricks SQL warehouse。
 
-  Returns warehouses sorted by priority:
-  1. Running + "shared" in name (highest priority)
-  2. Running (without "shared")
-  3. Not running + "shared" in name
-  4. Everything else
+  回傳依優先順序排序的 warehouse：
+  1. 執行中 + 名稱含 "shared"（最高優先）
+  2. 執行中（不含 "shared"）
+  3. 未執行 + 名稱含 "shared"
+  4. 其他全部
 
-  Results are cached for 5 minutes with background refresh.
+  結果會快取 5 分鐘並在背景重新整理。
   """
-  # Validate user is authenticated and get Databricks auth
+  # 驗證使用者已認證並取得 Databricks 認證
   await get_current_user(request)
   user_token = await get_current_token(request)
   workspace_url = get_workspace_url()
 
-  # Set auth context for the request
+  # 設定請求的認證上下文
   set_databricks_auth(workspace_url, user_token)
 
   try:
-    # Get warehouses (cached with async refresh)
+    # 取得 warehouse（已快取並非同步重新整理）
     warehouses = await list_warehouses_async()
     return warehouses
   finally:

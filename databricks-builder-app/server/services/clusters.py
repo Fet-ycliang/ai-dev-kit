@@ -1,4 +1,4 @@
-"""Clusters service for listing Databricks clusters with caching."""
+"""Clusters 服務，用於列出 Databricks clusters 並提供快取功能。"""
 
 import asyncio
 import logging
@@ -13,7 +13,7 @@ from databricks_tools_core.auth import get_workspace_client
 
 logger = logging.getLogger(__name__)
 
-# Cache configuration
+# 快取設定
 CACHE_TTL_SECONDS = 300  # 5 minutes
 _cache: dict = {
   'clusters': None,
@@ -27,32 +27,32 @@ SERVERLESS_CLUSTER_ID = '__serverless__'
 
 
 def _fetch_clusters_sync(limit: int = 50, timeout: int = 15) -> list[dict]:
-  """Synchronously fetch clusters from Databricks using SDK.
+  """使用 SDK 同步取得 Databricks clusters。
 
-  Returns a "Serverless Compute" entry first (always), followed by real clusters
-  sorted by: running first, "shared" in name second, then alphabetically.
+  總是先回傳 "Serverless Compute" 項目，接著回傳真實的 clusters，
+  排序規則：執行中的優先、名稱包含 "shared" 次之、然後按字母順序排列。
 
   Args:
-      limit: Maximum number of clusters to return
-      timeout: Timeout in seconds for the API call
+      limit: 回傳的 clusters 數量上限
+      timeout: API 呼叫的逾時秒數
   """
   from databricks.sdk.service.compute import ClusterSource, ListClustersFilterBy
 
-  # Use get_workspace_client to pick up auth context if set
+  # 使用 get_workspace_client 取得已設定的驗證上下文
   client = get_workspace_client()
 
-  # Filter out serverless and job clusters at the API level
+  # 在 API 層級過濾掉 serverless 和 job clusters
   filter_by = ListClustersFilterBy(
     cluster_sources=[ClusterSource.UI, ClusterSource.API],
   )
 
-  # Use page_size to fetch efficiently, islice to stop early
+  # 使用 page_size 提高效率，用 islice 提早停止
   clusters = list(islice(client.clusters.list(filter_by=filter_by, page_size=limit * 2), limit * 2))
 
-  # No need to filter serverless anymore - done at API level
+  # 不需再過濾 serverless - 已在 API 層級完成
   filtered_clusters = clusters
 
-  # Sort: running first, then "shared" in name
+  # 排序：執行中優先，然後是名稱包含 "shared" 的
   def sort_key(c):
     is_running = c.state == State.RUNNING if c.state else False
     is_shared = 'shared' in (c.cluster_name or '').lower()
@@ -60,7 +60,7 @@ def _fetch_clusters_sync(limit: int = 50, timeout: int = 15) -> list[dict]:
 
   filtered_clusters.sort(key=sort_key)
 
-  # Build result with Serverless Compute as the first (default) entry
+  # 建立結果，Serverless Compute 作為第一個（預設）項目
   result = [
     {
       'cluster_id': SERVERLESS_CLUSTER_ID,
@@ -84,23 +84,23 @@ def _fetch_clusters_sync(limit: int = 50, timeout: int = 15) -> list[dict]:
 
 
 async def _refresh_cache(timeout_seconds: int = 30) -> None:
-  """Refresh the cluster cache in the background.
+  """在背景更新 cluster 快取。
 
   Args:
-      timeout_seconds: Maximum time to wait for the API call
+      timeout_seconds: 等待 API 呼叫的最長時間
   """
   global _cache
 
   with _cache_lock:
     if _cache['is_refreshing']:
-      return  # Another refresh is already in progress
+      return  # 已有另一個更新作業在執行中
     _cache['is_refreshing'] = True
 
   try:
     logger.info('Refreshing clusters cache...')
     start = time.time()
 
-    # Use wait_for to add a timeout to the thread operation
+    # 使用 wait_for 為執行緒操作加上逾時限制
     clusters = await asyncio.wait_for(
       asyncio.to_thread(_fetch_clusters_sync),
       timeout=timeout_seconds,
@@ -124,7 +124,7 @@ async def _refresh_cache(timeout_seconds: int = 30) -> None:
 
 
 def _is_cache_valid() -> bool:
-  """Check if the cache is still valid."""
+  """檢查快取是否仍然有效。"""
   with _cache_lock:
     if _cache['clusters'] is None:
       return False
@@ -132,36 +132,35 @@ def _is_cache_valid() -> bool:
 
 
 def _get_cached_clusters() -> Optional[list[dict]]:
-  """Get clusters from cache if available."""
+  """從快取取得 clusters（若可用）。"""
   with _cache_lock:
     return _cache['clusters']
 
 
 async def list_clusters_async() -> list[dict]:
-  """List available Databricks clusters with caching.
+  """列出可用的 Databricks clusters 並提供快取功能。
 
-  Returns cached data immediately if available, and triggers
-  a background refresh if the cache is stale.
+  若有可用的快取資料會立即回傳，若快取過期則觸發背景更新。
 
   Returns:
-      List of cluster dictionaries with cluster_id, cluster_name, state, creator
+      包含 cluster_id、cluster_name、state、creator 的 cluster 字典清單
   """
   cached = _get_cached_clusters()
 
   if cached is not None:
-    # We have cached data - return it immediately
+    # 有快取資料 - 立即回傳
     if not _is_cache_valid():
-      # Cache is stale, trigger background refresh
+      # 快取過期，觸發背景更新
       asyncio.create_task(_refresh_cache())
     return cached
 
-  # No cache - we must wait for the first fetch
+  # 無快取 - 必須等待首次擷取
   await _refresh_cache()
   result = _get_cached_clusters()
   if result:
     return result
 
-  # Even if the API call failed, always return the serverless option
+  # 即使 API 呼叫失敗，仍回傳 serverless 選項
   return [
     {
       'cluster_id': SERVERLESS_CLUSTER_ID,

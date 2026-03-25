@@ -1,8 +1,8 @@
-"""Binary assertion layer for SkillBench-style evaluation.
+"""SkillBench 風格評估的二元斷言層。
 
-Wraps pattern and fact checks into binary pass/fail assertions,
-mirroring SkillBench's pytest-style binary approach. No fuzzy keyword
-scoring -- each assertion either passes or fails.
+將模式與事實檢查包裝為二元通過/失敗斷言，
+呼應 SkillBench 類似 pytest 的二元做法。不使用模糊關鍵字
+評分——每個斷言要麼通過，要麼失敗。
 """
 
 import re
@@ -12,7 +12,7 @@ from typing import Any
 
 @dataclass
 class AssertionResult:
-    """Result of a single binary assertion."""
+    """單一二元斷言的結果。"""
 
     name: str
     passed: bool
@@ -21,10 +21,10 @@ class AssertionResult:
 
 
 def _run_pattern_assertions(response: str, expected_patterns: list) -> list[AssertionResult]:
-    """Run pattern assertions against a response.
+    """對回應執行模式斷言。
 
-    Each pattern spec can be a plain regex string or a dict with
-    ``pattern``, ``min_count``, ``max_count``, ``description`` keys.
+    每個模式規格可以是純 regex 字串，或是包含
+    ``pattern``、``min_count``、``max_count``、``description`` 鍵的 dict。
     """
     results = []
     for pattern_spec in expected_patterns:
@@ -60,9 +60,9 @@ def _run_pattern_assertions(response: str, expected_patterns: list) -> list[Asse
 
 
 def _run_fact_assertions(response: str, expected_facts: list[str]) -> list[AssertionResult]:
-    """Run fact assertions against a response.
+    """對回應執行事實斷言。
 
-    Exact substring match (case-insensitive). No fuzzy keyword overlap.
+    精確子字串比對（不區分大小寫）。不使用模糊關鍵字重疊。
     """
     response_lower = response.lower()
     results = []
@@ -80,14 +80,14 @@ def _run_fact_assertions(response: str, expected_facts: list[str]) -> list[Asser
 
 
 def run_all_assertions(response: str, expectations: dict[str, Any]) -> list[AssertionResult]:
-    """Run all pattern + fact assertions, return binary pass/fail per assertion.
+    """執行所有模式 + 事實斷言，並回傳每個斷言的二元通過/失敗結果。
 
-    Args:
-        response: The text to check assertions against.
-        expectations: Dict with optional ``expected_patterns`` and ``expected_facts`` keys.
+    參數:
+        response: 要用來檢查斷言的文字。
+        expectations: 可包含 ``expected_patterns`` 與 ``expected_facts`` 鍵的 dict。
 
-    Returns:
-        List of AssertionResult with binary pass/fail for each assertion.
+    回傳:
+        含有每個斷言二元通過/失敗結果的 AssertionResult 清單。
     """
     results: list[AssertionResult] = []
 
@@ -106,13 +106,13 @@ def _classify_assertion(
     with_result: AssertionResult,
     without_result: AssertionResult,
 ) -> str:
-    """Classify a single assertion by comparing with-skill vs without-skill.
+    """藉由比較含技能與不含技能的結果來分類單一斷言。
 
-    Returns one of:
-        POSITIVE   — fails without skill, passes with  (skill is helping)
-        REGRESSION — passes without skill, fails with  (skill is confusing the agent)
-        NEEDS_SKILL — fails both with and without       (skill must add this content)
-        NEUTRAL    — same result either way             (agent already knows this)
+    回傳下列其中之一：
+        POSITIVE   — 不含技能時失敗，含技能時通過（技能有幫助）
+        REGRESSION — 不含技能時通過，含技能時失敗（技能讓 Agent 混淆）
+        NEEDS_SKILL — 含技能與不含技能都失敗（技能必須加入此內容）
+        NEUTRAL    — 兩者結果相同（Agent 已經知道這點）
     """
     if with_result.passed and not without_result.passed:
         return "POSITIVE"
@@ -125,11 +125,11 @@ def _classify_assertion(
 
 
 def _extract_content(result: AssertionResult) -> str:
-    """Extract the actual expected content from an assertion result.
+    """從斷言結果中擷取實際預期的內容。
 
-    For facts, strips the ``Missing: `` / ``Found: `` prefix to get the raw
-    fact text.  For patterns, uses the description embedded in the assertion
-    name (strips the ``pattern_`` prefix).
+    對於 facts，會移除 ``Missing: `` / ``Found: `` 前綴以取得原始
+    事實文字。對於 patterns，則使用嵌入於斷言名稱中的描述
+    （移除 ``pattern_`` 前綴）。
     """
     if result.assertion_type == "fact":
         for prefix in ("Missing: ", "Found: "):
@@ -137,7 +137,7 @@ def _extract_content(result: AssertionResult) -> str:
                 return result.rationale[len(prefix) :]
         return result.rationale
     else:
-        # Pattern: name is "pattern_{description}", rationale is match count
+        # 模式：名稱為 "pattern_{description}"，rationale 為符合次數
         return result.name.removeprefix("pattern_")
 
 
@@ -145,20 +145,19 @@ def summarize_failures(
     with_results: list[AssertionResult],
     without_results: list[AssertionResult],
 ) -> dict[str, str]:
-    """Build GEPA-friendly diagnostic strings from assertion results.
+    """根據斷言結果建立 GEPA 友善的診斷字串。
 
-    Collects only NEEDS_SKILL and REGRESSION assertions (skips NEUTRAL/POSITIVE)
-    and produces structured output that maps to GEPA's standard diagnostic keys.
+    只收集 NEEDS_SKILL 與 REGRESSION 斷言（略過 NEUTRAL/POSITIVE），
+    並產生對應 GEPA 標準診斷鍵的結構化輸出。
 
-    Only non-empty keys are included in the returned dict so that GEPA does not
-    render empty ``## Header`` sections that waste tokens and confuse the
-    reflection LM.
+    只會在回傳的 dict 中包含非空鍵，避免 GEPA 產生空的
+    ``## Header`` 區段，浪費 Token 並讓 reflection LM 混淆。
 
-    Returns:
-        Dict with a subset of: ``Error``, ``Regressions``.
-        ``Error`` carries compact NEEDS_SKILL/REGRESSION tokens that downstream
-        consumers (``_review_skillbench``, ``build_skillbench_background``) parse.
-        ``Regressions`` is a concise NL summary only present when regressions exist.
+    回傳:
+        包含下列鍵子集的 dict：``Error``、``Regressions``。
+        ``Error`` 會攜帶精簡的 NEEDS_SKILL/REGRESSION Token，供下游
+        使用者（``_review_skillbench``、``build_skillbench_background``）解析。
+        ``Regressions`` 則是精簡的自然語言摘要，僅在存在 regressions 時出現。
     """
     needs_skill: list[tuple[AssertionResult, AssertionResult]] = []
     regressions: list[tuple[AssertionResult, AssertionResult]] = []
@@ -172,7 +171,7 @@ def summarize_failures(
 
     result: dict[str, str] = {}
 
-    # Error: compact assertion labels (NEEDS_SKILL/REGRESSION tokens preserved)
+    # Error：精簡斷言標籤（保留 NEEDS_SKILL/REGRESSION Token）
     error_lines: list[str] = []
     for w, _ in needs_skill:
         content = _extract_content(w)
@@ -183,7 +182,7 @@ def summarize_failures(
     if error_lines:
         result["Error"] = "\n".join(error_lines)
 
-    # Regressions: concise NL (only when non-empty)
+    # Regressions：精簡自然語言（僅在非空時）
     if regressions:
         lines: list[str] = []
         for i, (w, _wo) in enumerate(regressions, 1):

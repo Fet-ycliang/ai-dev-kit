@@ -1,16 +1,16 @@
-# Widget Specifications
+# 元件規格
 
-Detailed JSON patterns for each AI/BI dashboard widget type.
+各種 AI/BI 儀表板元件類型的詳細 JSON 寫法。
 
-## Widget Naming Convention (CRITICAL)
+## 元件命名慣例（重要）
 
-- `widget.name`: alphanumeric + hyphens + underscores ONLY (no spaces, parentheses, colons)
-- `frame.title`: human-readable name (any characters allowed)
-- `widget.queries[0].name`: always use `"main_query"`
+- `widget.name`：僅能使用英數字 + 連字號 + 底線（不可有空格、括號、冒號）
+- `frame.title`：人類可讀名稱（可使用任何字元）
+- `widget.queries[0].name`：一律使用 `"main_query"`
 
-## Version Requirements
+## 版本需求
 
-| Widget Type | Version |
+| 元件類型 | 版本 |
 |-------------|---------|
 | counter | 2 |
 | table | 2 |
@@ -20,25 +20,25 @@ Detailed JSON patterns for each AI/BI dashboard widget type.
 | bar | 3 |
 | line | 3 |
 | pie | 3 |
-| text | N/A (no spec block) |
+| text | N/A（無 spec 區塊） |
 
 ---
 
-## Text (Headers/Descriptions)
+## Text（標頭/說明）
 
-- **CRITICAL: Text widgets do NOT use a spec block!**
-- Use `multilineTextboxSpec` directly on the widget
-- Supports markdown: `#`, `##`, `###`, `**bold**`, `*italic*`
-- **CRITICAL: Multiple items in the `lines` array are concatenated on a single line, NOT displayed as separate lines!**
-- For title + subtitle, use **separate text widgets** at different y positions
+- **重要：Text 元件不可使用 spec 區塊！**
+- 直接在 widget 上使用 `multilineTextboxSpec`
+- 支援 markdown：`#`、`##`、`###`、`**bold**`、`*italic*`
+- **重要：`lines` 陣列中的多個項目會串接成同一行，不會分行顯示！**
+- 若要同時顯示標題 + 副標題，請在不同 y 位置使用**分開的文字元件**
 
 ```json
-// CORRECT: Separate widgets for title and subtitle
+// 正確：標題與副標題使用分開的元件
 {
   "widget": {
     "name": "title",
     "multilineTextboxSpec": {
-      "lines": ["## Dashboard Title"]
+      "lines": ["## 儀表板標題"]
     }
   },
   "position": {"x": 0, "y": 0, "width": 6, "height": 1}
@@ -47,18 +47,18 @@ Detailed JSON patterns for each AI/BI dashboard widget type.
   "widget": {
     "name": "subtitle",
     "multilineTextboxSpec": {
-      "lines": ["Description text here"]
+      "lines": ["說明文字放這裡"]
     }
   },
   "position": {"x": 0, "y": 1, "width": 6, "height": 1}
 }
 
-// WRONG: Multiple lines concatenate into one line!
+// 錯誤：多行會串接成同一行！
 {
   "widget": {
     "name": "title-widget",
     "multilineTextboxSpec": {
-      "lines": ["## Dashboard Title", "Description text here"]  // Becomes "## Dashboard TitleDescription text here"
+      "lines": ["## 儀表板標題", "說明文字放這裡"]  // 會變成 "## 儀表板標題說明文字放這裡"
     }
   },
   "position": {"x": 0, "y": 0, "width": 6, "height": 2}
@@ -67,18 +67,18 @@ Detailed JSON patterns for each AI/BI dashboard widget type.
 
 ---
 
-## Counter (KPI)
+## Counter（KPI）
 
-- `version`: **2** (NOT 3!)
+- `version`：**2**（不是 3！）
 - `widgetType`: "counter"
-- **Percent values must be 0-1** in the data (not 0-100)
+- **資料中的百分比值必須是 0-1**（不是 0-100）
 
-**Two patterns for counters:**
+**Counter 有兩種寫法：**
 
-**Pattern 1: Pre-aggregated dataset (1 row, no filters)**
-- Dataset returns exactly 1 row
-- Use `"disaggregated": true` and simple field reference
-- Field `name` matches dataset column directly
+**寫法 1：預先彙總的資料集（1 列，無篩選器）**
+- 資料集必須剛好回傳 1 列
+- 使用 `"disaggregated": true` 與簡單欄位參照
+- 欄位 `name` 直接對應資料集欄位
 
 ```json
 {
@@ -96,19 +96,19 @@ Detailed JSON patterns for each AI/BI dashboard widget type.
       "version": 2,
       "widgetType": "counter",
       "encodings": {
-        "value": {"fieldName": "revenue", "displayName": "Total Revenue"}
+        "value": {"fieldName": "revenue", "displayName": "總營收"}
       },
-      "frame": {"showTitle": true, "title": "Total Revenue"}
+      "frame": {"showTitle": true, "title": "總營收"}
     }
   },
   "position": {"x": 0, "y": 0, "width": 2, "height": 3}
 }
 ```
 
-**Pattern 2: Aggregating widget (multi-row dataset, supports filters)**
-- Dataset returns multiple rows (e.g., grouped by a filter dimension)
-- Use `"disaggregated": false` and aggregation expression
-- **CRITICAL**: Field `name` MUST match `fieldName` exactly (e.g., `"sum(spend)"`)
+**寫法 2：具彙總的元件（多列資料集，支援篩選器）**
+- 資料集回傳多列（例如依某個篩選維度分組）
+- 使用 `"disaggregated": false` 與彙總 expression
+- **重要**：欄位 `name` 必須與 `fieldName` 完全一致（例如 `"sum(spend)"`）
 
 ```json
 {
@@ -126,9 +126,9 @@ Detailed JSON patterns for each AI/BI dashboard widget type.
       "version": 2,
       "widgetType": "counter",
       "encodings": {
-        "value": {"fieldName": "sum(spend)", "displayName": "Total Spend"}
+        "value": {"fieldName": "sum(spend)", "displayName": "總支出"}
       },
-      "frame": {"showTitle": true, "title": "Total Spend"}
+      "frame": {"showTitle": true, "title": "總支出"}
     }
   },
   "position": {"x": 0, "y": 0, "width": 2, "height": 3}
@@ -137,12 +137,12 @@ Detailed JSON patterns for each AI/BI dashboard widget type.
 
 ---
 
-## Table
+## 資料表
 
-- `version`: **2** (NOT 1 or 3!)
+- `version`：**2**（不是 1 或 3！）
 - `widgetType`: "table"
-- **Columns only need `fieldName` and `displayName`** - no other properties!
-- Use `"disaggregated": true` for raw rows
+- **欄只需要 `fieldName` 和 `displayName`** - 不要加入其他屬性！
+- 原始資料列請使用 `"disaggregated": true`
 
 ```json
 {
@@ -164,11 +164,11 @@ Detailed JSON patterns for each AI/BI dashboard widget type.
       "widgetType": "table",
       "encodings": {
         "columns": [
-          {"fieldName": "name", "displayName": "Name"},
-          {"fieldName": "value", "displayName": "Value"}
+          {"fieldName": "name", "displayName": "名稱"},
+          {"fieldName": "value", "displayName": "數值"}
         ]
       },
-      "frame": {"showTitle": true, "title": "Details"}
+      "frame": {"showTitle": true, "title": "明細"}
     }
   },
   "position": {"x": 0, "y": 0, "width": 6, "height": 6}
@@ -177,41 +177,41 @@ Detailed JSON patterns for each AI/BI dashboard widget type.
 
 ---
 
-## Line / Bar Charts
+## 折線圖 / 長條圖
 
 - `version`: **3**
 - `widgetType`: "line" or "bar"
-- Use `x`, `y`, optional `color` encodings
-- `scale.type`: `"temporal"` (dates), `"quantitative"` (numbers), `"categorical"` (strings)
-- Use `"disaggregated": true` with pre-aggregated dataset data
+- 使用 `x`、`y` 與可選的 `color` encodings
+- `scale.type`：`"temporal"`（日期）、`"quantitative"`（數值）、`"categorical"`（字串）
+- 對預先彙總的資料集資料使用 `"disaggregated": true`
 
-**Multiple Lines - Two Approaches:**
+**多條線圖 - 兩種方式：**
 
-1. **Multi-Y Fields** (different metrics on same chart):
+1. **Multi-Y Fields**（同一張圖上的不同指標）：
 ```json
 "y": {
   "scale": {"type": "quantitative"},
   "fields": [
-    {"fieldName": "sum(orders)", "displayName": "Orders"},
-    {"fieldName": "sum(returns)", "displayName": "Returns"}
+    {"fieldName": "sum(orders)", "displayName": "訂單數"},
+    {"fieldName": "sum(returns)", "displayName": "退貨數"}
   ]
 }
 ```
 
-2. **Color Grouping** (same metric split by dimension):
+2. **顏色分組**（相同指標依維度拆分）：
 ```json
 "y": {"fieldName": "sum(revenue)", "scale": {"type": "quantitative"}},
-"color": {"fieldName": "region", "scale": {"type": "categorical"}, "displayName": "Region"}
+"color": {"fieldName": "region", "scale": {"type": "categorical"}, "displayName": "區域"}
 ```
 
-**Bar Chart Modes:**
-- **Stacked** (default): No `mark` field - bars stack on top of each other
-- **Grouped**: Add `"mark": {"layout": "group"}` - bars side-by-side for comparison
+**長條圖模式：**
+- **堆疊**（預設）：不需要 `mark` 欄位 - 長條會上下堆疊
+- **群組**：加入 `"mark": {"layout": "group"}` - 長條會左右並排以利比較
 
-## Pie Chart
+## 圓餅圖
 
 - `version`: **3**
 - `widgetType`: "pie"
-- `angle`: quantitative aggregate
-- `color`: categorical dimension
-- Limit to 3-8 categories for readability
+- `angle`：數值彙總
+- `color`：類別維度
+- 為了可讀性，請限制在 3-8 個類別

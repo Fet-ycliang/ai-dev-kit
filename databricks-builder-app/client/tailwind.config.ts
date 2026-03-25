@@ -1,10 +1,10 @@
 import type { Config } from 'tailwindcss';
 
 /**
- * Tailwind CSS Configuration
+ * Tailwind CSS 設定。
  *
- * Colors reference CSS variables set in globals.css.
- * Based on template theming system.
+ * 色彩對應 globals.css 中定義的 CSS 變數。
+ * 以範本主題系統為基礎。
  */
 const config: Config = {
   darkMode: ['class'],
@@ -12,46 +12,46 @@ const config: Config = {
   theme: {
     extend: {
       // ============================================================
-      // COLORS - Map to CSS variables
+      // 色彩 - 對應至 CSS 變數
       // ============================================================
       colors: {
-        // Core colors
+        // 核心色彩
         border: 'var(--color-border)',
         ring: 'var(--color-ring)',
         background: 'var(--color-background)',
         foreground: 'var(--color-foreground)',
 
-        // Primary (accent color for buttons, links)
+        // 主要色彩（按鈕、連結的強調色）
         primary: {
           DEFAULT: 'var(--color-primary)',
           foreground: 'var(--color-primary-foreground)',
         },
 
-        // Secondary (for secondary buttons)
+        // 次要色彩（次要按鈕使用）
         secondary: {
           DEFAULT: 'var(--color-secondary)',
           foreground: 'var(--color-secondary-foreground)',
         },
 
-        // Destructive (error states)
+        // 警示色彩（錯誤狀態）
         destructive: {
           DEFAULT: 'var(--color-destructive)',
           foreground: '#ffffff',
         },
 
-        // Muted (subtle backgrounds)
+        // 柔和色彩（較低調的背景）
         muted: {
           DEFAULT: 'var(--color-muted)',
           foreground: 'var(--color-muted-foreground)',
         },
 
-        // Accent (hover states)
+        // 強調色彩（滑過狀態）
         accent: {
           DEFAULT: 'var(--color-accent)',
           foreground: 'var(--color-accent-foreground)',
         },
 
-        // Card/Popover
+        // 卡片與 Popover
         card: {
           DEFAULT: 'var(--color-background)',
           foreground: 'var(--color-foreground)',
@@ -63,7 +63,7 @@ const config: Config = {
       },
 
       // ============================================================
-      // FONTS - Map to CSS variables
+      // 字型 - 對應至 CSS 變數
       // ============================================================
       fontFamily: {
         sans: 'var(--font-body)',
@@ -72,7 +72,7 @@ const config: Config = {
       },
 
       // ============================================================
-      // LAYOUT
+      // 版面配置
       // ============================================================
       borderRadius: {
         sm: 'var(--radius-sm)',

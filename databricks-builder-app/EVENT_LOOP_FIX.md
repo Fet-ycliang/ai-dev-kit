@@ -1,48 +1,48 @@
-# Event Loop Fix for claude-agent-sdk Issue #462 ✅ RESOLVED
+# claude-agent-sdk Issue #462 的 Event Loop 修正 ✅ 已解決
 
-## Status: ✅ **WORKING - Production Ready**
+## 狀態：✅ **可正常運作 - 可用於正式環境**
 
-This document describes the complete fix for claude-agent-sdk issue #462, which has been successfully implemented and tested.
+本文說明針對 claude-agent-sdk issue #462 所實作的完整修正方案；此方案已成功完成實作與測試。
 
-## Problem
+## 問題
 
-The `claude-agent-sdk` has a critical bug ([#462](https://github.com/anthropics/claude-agent-sdk-python/issues/462)) where the subprocess transport fails in FastAPI/uvicorn contexts. Symptoms include:
+`claude-agent-sdk` 在 FastAPI/uvicorn 情境中存在一個嚴重錯誤（[#462](https://github.com/anthropics/claude-agent-sdk-python/issues/462)），會導致 subprocess transport 失效。常見症狀包括：
 
-1. **Only returns init message**: The SDK only returns the initial `SystemMessage` and terminates
-2. **Tools don't execute**: Agent cannot use MCP tools (like Databricks commands)
-3. **Subprocess hangs**: The subprocess starts but Python never receives more stdout
+1. **只回傳初始化訊息**：SDK 只會回傳最初的 `SystemMessage`，隨後就結束
+2. **工具不會執行**：agent 無法使用 MCP tools（例如 Databricks 指令）
+3. **subprocess 卡住**：subprocess 已啟動，但 Python 再也收不到後續 stdout
 
-This makes the SDK unusable in typical FastAPI deployments with middleware, logging, and other production patterns.
+這使得 SDK 在包含 middleware、logging 與其他正式環境常見模式的 FastAPI 部署中幾乎無法使用。
 
-## Root Causes
+## 根本原因
 
-### Issue 1: Event Loop Pollution
-When `claude-agent-sdk` runs in a FastAPI/uvicorn context, the existing event loop interferes with the subprocess transport's `anyio.TextReceiveStream`, preventing it from receiving all subprocess output.
+### 問題 1：Event Loop 汙染
+當 `claude-agent-sdk` 在 FastAPI/uvicorn 情境中執行時，現有的 event loop 會干擾 subprocess transport 使用的 `anyio.TextReceiveStream`，導致它無法接收完整的 subprocess 輸出。
 
-### Issue 2: Context Variable Loss
-Python's `contextvars` (used for per-request Databricks authentication) **do not automatically propagate to new threads**. When spawning a thread for the fresh event loop, the Databricks auth context was lost, causing all Databricks tool calls to fail.
+### 問題 2：Context Variable 遺失
+Python 的 `contextvars`（用於每個請求的 Databricks 認證）**不會自動傳播到新執行緒**。當我們為了全新的 event loop 建立新執行緒時，Databricks auth context 會遺失，進而讓所有 Databricks tool 呼叫失敗。
 
-### Issue 3: Empty String vs None
-The Claude agent sometimes passes empty strings (`""`) instead of `null`/`None` for optional parameters like `context_id`. The Databricks API tries to parse empty strings as numbers, causing `NumberFormatException`. The MCP tool wrappers need to convert empty strings to `None`.
+### 問題 3：空字串與 None
+Claude agent 有時會對 `context_id` 之類的選用參數傳入空字串（`""`），而不是 `null` / `None`。Databricks API 會嘗試把空字串解析成數字，造成 `NumberFormatException`。因此 MCP tool wrappers 必須把空字串轉成 `None`。
 
-## Solution
+## 解法
 
-We implemented a three-part fix:
+我們實作了三個部分的修正：
 
-### Part 1: Fresh Event Loop in Separate Thread
-Run the Claude agent in a completely fresh event loop in a separate thread (in `server/services/agent.py`):
+### 第 1 部分：在獨立執行緒中使用全新的 Event Loop
+在獨立執行緒中，讓 Claude agent 於完全乾淨的 event loop 內執行（位於 `server/services/agent.py`）：
 
 ```python
 def _run_agent_in_fresh_loop(message, options, result_queue, context):
-  """Run agent in a fresh event loop (workaround for issue #462)."""
+  """在全新的 event loop 中執行 agent（issue #462 的 workaround）。"""
   def run_with_context():
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)
-    
+
     async def run_query():
       async def prompt_generator():
         yield {'type': 'user', 'message': {'role': 'user', 'content': message}}
-      
+
       try:
         async for msg in query(prompt=prompt_generator(), options=options):
           result_queue.put(('message', msg))
@@ -50,41 +50,41 @@ def _run_agent_in_fresh_loop(message, options, result_queue, context):
         result_queue.put(('error', e))
       finally:
         result_queue.put(('done', None))
-    
+
     try:
       loop.run_until_complete(run_query())
     finally:
       loop.close()
-  
-  # Execute in the copied context
+
+  # 在複製後的 context 中執行
   context.run(run_with_context)
 ```
 
-### Part 2: Context Propagation
-Copy the `contextvars` context before spawning the thread to preserve Databricks authentication (in `server/services/agent.py`):
+### 第 2 部分：傳播 Context
+在建立執行緒前先複製 `contextvars` context，以保留 Databricks 認證資訊（位於 `server/services/agent.py`）：
 
 ```python
 from contextvars import copy_context
 
-# In stream_agent_response():
-# Set auth context for this request
+# 在 stream_agent_response() 中：
+# 為此請求設定 auth context
 set_databricks_auth(databricks_host, databricks_token)
 
 try:
   # ... setup options ...
-  
-  # Copy context BEFORE spawning thread
+
+  # 在建立執行緒前先複製 context
   ctx = copy_context()
   result_queue = queue.Queue()
-  
+
   agent_thread = threading.Thread(
     target=_run_agent_in_fresh_loop,
-    args=(message, options, result_queue, ctx),  # Pass context
+    args=(message, options, result_queue, ctx),  # 傳入 context
     daemon=True
   )
   agent_thread.start()
-  
-  # Process messages from queue
+
+  # 從 queue 處理訊息
   while True:
     msg_type, msg = await asyncio.get_event_loop().run_in_executor(
       None, result_queue.get
@@ -94,10 +94,11 @@ try:
     elif msg_type == 'error':
       raise msg
     elif msg_type == 'message':
-      # Yield message to frontend...
+      # 將訊息 yield 給前端...
+```
 
-### Part 3: Empty String to None Conversion
-Convert empty strings to `None` in MCP tool wrappers (in `databricks-mcp-server/databricks_mcp_server/tools/compute.py`):
+### 第 3 部分：把空字串轉成 None
+在 MCP tool wrappers 中，把空字串轉成 `None`（位於 `databricks-mcp-server/databricks_mcp_server/tools/compute.py`）：
 
 ```python
 @mcp.tool
@@ -107,46 +108,44 @@ def execute_databricks_command(
     context_id: Optional[str] = None,
     # ... other params
 ) -> Dict[str, Any]:
-    # Convert empty strings to None (Claude agent sometimes passes "" instead of null)
+    # 將空字串轉成 None（Claude agent 有時會傳入 "" 而不是 null）
     if cluster_id == "":
         cluster_id = None
     if context_id == "":
         context_id = None
-    
+
     # ... rest of function
 ```
 
-This prevents `NumberFormatException` when the Databricks API tries to parse empty strings as numbers.
-```
+這樣可避免 Databricks API 在嘗試把空字串解析為數字時觸發 `NumberFormatException`。
 
-## How It Works
+## 運作方式
 
-1. **Main Thread (FastAPI)**: Runs the FastAPI/uvicorn event loop
-2. **Agent Thread**: Creates a fresh, isolated event loop for the Claude agent
-3. **Context Copy**: Copies `contextvars` context (including Databricks auth) to the new thread
-4. **Queue Communication**: Uses thread-safe queue to pass messages back to main thread
-5. **Async Bridge**: Main thread reads from queue asynchronously using `run_in_executor`
+1. **主執行緒（FastAPI）**：執行 FastAPI/uvicorn 的 event loop
+2. **Agent 執行緒**：為 Claude agent 建立全新且隔離的 event loop
+3. **Context 複製**：把 `contextvars` context（包含 Databricks auth）複製到新執行緒
+4. **Queue 通訊**：使用 thread-safe queue 把訊息傳回主執行緒
+5. **非同步橋接**：主執行緒使用 `run_in_executor` 非同步讀取 queue
 
-## Benefits
+## 優點
 
-✅ **Fixes subprocess transport**: Fresh event loop isolates agent from FastAPI's event loop  
-✅ **Preserves authentication**: Context copy propagates Databricks credentials to new thread  
-✅ **Maintains streaming**: Queue-based communication streams all messages properly  
-✅ **Production-ready**: Works with middleware, logging, Sentry, and other FastAPI patterns  
-✅ **MCP tools work**: Databricks commands and other MCP tools execute successfully
+✅ **修復 subprocess transport**：全新 event loop 可將 agent 與 FastAPI 的 event loop 隔離
+✅ **保留認證資訊**：透過複製 context，把 Databricks 憑證傳到新執行緒
+✅ **維持串流能力**：以 queue 為基礎的通訊可以正確串流所有訊息
+✅ **可用於正式環境**：可搭配 middleware、logging、Sentry 與其他 FastAPI 模式運作
+✅ **MCP tools 可正常執行**：Databricks 指令與其他 MCP tools 都能成功執行
 
-## Testing
+## 測試方式
 
-To verify the fix works:
+若要驗證修正是否生效：
 
-1. Start the development server: `bash scripts/start_dev.sh`
-2. Open the app at http://localhost:3000
-3. Ask the agent to execute Databricks commands
-4. Verify tools execute (check logs for successful Databricks API calls)
+1. 啟動開發伺服器：`bash scripts/start_dev.sh`
+2. 在瀏覽器開啟應用程式：http://localhost:3000
+3. 請 agent 執行 Databricks 指令
+4. 確認工具有成功執行（檢查日誌中是否出現成功的 Databricks API 呼叫）
 
-## References
+## 參考資料
 
-- Original Issue: https://github.com/anthropics/claude-agent-sdk-python/issues/462
-- Python contextvars: https://docs.python.org/3/library/contextvars.html
-- Threading and contextvars: https://peps.python.org/pep-0567/#implementation-notes
-
+- 原始 Issue：https://github.com/anthropics/claude-agent-sdk-python/issues/462
+- Python contextvars：https://docs.python.org/3/library/contextvars.html
+- Threading and contextvars：https://peps.python.org/pep-0567/#implementation-notes

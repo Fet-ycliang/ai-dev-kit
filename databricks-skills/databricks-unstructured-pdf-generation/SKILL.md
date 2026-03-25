@@ -1,97 +1,103 @@
 ---
 name: databricks-unstructured-pdf-generation
-description: "Generate synthetic PDF documents for RAG and unstructured data use cases. Use when creating test PDFs, demo documents, or evaluation datasets for retrieval systems."
+description: "生成合成 PDF 文件，用於 RAG 與非結構化資料使用情境。適合建立測試用 PDF、展示文件或檢索系統的評估資料集。"
 ---
 
-# Unstructured PDF Generation
+# 非結構化 PDF 生成
 
-Generate realistic synthetic PDF documents using LLM for RAG (Retrieval-Augmented Generation) and unstructured data use cases.
+使用 LLM 生成逼真的合成 PDF 文件，適用於 RAG（檢索增強生成）與非結構化資料使用情境。
 
-## Overview
+## 概覽
 
-This skill provides two MCP tools for creating professional PDF documents:
+此 Skill 提供兩個 MCP 工具，用於建立專業的 PDF 文件：
 
-1. **`generate_and_upload_pdfs`** - Generate multiple PDFs from a description (LLM generates document specs)
-2. **`generate_and_upload_pdf`** - Generate one PDF with precise control over content
+1. **`generate_and_upload_pdfs`** — 依據描述批次生成多份 PDF（由 LLM 生成文件規格）
+2. **`generate_and_upload_pdf`** — 精確控制內容，生成單份 PDF
 
-Both tools:
-- Use LLM to generate professional HTML content, then convert to PDF
-- Create accompanying JSON files with questions and evaluation guidelines (for RAG testing)
-- Upload directly to Unity Catalog Volumes
+兩個工具均：
+- 使用 LLM 生成專業 HTML 內容，再轉換為 PDF
+- 建立附帶的 JSON 檔案，包含問題與評估指引（供 RAG 測試使用）
+- 直接上傳至 Unity Catalog Volumes
 
-## Quick Start
+## 快速入門
 
-### Generate Multiple PDFs (Batch)
+### 批次生成多份 PDF
 
-Use the `generate_and_upload_pdfs` MCP tool:
+使用 `generate_and_upload_pdfs` MCP 工具：
 - `catalog`: "my_catalog"
 - `schema`: "my_schema"
-- `description`: "Technical documentation for a cloud infrastructure platform including setup guides, troubleshooting procedures, and API references."
+- `description`: "雲端基礎設施平台的技術文件，包含設定指南、疑難排解程序與 API 參考資料。"
 - `count`: 10
 
-This generates 10 PDF documents and saves them to `/Volumes/my_catalog/my_schema/raw_data/pdf_documents/` (using default volume and folder).
+此操作將生成 10 份 PDF 文件，並儲存至 `/Volumes/my_catalog/my_schema/raw_data/pdf_documents/`（使用預設 Volume 與資料夾）。
 
-### Generate a Single PDF (Precise Control)
+### 精確控制生成單份 PDF
 
-Use the `generate_and_upload_pdf` MCP tool when you need control over exactly what document to create:
+當您需要精確控制文件內容時，使用 `generate_and_upload_pdf` MCP 工具：
 - `title`: "API Authentication Guide"
-- `description`: "Complete guide to REST API authentication for a cloud platform including OAuth2, API keys, and JWT tokens."
-- `question`: "What authentication methods are supported?"
-- `guideline`: "Answer should mention OAuth2, API keys, and JWT with use cases"
+- `description`: "雲端平台 REST API 認證完整指南，包含 OAuth2、API 金鑰與 JWT Token。"
+- `question`: "支援哪些認證方式？"
+- `guideline`: "答案應涵蓋 OAuth2、API 金鑰與 JWT 及其適用情境"
 - `catalog`: "my_catalog"
 - `schema`: "my_schema"
 
-## Tool 1: generate_and_upload_pdfs (Batch)
+---
 
-Generates multiple PDFs using a 2-step LLM process:
-1. LLM generates diverse document specifications based on your description
-2. PDFs are generated in parallel from those specifications
+## 工具一：generate_and_upload_pdfs（批次模式）
 
-### Parameters
+以兩階段 LLM 流程生成多份 PDF：
+1. LLM 依據您的描述生成多樣化的文件規格
+2. 依據規格平行生成 PDF
 
-| Parameter | Type | Required | Default | Description |
-|-----------|------|----------|---------|-------------|
-| `catalog` | string | Yes | - | Unity Catalog name |
-| `schema` | string | Yes | - | Schema name |
-| `description` | string | Yes | - | Detailed description of what PDFs should contain |
-| `count` | int | Yes | - | Number of PDFs to generate |
-| `volume` | string | No | `raw_data` | Volume name (must exist) |
-| `folder` | string | No | `pdf_documents` | Folder within volume for output files |
-| `doc_size` | string | No | `MEDIUM` | Document size: `SMALL` (~1 page), `MEDIUM` (~5 pages), `LARGE` (~10+ pages) |
-| `overwrite_folder` | bool | No | `false` | If true, deletes existing folder contents first |
+### 參數
 
-## Tool 2: generate_and_upload_pdf (Precise Control)
+| 參數 | 類型 | 必填 | 預設值 | 說明 |
+|------|------|------|--------|------|
+| `catalog` | string | 是 | — | Unity Catalog 名稱 |
+| `schema` | string | 是 | — | Schema 名稱 |
+| `description` | string | 是 | — | PDF 內容的詳細描述 |
+| `count` | int | 是 | — | 要生成的 PDF 數量 |
+| `volume` | string | 否 | `raw_data` | Volume 名稱（須已存在） |
+| `folder` | string | 否 | `pdf_documents` | Volume 內的輸出資料夾 |
+| `doc_size` | string | 否 | `MEDIUM` | 文件大小：`SMALL`（約 1 頁）、`MEDIUM`（約 5 頁）、`LARGE`（約 10+ 頁） |
+| `overwrite_folder` | bool | 否 | `false` | 若為 true，先清空現有資料夾內容 |
 
-Generates exactly one PDF with full control over its content and metadata.
+---
 
-### Parameters
+## 工具二：generate_and_upload_pdf（精確控制模式）
 
-| Parameter | Type | Required | Default | Description |
-|-----------|------|----------|---------|-------------|
-| `title` | string | Yes | - | Document title (also used to generate filename) |
-| `description` | string | Yes | - | What this document should contain, including domain context |
-| `question` | string | Yes | - | A question answerable by reading this document |
-| `guideline` | string | Yes | - | How to evaluate if an answer is correct |
-| `catalog` | string | Yes | - | Unity Catalog name |
-| `schema` | string | Yes | - | Schema name |
-| `volume` | string | No | `raw_data` | Volume name (must exist) |
-| `folder` | string | No | `pdf_documents` | Folder within volume |
-| `doc_size` | string | No | `MEDIUM` | Document size: `SMALL`, `MEDIUM`, `LARGE` |
+完整控制內容與中繼資料，生成恰好一份 PDF。
 
-### Document Size Guide
+### 參數
 
-- **SMALL**: ~1 page, concise content. Best for quick demos or testing.
-- **MEDIUM**: ~4-6 pages, comprehensive coverage. Good balance for most use cases.
-- **LARGE**: ~10+ pages, exhaustive documentation. Use for thorough RAG evaluation.
+| 參數 | 類型 | 必填 | 預設值 | 說明 |
+|------|------|------|--------|------|
+| `title` | string | 是 | — | 文件標題（同時用於生成檔名） |
+| `description` | string | 是 | — | 文件應包含的內容，含領域背景 |
+| `question` | string | 是 | — | 閱讀此文件後可回答的問題 |
+| `guideline` | string | 是 | — | 評估答案是否正確的標準 |
+| `catalog` | string | 是 | — | Unity Catalog 名稱 |
+| `schema` | string | 是 | — | Schema 名稱 |
+| `volume` | string | 否 | `raw_data` | Volume 名稱（須已存在） |
+| `folder` | string | 否 | `pdf_documents` | Volume 內的資料夾 |
+| `doc_size` | string | 否 | `MEDIUM` | 文件大小：`SMALL`、`MEDIUM`、`LARGE` |
 
-## Output Files
+### 文件大小說明
 
-For each document, the tool creates two files:
+- **SMALL**：約 1 頁，內容簡潔。適合快速展示或功能測試。
+- **MEDIUM**：約 4–6 頁，內容完整。適合大多數使用情境。
+- **LARGE**：約 10+ 頁，詳盡完整。適合 RAG 深度評估。
 
-1. **PDF file** (`<model_id>.pdf`): The generated document
-2. **JSON file** (`<model_id>.json`): Metadata for RAG evaluation
+---
 
-### JSON Structure
+## 輸出檔案
+
+每份文件會產生兩個檔案：
+
+1. **PDF 檔案**（`<model_id>.pdf`）：生成的文件本體
+2. **JSON 檔案**（`<model_id>.json`）：供 RAG 評估使用的中繼資料
+
+### JSON 結構
 
 ```json
 {
@@ -103,118 +109,132 @@ For each document, the tool creates two files:
 }
 ```
 
-## Common Patterns
+---
 
-### Pattern 1: HR Policy Documents
+## 常用模式
 
-Use the `generate_and_upload_pdfs` MCP tool:
+### 模式一：人資政策文件
+
+使用 `generate_and_upload_pdfs` MCP 工具：
 - `catalog`: "ai_dev_kit"
 - `schema`: "hr_demo"
-- `description`: "HR policy documents for a technology company including employee handbook, leave policies, performance review procedures, benefits guide, and workplace conduct guidelines."
+- `description`: "科技公司人資政策文件，包含員工手冊、請假政策、績效考核程序、福利說明與職場行為準則。"
 - `count`: 15
 - `folder`: "hr_policies"
 - `overwrite_folder`: true
 
-### Pattern 2: Technical Documentation
+### 模式二：技術文件
 
-Use the `generate_and_upload_pdfs` MCP tool:
+使用 `generate_and_upload_pdfs` MCP 工具：
 - `catalog`: "ai_dev_kit"
 - `schema`: "tech_docs"
-- `description`: "Technical documentation for a SaaS analytics platform including installation guides, API references, troubleshooting procedures, security best practices, and integration tutorials."
+- `description`: "SaaS 分析平台技術文件，包含安裝指南、API 參考、疑難排解程序、資安最佳實踐與整合教學。"
 - `count`: 20
 - `folder`: "product_docs"
 - `overwrite_folder`: true
 
-### Pattern 3: Financial Reports
+### 模式三：財務報告
 
-Use the `generate_and_upload_pdfs` MCP tool:
+使用 `generate_and_upload_pdfs` MCP 工具：
 - `catalog`: "ai_dev_kit"
 - `schema`: "finance_demo"
-- `description`: "Financial documents for a retail company including quarterly reports, expense policies, budget guidelines, and audit procedures."
+- `description`: "零售公司財務文件，包含季度報告、費用政策、預算指南與稽核程序。"
 - `count`: 12
 - `folder`: "reports"
 - `overwrite_folder`: true
 
-### Pattern 4: Training Materials
+### 模式四：教育訓練素材
 
-Use the `generate_and_upload_pdfs` MCP tool:
+使用 `generate_and_upload_pdfs` MCP 工具：
 - `catalog`: "ai_dev_kit"
 - `schema`: "training"
-- `description`: "Training materials for new software developers including onboarding guides, coding standards, code review procedures, and deployment workflows."
+- `description`: "新進軟體開發人員訓練素材，包含入職指南、程式碼規範、Code Review 程序與部署工作流程。"
 - `count`: 8
 - `folder`: "courses"
 - `overwrite_folder`: true
 
-## Workflow
+---
 
-1. **Ask for destination**: Default to `ai_dev_kit` catalog, ask user for schema name
-2. **Get description**: Ask what kind of documents they need
-3. **Generate PDFs**: Call `generate_and_upload_pdfs` MCP tool with appropriate parameters
-4. **Verify output**: Check the volume path for generated files
+## 建議工作流程
 
-## Best Practices
+1. **確認目標位置**：預設使用 `ai_dev_kit` Catalog，詢問使用者 Schema 名稱
+2. **取得描述**：詢問需要哪類型文件
+3. **生成 PDF**：以適當參數呼叫 `generate_and_upload_pdfs` MCP 工具
+4. **驗證輸出**：確認 Volume 路徑中已有生成的檔案
 
-1. **Detailed descriptions**: The more specific your description, the better the generated content
-   - BAD: "Generate some HR documents"
-   - GOOD: "HR policy documents for a technology company including employee handbook covering remote work policies, leave policies with PTO and sick leave details, performance review procedures with quarterly and annual cycles, and workplace conduct guidelines"
+---
 
-2. **Appropriate count**:
-   - For demos: 5-10 documents
-   - For RAG testing: 15-30 documents
-   - For comprehensive evaluation: 50+ documents
+## 最佳實踐
 
-3. **Folder organization**: Use descriptive folder names that indicate content type
+1. **詳細描述**：描述越具體，生成內容品質越高
+   - ❌ 不好：「生成一些人資文件」
+   - ✅ 好：「科技公司人資政策文件，包含涵蓋遠端工作政策的員工手冊、含特休與病假細節的請假政策、季度與年度績效考核程序，以及職場行為準則」
+
+2. **適當的數量**：
+   - 展示用途：5–10 份
+   - RAG 測試：15–30 份
+   - 完整評估：50+ 份
+
+3. **資料夾命名**：使用可描述內容類型的名稱
    - `hr_policies/`
    - `technical_docs/`
    - `training_materials/`
 
-4. **Use overwrite_folder**: Set to `true` when regenerating to ensure clean state
+4. **善用 overwrite_folder**：重新生成時設為 `true`，確保目錄乾淨
 
-## Integration with RAG Pipelines
+---
 
-The generated JSON files are designed for RAG evaluation:
+## 與 RAG 管道整合
 
-1. **Ingest PDFs**: Use the PDF files as source documents for your vector database
-2. **Test retrieval**: Use the `question` field to query your RAG system
-3. **Evaluate answers**: Use the `guideline` field to assess if the RAG response is correct
+生成的 JSON 檔案專為 RAG 評估設計：
 
-Example evaluation workflow:
+1. **擷取 PDF**：將 PDF 檔案作為向量資料庫的來源文件
+2. **測試檢索**：使用 `question` 欄位查詢 RAG 系統
+3. **評估答案**：使用 `guideline` 欄位評估 RAG 回應是否正確
+
+評估工作流程範例：
 ```python
-# Load questions from JSON files
+# 從 JSON 檔案載入問題
 questions = load_json_files(f"/Volumes/{catalog}/{schema}/{volume}/{folder}/*.json")
 
 for q in questions:
-    # Query RAG system
+    # 查詢 RAG 系統
     response = rag_system.query(q["question"])
 
-    # Evaluate using guideline
+    # 依據指引評估
     is_correct = evaluate_response(response, q["guideline"])
 ```
 
-## LLM Configuration
+---
 
-The tools automatically discover `databricks-gpt-*` endpoints in your workspace. Override with environment variables if needed:
+## LLM 設定
+
+工具會自動探索工作區中的 `databricks-gpt-*` 端點。如有需要，可透過環境變數覆蓋：
 
 ```bash
-# Optional: Override auto-discovery
-DATABRICKS_MODEL=databricks-gpt-5-4           # Main model for content generation
-DATABRICKS_MODEL_NANO=databricks-gpt-5-4-nano # Smaller model (used by default for speed)
+# 可選：覆蓋自動探索結果
+DATABRICKS_MODEL=databricks-gpt-5-4           # 用於內容生成的主要模型
+DATABRICKS_MODEL_NANO=databricks-gpt-5-4-nano # 較小的模型（預設使用，速度較快）
 ```
 
-**Auto-discovery**: If no environment variables are set, the tool lists all serving endpoints and finds the latest `databricks-gpt-*` endpoint (highest version number, must be in READY state).
+**自動探索**：若未設定環境變數，工具會列出所有服務端點並尋找最新的 `databricks-gpt-*` 端點（版本號最高且狀態為 READY）。
 
-## Common Issues
+---
 
-| Issue | Solution |
-|-------|----------|
-| **"No LLM endpoint configured"** | No `databricks-gpt-*` endpoints found. Either deploy one or set `DATABRICKS_MODEL` environment variable |
-| **"Volume does not exist"** | Create the volume first; the tool does not auto-create volumes |
-| **"PDF generation timeout"** | Reduce `count` or use `doc_size: "SMALL"` |
-| **Low quality content** | Provide more detailed `description` with specific topics and document types |
+## 常見問題
 
-## Related Skills
+| 問題 | 解決方式 |
+|------|---------|
+| **「No LLM endpoint configured」** | 找不到 `databricks-gpt-*` 端點。請部署端點或設定 `DATABRICKS_MODEL` 環境變數 |
+| **「Volume does not exist」** | 請先建立 Volume；工具不會自動建立 |
+| **「PDF generation timeout」** | 減少 `count` 或改用 `doc_size: "SMALL"` |
+| **內容品質偏低** | 提供更詳細的 `description`，說明具體主題與文件類型 |
 
-- **[databricks-agent-bricks](../databricks-agent-bricks/SKILL.md)** - Create Knowledge Assistants that ingest the generated PDFs
-- **[databricks-vector-search](../databricks-vector-search/SKILL.md)** - Index generated documents for semantic search and RAG
-- **[databricks-synthetic-data-gen](../databricks-synthetic-data-gen/SKILL.md)** - Generate structured tabular data (complement to unstructured PDFs)
-- **[databricks-mlflow-evaluation](../databricks-mlflow-evaluation/SKILL.md)** - Evaluate RAG systems using the generated question/guideline pairs
+---
+
+## 相關 Skills
+
+- **[databricks-agent-bricks](../databricks-agent-bricks/SKILL.md)** — 建立可擷取生成 PDF 的知識助手
+- **[databricks-vector-search](../databricks-vector-search/SKILL.md)** — 對生成文件建立索引，用於語意搜尋與 RAG
+- **[databricks-synthetic-data-gen](../databricks-synthetic-data-gen/SKILL.md)** — 生成結構化表格資料（與非結構化 PDF 互補）
+- **[databricks-mlflow-evaluation](../databricks-mlflow-evaluation/SKILL.md)** — 使用生成的問題/指引配對評估 RAG 系統

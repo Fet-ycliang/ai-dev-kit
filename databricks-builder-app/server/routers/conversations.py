@@ -1,6 +1,6 @@
-"""Conversation management endpoints.
+"""對話管理端點。
 
-All endpoints are scoped to the current authenticated user and project.
+所有端點都限定在目前已認證的使用者與專案範圍內。
 """
 
 import logging
@@ -16,20 +16,20 @@ router = APIRouter()
 
 
 class CreateConversationRequest(BaseModel):
-  """Request to create a new conversation."""
+  """建立新對話的請求。"""
 
   title: str = 'New Conversation'
 
 
 class UpdateConversationRequest(BaseModel):
-  """Request to update a conversation."""
+  """更新對話的請求。"""
 
   title: str
 
 
 @router.get('/projects/{project_id}/conversations')
 async def get_all_conversations(request: Request, project_id: str):
-  """Get all conversations for a project sorted by created_at (newest first)."""
+  """取得專案的所有對話，依 created_at 排序（最新在前）。"""
   user_email = await get_current_user(request)
   storage = ConversationStorage(user_email, project_id)
 
@@ -42,7 +42,7 @@ async def get_all_conversations(request: Request, project_id: str):
 
 @router.get('/projects/{project_id}/conversations/{conversation_id}')
 async def get_conversation(request: Request, project_id: str, conversation_id: str):
-  """Get a specific conversation by ID with all messages."""
+  """依 ID 取得特定對話及其所有訊息。"""
   user_email = await get_current_user(request)
   storage = ConversationStorage(user_email, project_id)
 
@@ -61,7 +61,7 @@ async def get_conversation(request: Request, project_id: str, conversation_id: s
 
 @router.post('/projects/{project_id}/conversations')
 async def create_conversation(request: Request, project_id: str, body: CreateConversationRequest):
-  """Create a new conversation in a project."""
+  """在專案中建立新對話。"""
   user_email = await get_current_user(request)
   storage = ConversationStorage(user_email, project_id)
 
@@ -83,7 +83,7 @@ async def update_conversation(
   conversation_id: str,
   body: UpdateConversationRequest,
 ):
-  """Update a conversation's title."""
+  """更新對話的標題。"""
   user_email = await get_current_user(request)
   storage = ConversationStorage(user_email, project_id)
 
@@ -100,7 +100,7 @@ async def update_conversation(
 
 @router.delete('/projects/{project_id}/conversations/{conversation_id}')
 async def delete_conversation(request: Request, project_id: str, conversation_id: str):
-  """Delete a conversation and all its messages."""
+  """刪除對話及其所有訊息。"""
   user_email = await get_current_user(request)
   storage = ConversationStorage(user_email, project_id)
 

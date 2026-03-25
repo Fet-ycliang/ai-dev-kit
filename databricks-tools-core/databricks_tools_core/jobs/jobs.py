@@ -1,8 +1,8 @@
 """
-Jobs - Core Job CRUD Operations
+Jobs - 核心 Job CRUD 作業
 
-Functions for managing Databricks jobs using the Jobs API.
-Uses serverless compute by default for optimal performance and cost.
+使用 Jobs API 管理 Databricks jobs 的函式。
+預設使用無伺服器運算，以獲得最佳效能與成本效益。
 """
 
 from typing import Optional, List, Dict, Any
@@ -24,20 +24,20 @@ def list_jobs(
     expand_tasks: bool = False,
 ) -> List[Dict[str, Any]]:
     """
-    List jobs in the workspace.
+    列出 workspace 中的 jobs。
 
-    Args:
-        name: Optional name filter (partial match, case-insensitive)
-        limit: Maximum number of jobs to return (default: 25)
-        expand_tasks: If True, include full task definitions in results
+    參數:
+        name: 選用的名稱篩選條件（部分比對，不區分大小寫）
+        limit: 要回傳的 jobs 最大數量（預設：25）
+        expand_tasks: 若為 True，在結果中包含完整 task 定義
 
-    Returns:
-        List of job info dicts with job_id, name, creator, created_time, etc.
+    回傳:
+        包含 job_id、name、creator、created_time 等資訊的 job info dict 清單。
     """
     w = get_workspace_client()
     jobs = []
 
-    # SDK list() returns an iterator - we need to consume it
+    # SDK list() 會回傳 iterator，需要逐一取用
     for job in w.jobs.list(name=name, expand_tasks=expand_tasks, limit=limit):
         job_dict = {
             "job_id": job.job_id,
@@ -46,7 +46,7 @@ def list_jobs(
             "created_time": job.created_time,
         }
 
-        # Add additional info if available
+        # 若有可用資料，加入額外資訊
         if job.settings:
             job_dict["tags"] = job.settings.tags if hasattr(job.settings, "tags") else None
             job_dict["timeout_seconds"] = (
@@ -56,7 +56,7 @@ def list_jobs(
                 job.settings.max_concurrent_runs if hasattr(job.settings, "max_concurrent_runs") else None
             )
 
-            # Include tasks if expanded
+            # 若已展開，包含 tasks
             if expand_tasks and job.settings.tasks:
                 job_dict["tasks"] = [task.as_dict() for task in job.settings.tasks]
 
@@ -70,42 +70,42 @@ def list_jobs(
 
 def get_job(job_id: int) -> Dict[str, Any]:
     """
-    Get detailed job configuration.
+    取得詳細的 job 設定。
 
-    Args:
+    參數:
         job_id: Job ID
 
-    Returns:
-        Dictionary with full job configuration including tasks, clusters, schedule, etc.
+    回傳:
+        包含 tasks、clusters、schedule 等完整 job 設定的字典。
 
-    Raises:
-        JobError: If job not found or API request fails
+    引發:
+        JobError: 當找不到 job 或 API 請求失敗時。
     """
     w = get_workspace_client()
 
     try:
         job = w.jobs.get(job_id=job_id)
 
-        # Convert SDK object to dict for JSON serialization
+        # 將 SDK 物件轉為可供 JSON 序列化的 dict
         return job.as_dict()
 
     except Exception as e:
-        raise JobError(f"Failed to get job {job_id}: {str(e)}", job_id=job_id)
+        raise JobError(f"取得 job {job_id} 失敗：{str(e)}", job_id=job_id)
 
 
 def find_job_by_name(name: str) -> Optional[int]:
     """
-    Find a job by exact name and return its ID.
+    依精確名稱尋找 job，並回傳其 ID。
 
-    Args:
-        name: Job name to search for (exact match)
+    參數:
+        name: 要搜尋的 Job 名稱（精確比對）
 
-    Returns:
-        Job ID if found, None otherwise
+    回傳:
+        若找到則回傳 Job ID，否則回傳 None。
     """
     w = get_workspace_client()
 
-    # List jobs with name filter and find exact match
+    # 使用名稱篩選列出 jobs，並找出精確比對項目
     for job in w.jobs.list(name=name, limit=100):
         if job.settings and job.settings.name == name:
             return job.job_id
@@ -134,44 +134,44 @@ def create_job(
     **extra_settings,
 ) -> Dict[str, Any]:
     """
-    Create a new Databricks job with serverless compute by default.
+    建立新的 Databricks job，預設使用無伺服器運算。
 
-    Args:
-        name: Job name
-        tasks: List of task definitions (dicts). Each task should have:
-            - task_key: Unique identifier
-            - description: Optional task description
-            - depends_on: Optional list of task dependencies
-            - [task_type]: One of spark_python_task, notebook_task, python_wheel_task,
-                          spark_jar_task, spark_submit_task, pipeline_task, sql_task, dbt_task, run_job_task
-            - [compute]: One of new_cluster, existing_cluster_id, job_cluster_key, compute_key
-        job_clusters: Optional list of job cluster definitions (for non-serverless tasks)
-        environments: Optional list of environment definitions for serverless tasks.
-            Each dict should have:
-            - environment_key: Unique identifier referenced by tasks via environment_key
-            - spec: Dict with dependencies (list of pip packages) and optionally client ("4")
-        tags: Optional tags dict for organization
-        timeout_seconds: Job-level timeout (0 means no timeout)
-        max_concurrent_runs: Maximum number of concurrent runs (default: 1)
-        email_notifications: Email notification settings
-        webhook_notifications: Webhook notification settings
-        notification_settings: Notification settings for run lifecycle events
-        schedule: Optional schedule configuration
-        queue: Optional queue settings for job queueing
-        run_as: Optional run-as user/service principal
-        git_source: Optional Git source configuration
-        parameters: Optional job parameters
-        health: Optional health monitoring rules
-        deployment: Optional deployment configuration
-        **extra_settings: Additional job settings passed directly to SDK
+    參數:
+        name: Job 名稱
+        tasks: task 定義清單（dict）。每個 task 應包含：
+            - task_key: 唯一識別碼
+            - description: 選用的 task 說明
+            - depends_on: 選用的 task 相依清單
+            - [task_type]: 下列其中之一：spark_python_task、notebook_task、python_wheel_task、
+                           spark_jar_task, spark_submit_task, pipeline_task, sql_task, dbt_task, run_job_task
+            - [compute]: 下列其中之一：new_cluster、existing_cluster_id、job_cluster_key、compute_key
+        job_clusters: 選用的 job cluster 定義清單（供非無伺服器 tasks 使用）
+        environments: 選用的無伺服器 tasks 環境定義清單。
+            每個 dict 應包含：
+            - environment_key: 由 tasks 透過 environment_key 參照的唯一識別碼
+            - spec: 包含 dependencies（pip 套件清單）且可選擇包含 client（"4"）的 Dict
+        tags: 選用的組織用 tags dict
+        timeout_seconds: job 層級逾時時間（0 表示不設逾時）
+        max_concurrent_runs: 最大並行 runs 數量（預設：1）
+        email_notifications: Email 通知設定
+        webhook_notifications: Webhook 通知設定
+        notification_settings: run 生命週期事件的通知設定
+        schedule: 選用的排程設定
+        queue: 選用的 job 佇列設定
+        run_as: 選用的 run-as 使用者／service principal
+        git_source: 選用的 Git 來源設定
+        parameters: 選用的 job 參數
+        health: 選用的健康狀態監控規則
+        deployment: 選用的部署設定
+        **extra_settings: 直接傳給 SDK 的其他 job 設定
 
-    Returns:
-        Dictionary with job_id and other creation metadata
+    回傳:
+        包含 job_id 與其他建立中繼資料的字典。
 
-    Raises:
-        JobError: If job creation fails
+    引發:
+        JobError: 當 job 建立失敗時。
 
-    Example:
+    範例:
         >>> tasks = [
         ...     {
         ...         "task_key": "data_ingestion",
@@ -187,22 +187,22 @@ def create_job(
     w = get_workspace_client()
 
     try:
-        # Build kwargs for SDK call
+        # 為 SDK 呼叫建立 kwargs
         kwargs: Dict[str, Any] = {
             "name": name,
             "max_concurrent_runs": max_concurrent_runs,
         }
 
-        # Convert tasks from dicts to SDK Task objects
+        # 將 tasks 從 dict 轉為 SDK Task 物件
         if tasks:
             kwargs["tasks"] = [Task.from_dict(task) for task in tasks]
 
-        # Convert job_clusters if provided
+        # 若有提供，轉換 job_clusters
         if job_clusters:
             kwargs["job_clusters"] = [JobCluster.from_dict(jc) for jc in job_clusters]
 
-        # Convert environments if provided (for serverless tasks with dependencies)
-        # Auto-inject "client": "4" into spec if missing to avoid API error:
+        # 若有提供，轉換 environments（供有相依性的無伺服器 tasks 使用）
+        # 若 spec 缺少 "client": "4"，自動注入以避免 API 錯誤：
         # "Either base environment or version must be provided for environment"
         if environments:
             for env in environments:
@@ -210,7 +210,7 @@ def create_job(
                     env["spec"]["client"] = "4"
             kwargs["environments"] = [JobEnvironment.from_dict(env) for env in environments]
 
-        # Add optional parameters
+        # 加入選用參數
         if tags:
             kwargs["tags"] = tags
         if timeout_seconds is not None:
@@ -236,17 +236,17 @@ def create_job(
         if deployment:
             kwargs["deployment"] = deployment
 
-        # Add any extra settings
+        # 加入其他額外設定
         kwargs.update(extra_settings)
 
-        # Create job
+        # 建立 job
         response = w.jobs.create(**kwargs)
 
-        # Convert response to dict
+        # 將回應轉為 dict
         return response.as_dict()
 
     except Exception as e:
-        raise JobError(f"Failed to create job '{name}': {str(e)}")
+        raise JobError(f"建立 job '{name}' 失敗：{str(e)}")
 
 
 def update_job(
@@ -271,46 +271,46 @@ def update_job(
     **extra_settings,
 ) -> None:
     """
-    Update an existing job's configuration.
+    更新現有 job 的設定。
 
-    Only provided parameters will be updated. To remove a field, explicitly set it to None
-    or an empty value.
+    只會更新有提供的參數。若要移除欄位，請明確將其設為 None
+    或空值。
 
-    Args:
-        job_id: Job ID to update
-        name: New job name
-        tasks: New task definitions
-        job_clusters: New job cluster definitions
-        environments: New environment definitions for serverless tasks with dependencies
-        tags: New tags (replaces existing)
-        timeout_seconds: New timeout
-        max_concurrent_runs: New max concurrent runs
-        email_notifications: New email notifications
-        webhook_notifications: New webhook notifications
-        notification_settings: New notification settings
-        schedule: New schedule configuration
-        queue: New queue settings
-        run_as: New run-as configuration
-        git_source: New Git source configuration
-        parameters: New job parameters
-        health: New health monitoring rules
-        deployment: New deployment configuration
-        **extra_settings: Additional job settings
+    參數:
+        job_id: 要更新的 Job ID
+        name: 新的 Job 名稱
+        tasks: 新的 task 定義
+        job_clusters: 新的 job cluster 定義
+        environments: 供有相依性的無伺服器 tasks 使用的新環境定義
+        tags: 新的 tags（會取代既有值）
+        timeout_seconds: 新的逾時時間
+        max_concurrent_runs: 新的最大並行 runs 數量
+        email_notifications: 新的 Email 通知
+        webhook_notifications: 新的 Webhook 通知
+        notification_settings: 新的通知設定
+        schedule: 新的排程設定
+        queue: 新的佇列設定
+        run_as: 新的 run-as 設定
+        git_source: 新的 Git 來源設定
+        parameters: 新的 job 參數
+        health: 新的健康狀態監控規則
+        deployment: 新的部署設定
+        **extra_settings: 其他 job 設定
 
-    Raises:
-        JobError: If job update fails
+    引發:
+        JobError: 當 job 更新失敗時。
     """
     w = get_workspace_client()
 
     try:
-        # Build kwargs for SDK call - must include full new_settings
-        # Get current job config first
+        # 為 SDK 呼叫建立 kwargs - 必須包含完整的 new_settings
+        # 先取得目前的 job 設定
         current_job = w.jobs.get(job_id=job_id)
 
-        # Start with current settings as dict
+        # 以目前設定的 dict 作為起點
         new_settings_dict = current_job.settings.as_dict() if current_job.settings else {}
 
-        # Update with provided parameters
+        # 以提供的參數更新
         if name is not None:
             new_settings_dict["name"] = name
         if tasks is not None:
@@ -346,32 +346,32 @@ def update_job(
         if deployment is not None:
             new_settings_dict["deployment"] = deployment
 
-        # Apply extra settings
+        # 套用額外設定
         new_settings_dict.update(extra_settings)
 
-        # Convert to JobSettings object
+        # 轉為 JobSettings 物件
         new_settings = JobSettings.from_dict(new_settings_dict)
 
-        # Update job
+        # 更新 job
         w.jobs.update(job_id=job_id, new_settings=new_settings)
 
     except Exception as e:
-        raise JobError(f"Failed to update job {job_id}: {str(e)}", job_id=job_id)
+        raise JobError(f"更新 job {job_id} 失敗：{str(e)}", job_id=job_id)
 
 
 def delete_job(job_id: int) -> None:
     """
-    Delete a job.
+    刪除 job。
 
-    Args:
-        job_id: Job ID to delete
+    參數:
+        job_id: 要刪除的 Job ID
 
-    Raises:
-        JobError: If job deletion fails
+    引發:
+        JobError: 當 job 刪除失敗時。
     """
     w = get_workspace_client()
 
     try:
         w.jobs.delete(job_id=job_id)
     except Exception as e:
-        raise JobError(f"Failed to delete job {job_id}: {str(e)}", job_id=job_id)
+        raise JobError(f"刪除 job {job_id} 失敗：{str(e)}", job_id=job_id)

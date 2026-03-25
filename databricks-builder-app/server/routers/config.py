@@ -1,4 +1,4 @@
-"""Configuration and user info endpoints."""
+"""設定與使用者資訊端點。"""
 
 import logging
 import os
@@ -17,13 +17,13 @@ router = APIRouter()
 
 @router.get('/me')
 async def get_user_info(request: Request):
-  """Get current user information and app configuration."""
+  """取得目前使用者資訊與應用程式設定。"""
   user_email = await get_current_user(request)
   workspace_url = get_workspace_url()
   lakebase_configured = is_postgres_configured()
   lakebase_project_id = get_lakebase_project_id()
 
-  # Test database connection if configured
+  # 測試資料庫連線（如已設定）
   lakebase_error = None
   if lakebase_configured:
     lakebase_error = await test_database_connection()
@@ -39,7 +39,7 @@ async def get_user_info(request: Request):
 
 @router.get('/health')
 async def health_check():
-  """Health check endpoint."""
+  """健康檢查端點。"""
   return {'status': 'healthy'}
 
 
@@ -52,7 +52,7 @@ async def get_system_prompt_endpoint(
   workspace_folder: Optional[str] = Query(None),
   project_id: Optional[str] = Query(None),
 ):
-  """Get the system prompt with current configuration."""
+  """取得套用當前設定的 system prompt。"""
   enabled_skills = None
   if project_id:
     from ..services.agent import get_project_directory
@@ -73,12 +73,12 @@ async def get_system_prompt_endpoint(
 
 @router.get('/mlflow/status')
 async def mlflow_status_endpoint():
-  """Get MLflow tracing status and configuration.
+  """取得 MLflow tracing 狀態與設定。
 
-  Returns current MLflow tracing state including:
-  - Whether tracing is enabled (via MLFLOW_EXPERIMENT_NAME env var)
+  回傳目前的 MLflow tracing 狀態，包括：
+  - tracing 是否啟用（透過 MLFLOW_EXPERIMENT_NAME 環境變數）
   - Tracking URI
-  - Current experiment info
+  - 目前的實驗資訊
   """
   experiment_name = os.environ.get('MLFLOW_EXPERIMENT_NAME', '')
   tracking_uri = os.environ.get('MLFLOW_TRACKING_URI', 'databricks')

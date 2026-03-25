@@ -4,6 +4,25 @@
       "command": "${CLAUDE_PLUGIN_ROOT}/.venv/bin/python",
       "args": ["${CLAUDE_PLUGIN_ROOT}/databricks-mcp-server/run_server.py"],
       "defer_loading": true
+    },
+    "databricks-genie": {
+      "type": "stdio",
+      "command": "cmd",
+      "args": ["/c", "npx", "mcp-remote", "https://adb-2654999172504234.14.azuredatabricks.net/api/2.0/mcp/genie/01f109d210d111548bdc9254d6bc148f", "--header", "Authorization:Bearer %ANTHROPIC_AUTH_TOKEN%"]
+    },
+    "azure-devops": {
+      "type": "stdio",
+      "command": "cmd",
+      "args": [
+        "/c",
+        "npx",
+        "-y",
+        "@azure-devops/mcp@latest",
+        "FET-IDTT",
+        "-d",
+        "work-items,repositories,pipelines"
+      ],
+      "env": {}
     }
   }
 }

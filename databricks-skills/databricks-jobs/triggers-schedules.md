@@ -1,18 +1,18 @@
-# Triggers and Schedules Reference
+# 觸發器與排程參考
 
-## Contents
-- [Cron Schedule](#cron-schedule)
-- [Periodic Trigger](#periodic-trigger)
-- [File Arrival Trigger](#file-arrival-trigger)
-- [Table Update Trigger](#table-update-trigger)
-- [Continuous Jobs](#continuous-jobs)
-- [Manual Runs](#manual-runs)
+## 目錄
+- [Cron 排程](#cron-排程)
+- [週期性觸發器](#週期性觸發器)
+- [檔案到達觸發器](#檔案到達觸發器)
+- [資料表更新觸發器](#資料表更新觸發器)
+- [持續執行作業](#持續執行作業)
+- [手動執行](#手動執行)
 
 ---
 
-## Cron Schedule
+## Cron 排程
 
-Run jobs on a cron-based schedule.
+以 Cron 為基礎的排程執行作業。
 
 ### DABs YAML
 
@@ -20,9 +20,9 @@ Run jobs on a cron-based schedule.
 resources:
   jobs:
     daily_etl:
-      name: "Daily ETL"
+      name: "每日 ETL"
       schedule:
-        quartz_cron_expression: "0 0 8 * * ?"  # Daily at 8 AM
+        quartz_cron_expression: "0 0 8 * * ?"  # 每天上午 8 點
         timezone_id: "America/New_York"
         pause_status: UNPAUSED
       tasks:
@@ -40,7 +40,7 @@ from databricks.sdk.service.jobs import CronSchedule, PauseStatus
 w = WorkspaceClient()
 
 job = w.jobs.create(
-    name="Daily ETL",
+    name="每日 ETL",
     schedule=CronSchedule(
         quartz_cron_expression="0 0 8 * * ?",
         timezone_id="America/New_York",
@@ -54,7 +54,7 @@ job = w.jobs.create(
 
 ```json
 {
-  "name": "Daily ETL",
+  "name": "每日 ETL",
   "schedule": {
     "quartz_cron_expression": "0 0 8 * * ?",
     "timezone_id": "America/New_York",
@@ -64,39 +64,39 @@ job = w.jobs.create(
 }
 ```
 
-### Cron Expression Reference
+### Cron 運算式參考
 
-Format: `seconds minutes hours day-of-month month day-of-week`
+格式：`seconds minutes hours day-of-month month day-of-week`
 
-| Expression | Description |
+| 運算式 | 說明 |
 |------------|-------------|
-| `0 0 8 * * ?` | Daily at 8:00 AM |
-| `0 0 8 * * MON-FRI` | Weekdays at 8:00 AM |
-| `0 0 */2 * * ?` | Every 2 hours |
-| `0 30 9 * * ?` | Daily at 9:30 AM |
-| `0 0 0 1 * ?` | First day of month at midnight |
-| `0 0 6 ? * MON` | Every Monday at 6:00 AM |
-| `0 0 8 15 * ?` | 15th of each month at 8:00 AM |
-| `0 0 8 L * ?` | Last day of month at 8:00 AM |
+| `0 0 8 * * ?` | 每天上午 8:00 |
+| `0 0 8 * * MON-FRI` | 每個工作日上午 8:00 |
+| `0 0 */2 * * ?` | 每 2 小時 |
+| `0 30 9 * * ?` | 每天上午 9:30 |
+| `0 0 0 1 * ?` | 每月 1 日午夜 12:00 |
+| `0 0 6 ? * MON` | 每週一上午 6:00 |
+| `0 0 8 15 * ?` | 每月 15 日上午 8:00 |
+| `0 0 8 L * ?` | 每月最後一天上午 8:00 |
 
-### Common Timezones
+### 常見時區
 
-| Timezone ID | Description |
+| Timezone ID | 說明 |
 |-------------|-------------|
-| `UTC` | Coordinated Universal Time |
-| `America/New_York` | Eastern Time (US) |
-| `America/Chicago` | Central Time (US) |
-| `America/Denver` | Mountain Time (US) |
-| `America/Los_Angeles` | Pacific Time (US) |
-| `Europe/London` | British Time |
-| `Europe/Paris` | Central European Time |
-| `Asia/Tokyo` | Japan Standard Time |
+| `UTC` | 協調世界時 |
+| `America/New_York` | 美國東部時間 |
+| `America/Chicago` | 美國中部時間 |
+| `America/Denver` | 美國山區時間 |
+| `America/Los_Angeles` | 美國太平洋時間 |
+| `Europe/London` | 英國時間 |
+| `Europe/Paris` | 中歐時間 |
+| `Asia/Tokyo` | 日本標準時間 |
 
 ---
 
-## Periodic Trigger
+## 週期性觸發器
 
-Run jobs at fixed intervals (simpler than cron).
+以固定間隔執行作業（比 cron 更簡單）。
 
 ### DABs YAML
 
@@ -104,7 +104,7 @@ Run jobs at fixed intervals (simpler than cron).
 resources:
   jobs:
     hourly_sync:
-      name: "Hourly Sync"
+      name: "每小時同步"
       trigger:
         pause_status: UNPAUSED
         periodic:
@@ -125,7 +125,7 @@ from databricks.sdk.service.jobs import TriggerSettings, Periodic, PeriodicTrigg
 w = WorkspaceClient()
 
 job = w.jobs.create(
-    name="Hourly Sync",
+    name="每小時同步",
     trigger=TriggerSettings(
         pause_status=PauseStatus.UNPAUSED,
         periodic=Periodic(
@@ -137,33 +137,33 @@ job = w.jobs.create(
 )
 ```
 
-### Interval Units
+### 間隔單位
 
-| Unit | Description |
+| 單位 | 說明 |
 |------|-------------|
-| `HOURS` | Run every N hours |
-| `DAYS` | Run every N days |
-| `WEEKS` | Run every N weeks |
+| `HOURS` | 每 N 小時執行一次 |
+| `DAYS` | 每 N 天執行一次 |
+| `WEEKS` | 每 N 週執行一次 |
 
-### Examples
+### 範例
 
 ```yaml
-# Every 30 minutes (not supported - use cron)
-# Minimum periodic interval is 1 hour
+# 每 30 分鐘一次（不支援，請改用 cron）
+# 週期性觸發的最小間隔為 1 小時
 
-# Every 4 hours
+# 每 4 小時一次
 trigger:
   periodic:
     interval: 4
     unit: HOURS
 
-# Every 2 days
+# 每 2 天一次
 trigger:
   periodic:
     interval: 2
     unit: DAYS
 
-# Weekly
+# 每週一次
 trigger:
   periodic:
     interval: 1
@@ -172,9 +172,9 @@ trigger:
 
 ---
 
-## File Arrival Trigger
+## 檔案到達觸發器
 
-Run jobs when new files arrive in cloud storage.
+當新檔案到達雲端儲存體時執行作業。
 
 ### DABs YAML
 
@@ -182,7 +182,7 @@ Run jobs when new files arrive in cloud storage.
 resources:
   jobs:
     process_uploads:
-      name: "Process Uploads"
+      name: "處理上傳檔案"
       trigger:
         pause_status: UNPAUSED
         file_arrival:
@@ -204,7 +204,7 @@ from databricks.sdk.service.jobs import TriggerSettings, FileArrivalTriggerConfi
 w = WorkspaceClient()
 
 job = w.jobs.create(
-    name="Process Uploads",
+    name="處理上傳檔案",
     trigger=TriggerSettings(
         pause_status=PauseStatus.UNPAUSED,
         file_arrival=FileArrivalTriggerConfiguration(
@@ -217,45 +217,45 @@ job = w.jobs.create(
 )
 ```
 
-### Parameters
+### 參數
 
-| Parameter | Required | Description |
+| 參數 | 必填 | 說明 |
 |-----------|----------|-------------|
-| `url` | Yes | Cloud storage URL to monitor |
-| `min_time_between_triggers_seconds` | No | Minimum wait between triggers (default: 0) |
-| `wait_after_last_change_seconds` | No | Wait time after last file change (default: 0) |
+| `url` | 是 | 要監控的雲端儲存體 URL |
+| `min_time_between_triggers_seconds` | 否 | 兩次觸發之間的最短等待時間（預設：0） |
+| `wait_after_last_change_seconds` | 否 | 最後一次檔案變更後的等待時間（預設：0） |
 
-### Supported URL Formats
+### 支援的 URL 格式
 
-| Cloud | Format | Example |
+| 雲端服務 | 格式 | 範例 |
 |-------|--------|---------|
 | AWS S3 | `s3://bucket/path/` | `s3://my-bucket/data/uploads/` |
 | Azure ADLS | `abfss://container@account.dfs.core.windows.net/path/` | `abfss://data@myaccount.dfs.core.windows.net/uploads/` |
 | GCS | `gs://bucket/path/` | `gs://my-bucket/uploads/` |
 | Unity Catalog Volume | `/Volumes/catalog/schema/volume/path/` | `/Volumes/main/data/uploads/` |
 
-### Access File Information in Notebook
+### 在 Notebook 中存取檔案資訊
 
 ```python
-# The trigger provides file information via task context
+# 觸發器會透過 task context 提供檔案資訊
 import json
 
-# Get trigger info from job context
+# 從 job context 取得 trigger 資訊
 trigger_info = dbutils.jobs.taskValues.get(
     taskKey="__trigger_info__",
     key="file_arrival",
     debugValue={}
 )
 
-# Contains: url, files (list of new files)
-print(f"New files: {trigger_info.get('files', [])}")
+# 包含：url、files（新檔案清單）
+print(f"新檔案: {trigger_info.get('files', [])}")
 ```
 
 ---
 
-## Table Update Trigger
+## 資料表更新觸發器
 
-Run jobs when Unity Catalog tables are updated.
+當 Unity Catalog 資料表更新時執行作業。
 
 ### DABs YAML
 
@@ -263,7 +263,7 @@ Run jobs when Unity Catalog tables are updated.
 resources:
   jobs:
     process_updates:
-      name: "Process Table Updates"
+      name: "處理資料表更新"
       trigger:
         pause_status: UNPAUSED
         table_update:
@@ -293,7 +293,7 @@ from databricks.sdk.service.jobs import (
 w = WorkspaceClient()
 
 job = w.jobs.create(
-    name="Process Table Updates",
+    name="處理資料表更新",
     trigger=TriggerSettings(
         pause_status=PauseStatus.UNPAUSED,
         table_update=TableUpdateTriggerConfiguration(
@@ -307,26 +307,26 @@ job = w.jobs.create(
 )
 ```
 
-### Parameters
+### 參數
 
-| Parameter | Required | Description |
+| 參數 | 必填 | 說明 |
 |-----------|----------|-------------|
-| `table_names` | Yes | List of Unity Catalog tables to monitor |
-| `condition` | No | `ANY_UPDATED` (default) - trigger when any table updates |
-| `min_time_between_triggers_seconds` | No | Minimum wait between triggers |
-| `wait_after_last_change_seconds` | No | Wait time after last change |
+| `table_names` | 是 | 要監控的 Unity Catalog 資料表清單 |
+| `condition` | 否 | `ANY_UPDATED`（預設）- 任一資料表更新時觸發 |
+| `min_time_between_triggers_seconds` | 否 | 兩次觸發之間的最短等待時間 |
+| `wait_after_last_change_seconds` | 否 | 最後一次變更後的等待時間 |
 
-### Requirements
+### 要求
 
-- Tables must be in Unity Catalog
-- Job identity needs `SELECT` permission on monitored tables
-- Works with Delta tables (managed and external)
+- 資料表必須位於 Unity Catalog 中
+- Job 身分需要有監控資料表的 `SELECT` 權限
+- 適用於 Delta 資料表（受控與外部）
 
 ---
 
-## Continuous Jobs
+## 持續執行作業
 
-Always-running jobs that automatically restart.
+會持續執行並自動重新啟動的作業。
 
 ### DABs YAML
 
@@ -334,7 +334,7 @@ Always-running jobs that automatically restart.
 resources:
   jobs:
     streaming_job:
-      name: "Streaming Processor"
+      name: "串流處理器"
       continuous:
         pause_status: UNPAUSED
       tasks:
@@ -352,7 +352,7 @@ from databricks.sdk.service.jobs import Continuous, PauseStatus
 w = WorkspaceClient()
 
 job = w.jobs.create(
-    name="Streaming Processor",
+    name="串流處理器",
     continuous=Continuous(
         pause_status=PauseStatus.UNPAUSED
     ),
@@ -360,17 +360,17 @@ job = w.jobs.create(
 )
 ```
 
-### Continuous Job Behavior
+### 持續執行作業的行為
 
-- Job runs immediately when created/unpaused
-- Automatically restarts after completion or failure
-- Maintains one active run at a time
-- Use `pause_status: PAUSED` to stop
+- 建立或解除暫停後會立即執行作業
+- 完成或失敗後會自動重新啟動
+- 一次只維持一個作用中的執行個體
+- 使用 `pause_status: PAUSED` 停止
 
-### Control Continuous Jobs
+### 控制持續執行作業
 
 ```python
-# Pause continuous job
+# 暫停持續執行作業
 w.jobs.update(
     job_id=12345,
     new_settings=JobSettings(
@@ -378,7 +378,7 @@ w.jobs.update(
     )
 )
 
-# Resume continuous job
+# 恢復持續執行作業
 w.jobs.update(
     job_id=12345,
     new_settings=JobSettings(
@@ -389,74 +389,74 @@ w.jobs.update(
 
 ---
 
-## Manual Runs
+## 手動執行
 
-Run jobs on-demand without automatic triggers.
+在沒有自動觸發器的情況下依需求執行作業。
 
-### No Trigger Configuration
+### 不設定觸發器
 
-Simply omit `schedule`, `trigger`, and `continuous`:
+只要省略 `schedule`、`trigger` 和 `continuous`：
 
 ```yaml
 resources:
   jobs:
     manual_job:
-      name: "Manual Job"
-      # No schedule/trigger = manual only
+      name: "手動作業"
+      # 未設定 schedule/trigger = 僅能手動執行
       tasks:
         - task_key: run
           notebook_task:
             notebook_path: ../src/manual_task.py
 ```
 
-### Trigger Manual Run
+### 觸發手動執行
 
-**Python SDK:**
+**Python SDK：**
 ```python
-# Run with default parameters
+# 使用預設參數執行
 run = w.jobs.run_now(job_id=12345)
 
-# Run with custom parameters
+# 使用自訂參數執行
 run = w.jobs.run_now(
     job_id=12345,
     job_parameters={"env": "prod", "date": "2024-01-15"}
 )
 
-# Wait for completion
+# 等待完成
 run_result = w.jobs.run_now_and_wait(job_id=12345)
 ```
 
-**CLI:**
+**CLI：**
 ```bash
-# Run job
+# 執行作業
 databricks jobs run-now 12345
 
-# Run with parameters
+# 使用參數執行
 databricks jobs run-now 12345 --job-params '{"env": "prod"}'
 ```
 
-**DABs:**
+**DABs：**
 ```bash
 databricks bundle run my_job_resource_key
 ```
 
 ---
 
-## Combining Triggers
+## 組合觸發器
 
-A job can have multiple trigger types (evaluated independently):
+一個作業可以有多種觸發類型（各自獨立評估）：
 
 ```yaml
 resources:
   jobs:
     multi_trigger:
-      name: "Multi-Trigger Job"
-      # Cron schedule
+      name: "多重觸發作業"
+      # Cron 排程
       schedule:
         quartz_cron_expression: "0 0 6 * * ?"
         timezone_id: "UTC"
         pause_status: UNPAUSED
-      # Also trigger on file arrival
+      # 也在檔案到達時觸發
       trigger:
         pause_status: UNPAUSED
         file_arrival:
@@ -467,30 +467,30 @@ resources:
             notebook_path: ../src/process.py
 ```
 
-### Trigger Priority
+### 觸發優先順序
 
-When multiple triggers fire simultaneously:
-- Job queues runs if `max_concurrent_runs > 1`
-- Otherwise, subsequent triggers are skipped while a run is active
+當多個觸發器同時觸發時：
+- 若 `max_concurrent_runs > 1`，作業會將執行排入佇列
+- 否則，只要有執行仍在進行中，後續觸發就會被略過
 
 ```yaml
-max_concurrent_runs: 1  # Only one run at a time (default)
+max_concurrent_runs: 1  # 一次只能執行一個執行個體（預設）
 ```
 
 ---
 
-## Pause and Resume
+## 暫停與恢復
 
-### Pause Scheduled Job
+### 暫停排程作業
 
 ```yaml
 schedule:
   quartz_cron_expression: "0 0 8 * * ?"
   timezone_id: "UTC"
-  pause_status: PAUSED  # Job won't run on schedule
+  pause_status: PAUSED  # 作業不會依排程執行
 ```
 
-### Pause via SDK
+### 透過 SDK 暫停
 
 ```python
 from databricks.sdk.service.jobs import JobSettings, CronSchedule, PauseStatus
@@ -507,7 +507,7 @@ w.jobs.update(
 )
 ```
 
-### Pause via CLI
+### 透過 CLI 暫停
 
 ```bash
 databricks jobs update 12345 --json '{

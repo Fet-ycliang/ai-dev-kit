@@ -1,115 +1,115 @@
 ---
 name: databricks-app-python
-description: "Builds Python-based Databricks applications using Dash, Streamlit, Gradio, Flask, FastAPI, or Reflex. Handles OAuth authorization (app and user auth), app resources, SQL warehouse and Lakebase connectivity, model serving integration, foundation model APIs, LLM integration, and deployment. Use when building Python web apps, dashboards, ML demos, or REST APIs for Databricks, or when the user mentions Streamlit, Dash, Gradio, Flask, FastAPI, Reflex, or Databricks app."
+description: "使用 Dash、Streamlit、Gradio、Flask、FastAPI 或 Reflex 建構 Python 版 Databricks 應用程式。處理 OAuth 授權（應用程式授權與使用者授權）、應用程式資源、SQL Warehouse 及 Lakebase 連線、模型服務整合、基礎模型 API、LLM 整合與部署。適用於建立 Python 網頁應用、儀表板、ML 示範，或 Databricks 的 REST API；或使用者提及 Streamlit、Dash、Gradio、Flask、FastAPI、Reflex 或 Databricks app 時。"
 ---
 
-# Databricks Python Application
+# Databricks Python 應用程式
 
-Build Python-based Databricks applications. For full examples and recipes, see the **[Databricks Apps Cookbook](https://apps-cookbook.dev/)**.
+建構 Python 版 Databricks 應用程式。如需完整範例與食譜，請參閱 **[Databricks Apps Cookbook](https://apps-cookbook.dev/)**。
 
 ---
 
-## Critical Rules (always follow)
+## 重要規則（務必遵守）
 
-- **MUST** confirm framework choice or use [Framework Selection](#framework-selection) below
-- **MUST** use SDK `Config()` for authentication (never hardcode tokens)
-- **MUST** use `app.yaml` `valueFrom` for resources (never hardcode resource IDs)
-- **MUST** use `dash-bootstrap-components` for Dash app layout and styling
-- **MUST** use `@st.cache_resource` for Streamlit database connections
-- **MUST** deploy Flask with Gunicorn, FastAPI with uvicorn (not dev servers)
+- **必須**確認框架選擇，或使用下方的[框架選擇](#框架選擇)
+- **必須**使用 SDK `Config()` 進行認證（絕不硬編碼 token）
+- **必須**在 `app.yaml` 中使用 `valueFrom` 引用資源（絕不硬編碼資源 ID）
+- **必須**使用 `dash-bootstrap-components` 進行 Dash 應用程式的版面與樣式設計
+- **必須**使用 `@st.cache_resource` 處理 Streamlit 資料庫連線
+- **必須**以 Gunicorn 部署 Flask，以 uvicorn 部署 FastAPI（不使用開發伺服器）
 
-## Required Steps
+## 必要步驟
 
-Copy this checklist and verify each item:
+複製此清單並逐項確認：
 ```
-- [ ] Framework selected
-- [ ] Auth strategy decided: app auth, user auth, or both
-- [ ] App resources identified (SQL warehouse, Lakebase, serving endpoint, etc.)
-- [ ] Backend data strategy decided (SQL warehouse, Lakebase, or SDK)
-- [ ] Deployment method: CLI or DABs
+- [ ] 已選擇框架
+- [ ] 已決定授權策略：app 授權、使用者授權，或兩者皆用
+- [ ] 已識別應用程式資源（SQL Warehouse、Lakebase、serving endpoint 等）
+- [ ] 已決定後端資料策略（SQL Warehouse、Lakebase 或 SDK）
+- [ ] 部署方式：CLI 或 DABs
 ```
 
 ---
 
-## Framework Selection
+## 框架選擇
 
-| Framework | Best For | app.yaml Command |
-|-----------|----------|------------------|
-| **Dash** | Production dashboards, BI tools, complex interactivity | `["python", "app.py"]` |
-| **Streamlit** | Rapid prototyping, data science apps, internal tools | `["streamlit", "run", "app.py"]` |
-| **Gradio** | ML demos, model interfaces, chat UIs | `["python", "app.py"]` |
-| **Flask** | Custom REST APIs, lightweight apps, webhooks | `["gunicorn", "app:app", "-w", "4", "-b", "0.0.0.0:8000"]` |
-| **FastAPI** | Async APIs, auto-generated OpenAPI docs | `["uvicorn", "app:app", "--host", "0.0.0.0", "--port", "8000"]` |
-| **Reflex** | Full-stack Python apps without JavaScript | `["reflex", "run", "--env", "prod"]` |
+| 框架 | 最適用於 | app.yaml 指令 |
+|------|---------|---------------|
+| **Dash** | 生產級儀表板、BI 工具、複雜互動 | `["python", "app.py"]` |
+| **Streamlit** | 快速原型、資料科學應用、內部工具 | `["streamlit", "run", "app.py"]` |
+| **Gradio** | ML 示範、模型介面、對話 UI | `["python", "app.py"]` |
+| **Flask** | 自訂 REST API、輕量應用、webhook | `["gunicorn", "app:app", "-w", "4", "-b", "0.0.0.0:8000"]` |
+| **FastAPI** | 非同步 API、自動產生 OpenAPI 文件 | `["uvicorn", "app:app", "--host", "0.0.0.0", "--port", "8000"]` |
+| **Reflex** | 不需 JavaScript 的全端 Python 應用 | `["reflex", "run", "--env", "prod"]` |
 
-**Default**: Recommend **Streamlit** for prototypes, **Dash** for production dashboards, **FastAPI** for APIs, **Gradio** for ML demos.
+**預設建議**：原型使用 **Streamlit**，生產儀表板使用 **Dash**，API 使用 **FastAPI**，ML 示範使用 **Gradio**。
 
 ---
 
-## Quick Reference
+## 快速參考
 
-| Concept | Details |
-|---------|---------|
-| **Runtime** | Python 3.11, Ubuntu 22.04, 2 vCPU, 6 GB RAM |
-| **Pre-installed** | Dash 2.18.1, Streamlit 1.38.0, Gradio 4.44.0, Flask 3.0.3, FastAPI 0.115.0 |
-| **Auth (app)** | Service principal via `Config()` — auto-injected `DATABRICKS_CLIENT_ID`/`DATABRICKS_CLIENT_SECRET` |
-| **Auth (user)** | `x-forwarded-access-token` header — see [1-authorization.md](1-authorization.md) |
-| **Resources** | `valueFrom` in app.yaml — see [2-app-resources.md](2-app-resources.md) |
+| 概念 | 說明 |
+|------|------|
+| **Runtime** | Python 3.11、Ubuntu 22.04、2 vCPU、6 GB RAM |
+| **預裝套件** | Dash 2.18.1、Streamlit 1.38.0、Gradio 4.44.0、Flask 3.0.3、FastAPI 0.115.0 |
+| **App 授權** | Service principal 透過 `Config()`——自動注入 `DATABRICKS_CLIENT_ID`/`DATABRICKS_CLIENT_SECRET` |
+| **使用者授權** | `x-forwarded-access-token` 標頭——參見 [1-authorization.md](1-authorization.md) |
+| **資源** | `app.yaml` 中的 `valueFrom`——參見 [2-app-resources.md](2-app-resources.md) |
 | **Cookbook** | https://apps-cookbook.dev/ |
-| **Docs** | https://docs.databricks.com/aws/en/dev-tools/databricks-apps/ |
+| **官方文件** | https://docs.databricks.com/aws/en/dev-tools/databricks-apps/ |
 
 ---
 
-## Detailed Guides
+## 詳細指引
 
-**Authorization**: Use [1-authorization.md](1-authorization.md) when configuring app or user authorization — covers service principal auth, on-behalf-of user tokens, OAuth scopes, and per-framework code examples. (Keywords: OAuth, service principal, user auth, on-behalf-of, access token, scopes)
+**授權**：設定 app 授權或使用者授權時請讀 [1-authorization.md](1-authorization.md)——涵蓋 service principal 授權、代理使用者 token、OAuth scope 及各框架的程式碼範例。（關鍵字：OAuth、service principal、user auth、on-behalf-of、access token、scopes）
 
-**App resources**: Use [2-app-resources.md](2-app-resources.md) when connecting your app to Databricks resources — covers SQL warehouses, Lakebase, model serving, secrets, volumes, and the `valueFrom` pattern. (Keywords: resources, valueFrom, SQL warehouse, model serving, secrets, volumes, connections)
+**應用程式資源**：連接 Databricks 資源時請讀 [2-app-resources.md](2-app-resources.md)——涵蓋 SQL Warehouse、Lakebase、model serving、secrets、volumes 及 `valueFrom` 模式。（關鍵字：resources、valueFrom、SQL warehouse、model serving、secrets、volumes、connections）
 
-**Frameworks**: See [3-frameworks.md](3-frameworks.md) for Databricks-specific patterns per framework — covers Dash, Streamlit, Gradio, Flask, FastAPI, and Reflex with auth integration, deployment commands, and Cookbook links. (Keywords: Dash, Streamlit, Gradio, Flask, FastAPI, Reflex, framework selection)
+**框架**：各框架的 Databricks 專屬模式請見 [3-frameworks.md](3-frameworks.md)——涵蓋 Dash、Streamlit、Gradio、Flask、FastAPI 及 Reflex 的授權整合、部署指令及 Cookbook 連結。（關鍵字：Dash、Streamlit、Gradio、Flask、FastAPI、Reflex、framework selection）
 
-**Deployment**: Use [4-deployment.md](4-deployment.md) when deploying your app — covers Databricks CLI, Asset Bundles (DABs), app.yaml configuration, and post-deployment verification. (Keywords: deploy, CLI, DABs, asset bundles, app.yaml, logs)
+**部署**：部署應用程式時請讀 [4-deployment.md](4-deployment.md)——涵蓋 Databricks CLI、Asset Bundles（DABs）、app.yaml 設定及部署後驗證。（關鍵字：deploy、CLI、DABs、asset bundles、app.yaml、logs）
 
-**Lakebase**: Use [5-lakebase.md](5-lakebase.md) when using Lakebase (PostgreSQL) as your app's data layer — covers auto-injected env vars, psycopg2/asyncpg patterns, and when to choose Lakebase vs SQL warehouse. (Keywords: Lakebase, PostgreSQL, psycopg2, asyncpg, transactional, PGHOST)
+**Lakebase**：以 Lakebase（PostgreSQL）作為資料層時請讀 [5-lakebase.md](5-lakebase.md)——涵蓋自動注入的環境變數、psycopg2/asyncpg 模式，以及何時選擇 Lakebase 而非 SQL Warehouse。（關鍵字：Lakebase、PostgreSQL、psycopg2、asyncpg、transactional、PGHOST）
 
-**MCP tools**: Use [6-mcp-approach.md](6-mcp-approach.md) for managing app lifecycle via MCP tools — covers creating, deploying, monitoring, and deleting apps programmatically. (Keywords: MCP, create app, deploy app, app logs)
+**MCP 工具**：透過 MCP 工具管理應用程式生命週期時請讀 [6-mcp-approach.md](6-mcp-approach.md)——涵蓋以程式化方式建立、部署、監控及刪除應用程式。（關鍵字：MCP、create app、deploy app、app logs）
 
-**Foundation Models**: See [examples/llm_config.py](examples/llm_config.py) for calling Databricks foundation model APIs — covers OAuth M2M auth, OpenAI-compatible client wiring, and token caching. (Keywords: foundation model, LLM, OpenAI client, chat completions)
-
----
-
-## Workflow
-
-1. Determine the task type:
-
-   **New app from scratch?** → Use [Framework Selection](#framework-selection), then read [3-frameworks.md](3-frameworks.md)
-   **Setting up authorization?** → Read [1-authorization.md](1-authorization.md)
-   **Connecting to data/resources?** → Read [2-app-resources.md](2-app-resources.md)
-   **Using Lakebase (PostgreSQL)?** → Read [5-lakebase.md](5-lakebase.md)
-   **Deploying to Databricks?** → Read [4-deployment.md](4-deployment.md)
-   **Using MCP tools?** → Read [6-mcp-approach.md](6-mcp-approach.md)
-   **Calling foundation model/LLM APIs?** → See [examples/llm_config.py](examples/llm_config.py)
-
-2. Follow the instructions in the relevant guide
-3. For full code examples, browse https://apps-cookbook.dev/
+**基礎模型**：呼叫 Databricks 基礎模型 API 請見 [examples/llm_config.py](examples/llm_config.py)——涵蓋 OAuth M2M 認證、相容 OpenAI 的 client 設定及 token 快取。（關鍵字：foundation model、LLM、OpenAI client、chat completions）
 
 ---
 
-## Core Architecture
+## 工作流程
 
-All Python Databricks apps follow this pattern:
+1. 確定任務類型：
+
+   **從零建立新應用程式？** → 使用[框架選擇](#框架選擇)，再讀 [3-frameworks.md](3-frameworks.md)
+   **設定授權？** → 讀 [1-authorization.md](1-authorization.md)
+   **連接資料／資源？** → 讀 [2-app-resources.md](2-app-resources.md)
+   **使用 Lakebase（PostgreSQL）？** → 讀 [5-lakebase.md](5-lakebase.md)
+   **部署至 Databricks？** → 讀 [4-deployment.md](4-deployment.md)
+   **使用 MCP 工具？** → 讀 [6-mcp-approach.md](6-mcp-approach.md)
+   **呼叫基礎模型／LLM API？** → 見 [examples/llm_config.py](examples/llm_config.py)
+
+2. 依照相關指引的說明操作
+3. 完整程式碼範例請瀏覽 https://apps-cookbook.dev/
+
+---
+
+## 核心架構
+
+所有 Python Databricks 應用程式均遵循此結構：
 
 ```
 app-directory/
-├── app.py                 # Main application (or framework-specific name)
-├── models.py              # Pydantic data models
-├── backend.py             # Data access layer
-├── requirements.txt       # Additional Python dependencies
-├── app.yaml               # Databricks Apps configuration
+├── app.py                 # 主應用程式（或各框架對應的名稱）
+├── models.py              # Pydantic 資料模型
+├── backend.py             # 資料存取層
+├── requirements.txt       # 額外的 Python 套件依賴
+├── app.yaml               # Databricks Apps 設定
 └── README.md
 ```
 
-### Backend Toggle Pattern
+### 後端切換模式
 
 ```python
 import os
@@ -125,13 +125,13 @@ else:
 backend = Backend()
 ```
 
-### SQL Warehouse Connection (shared across all frameworks)
+### SQL Warehouse 連線（各框架通用）
 
 ```python
 from databricks.sdk.core import Config
 from databricks import sql
 
-cfg = Config()  # Auto-detects credentials from environment
+cfg = Config()  # 自動從環境偵測認證資訊
 conn = sql.connect(
     server_hostname=cfg.host,
     http_path=f"/sql/1.0/warehouses/{os.getenv('DATABRICKS_WAREHOUSE_ID')}",
@@ -139,7 +139,7 @@ conn = sql.connect(
 )
 ```
 
-### Pydantic Models
+### Pydantic 模型
 
 ```python
 from pydantic import BaseModel, Field
@@ -163,49 +163,49 @@ class EntityIn(BaseModel):
 
 ---
 
-## Common Issues
+## 常見問題
 
-| Issue | Solution |
-|-------|----------|
-| **Connection exhausted** | Use `@st.cache_resource` (Streamlit) or connection pooling |
-| **Auth token not found** | Check `x-forwarded-access-token` header — only available when deployed, not locally |
-| **App won't start** | Check `app.yaml` command matches framework; check `databricks apps logs <name>` |
-| **Resource not accessible** | Add resource via UI, verify SP has permissions, use `valueFrom` in app.yaml |
-| **Import error on deploy** | Add missing packages to `requirements.txt` (pre-installed packages don't need listing) |
-| **Lakebase app crashes on start** | `psycopg2`/`asyncpg` are NOT pre-installed — MUST add to `requirements.txt` |
-| **Port conflict** | Apps must bind to `DATABRICKS_APP_PORT` env var (defaults to 8000). Never use 8080. Streamlit is auto-configured; for others, read the env var in code or use 8000 in app.yaml command |
-| **Streamlit: set_page_config error** | `st.set_page_config()` must be the first Streamlit command |
-| **Dash: unstyled layout** | Add `dash-bootstrap-components`; use `dbc.themes.BOOTSTRAP` |
-| **Slow queries** | Use Lakebase for transactional/low-latency; SQL warehouse for analytical queries |
-
----
-
-## Platform Constraints
-
-| Constraint | Details |
-|------------|---------|
-| **Runtime** | Python 3.11, Ubuntu 22.04 LTS |
-| **Compute** | 2 vCPUs, 6 GB memory (default) |
-| **Pre-installed frameworks** | Dash, Streamlit, Gradio, Flask, FastAPI, Shiny |
-| **Custom packages** | Add to `requirements.txt` in app root |
-| **Network** | Apps can reach Databricks APIs; external access depends on workspace config |
-| **User auth** | Public Preview — workspace admin must enable before adding scopes |
+| 問題 | 解決方式 |
+|------|---------|
+| **連線耗盡** | 使用 `@st.cache_resource`（Streamlit）或連線池 |
+| **找不到 auth token** | 檢查 `x-forwarded-access-token` 標頭——僅部署後可用，本地無法取得 |
+| **應用程式無法啟動** | 確認 `app.yaml` 的指令與框架相符；查看 `databricks apps logs <name>` |
+| **無法存取資源** | 透過 UI 新增資源，確認 SP 有權限，在 app.yaml 中使用 `valueFrom` |
+| **部署時 import 錯誤** | 在 `requirements.txt` 中新增缺少的套件（預裝套件不需列出） |
+| **Lakebase app 啟動時崩潰** | `psycopg2`/`asyncpg` **未**預裝——必須加入 `requirements.txt` |
+| **Port 衝突** | 應用程式必須綁定 `DATABRICKS_APP_PORT` 環境變數（預設 8000）。絕不使用 8080。Streamlit 由 runtime 自動設定；其他框架請在程式碼中讀取該環境變數，或在 app.yaml 指令中使用 8000 |
+| **Streamlit：set_page_config 錯誤** | `st.set_page_config()` 必須是第一個 Streamlit 指令 |
+| **Dash：版面無樣式** | 加入 `dash-bootstrap-components`；使用 `dbc.themes.BOOTSTRAP` |
+| **查詢緩慢** | 交易性／低延遲需求使用 Lakebase；分析查詢使用 SQL Warehouse |
 
 ---
 
-## Official Documentation
+## 平台限制
 
-- **[Databricks Apps Overview](https://docs.databricks.com/aws/en/dev-tools/databricks-apps/)** — main docs hub
-- **[Apps Cookbook](https://apps-cookbook.dev/)** — ready-to-use code snippets (Streamlit, Dash, Reflex, FastAPI)
-- **[Authorization](https://docs.databricks.com/aws/en/dev-tools/databricks-apps/auth)** — app auth and user auth
-- **[Resources](https://docs.databricks.com/aws/en/dev-tools/databricks-apps/resources)** — SQL warehouse, Lakebase, serving, secrets
-- **[app.yaml Reference](https://docs.databricks.com/aws/en/dev-tools/databricks-apps/app-runtime)** — command and env config
-- **[System Environment](https://docs.databricks.com/aws/en/dev-tools/databricks-apps/system-env)** — pre-installed packages, runtime details
+| 限制 | 說明 |
+|------|------|
+| **Runtime** | Python 3.11、Ubuntu 22.04 LTS |
+| **運算** | 2 vCPU、6 GB 記憶體（預設） |
+| **預裝框架** | Dash、Streamlit、Gradio、Flask、FastAPI、Shiny |
+| **自訂套件** | 加入應用程式根目錄的 `requirements.txt` |
+| **網路** | 應用程式可存取 Databricks API；對外存取取決於 workspace 設定 |
+| **使用者授權** | 公開預覽版——workspace 管理員須在新增 scope 前先啟用 |
 
-## Related Skills
+---
 
-- **[databricks-app-apx](../databricks-app-apx/SKILL.md)** - full-stack apps with FastAPI + React
-- **[databricks-bundles](../databricks-bundles/SKILL.md)** - deploying apps via DABs
-- **[databricks-python-sdk](../databricks-python-sdk/SKILL.md)** - backend SDK integration
-- **[databricks-lakebase-provisioned](../databricks-lakebase-provisioned/SKILL.md)** - adding persistent PostgreSQL state
-- **[databricks-model-serving](../databricks-model-serving/SKILL.md)** - serving ML models for app integration
+## 官方文件
+
+- **[Databricks Apps 概覽](https://docs.databricks.com/aws/en/dev-tools/databricks-apps/)** — 主要文件中心
+- **[Apps Cookbook](https://apps-cookbook.dev/)** — 即用程式碼片段（Streamlit、Dash、Reflex、FastAPI）
+- **[授權](https://docs.databricks.com/aws/en/dev-tools/databricks-apps/auth)** — app 授權與使用者授權
+- **[資源](https://docs.databricks.com/aws/en/dev-tools/databricks-apps/resources)** — SQL Warehouse、Lakebase、serving、secrets
+- **[app.yaml 參考](https://docs.databricks.com/aws/en/dev-tools/databricks-apps/app-runtime)** — 指令與環境設定
+- **[系統環境](https://docs.databricks.com/aws/en/dev-tools/databricks-apps/system-env)** — 預裝套件、runtime 詳細資訊
+
+## 相關 Skills
+
+- **[databricks-app-apx](../databricks-app-apx/SKILL.md)** — 以 FastAPI + React 建立全端應用程式
+- **[databricks-bundles](../databricks-bundles/SKILL.md)** — 透過 DABs 部署應用程式
+- **[databricks-python-sdk](../databricks-python-sdk/SKILL.md)** — 後端 SDK 整合
+- **[databricks-lakebase-provisioned](../databricks-lakebase-provisioned/SKILL.md)** — 新增持久化 PostgreSQL 狀態
+- **[databricks-model-serving](../databricks-model-serving/SKILL.md)** — 提供 ML 模型供應用程式整合

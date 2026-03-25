@@ -1,24 +1,24 @@
-"""SkillBench evaluator: measure skill effectiveness via WITH vs WITHOUT comparison.
+"""SkillBench 評估器：透過含技能 vs 不含技能比較來衡量技能效能。
 
-Evaluates skills by measuring agent performance WITH the skill vs WITHOUT it
-on real tasks. Uses three focused MLflow judges (correctness, completeness,
-guideline adherence) as the primary scoring mechanism — each judge provides
-categorical verdicts AND rich rationale for GEPA's reflection LM.
+透過在真實任務上衡量 Agent 在含技能與不含技能時的表現來評估技能。
+使用三個聚焦的 MLflow 評判器（correctness、completeness、
+guideline adherence）作為主要評分機制——每個評判器都提供
+類別判決以及供 GEPA reflection LM 使用的豐富 rationale。
 
-  Phase 1: WITH-SKILL  -- LLM generates response with SKILL.md in context
-  Phase 2: WITHOUT-SKILL -- LLM generates response with NO skill (cached once)
-  Phase 3: JUDGES -- correctness + completeness (WITH+WITHOUT), guideline_adherence (WITH only),
-           regression (conditional on delta < -0.05)
-  Phase 4: ASSERTIONS -- deterministic fact/pattern checking (zero LLM cost)
+  Phase 1: 含技能  -- LLM 在 context 中包含 SKILL.md 產生回應
+  Phase 2: 不含技能 -- LLM 在沒有技能的情況下產生回應（快取一次）
+  Phase 3: 評判器 -- correctness + completeness（含技能+不含技能）、guideline_adherence（僅含技能），
+           regression（當 delta < -0.05 時）
+  Phase 4: 斷言 -- 決定性的事實/模式檢查（LLM 成本為 0）
 
-Scoring weights:
-  30% Effectiveness Delta (mean of correctness_delta + completeness_delta)
-  20% Quality Composite (mean of correctness + completeness + guideline_adherence WITH scores)
-  15% Fact/Pattern Coverage (deterministic assertions from assertions.py)
-  10% Guideline Adherence (dedicated weight for practices)
-   5% Structure (syntax validity)
-  10% Token Efficiency (smaller candidates score higher)
-  10% Regression Penalty (explicit penalty when regression_judge fires)
+評分權重：
+  30% 效能差值（correctness_delta + completeness_delta 的平均）
+  20% 品質綜合分數（含技能的 correctness + completeness + guideline_adherence 分數平均）
+  15% 事實/模式覆蓋率（來自 assertions.py 的決定性斷言）
+  10% 準則遵循率（實務作法的獨立權重）
+   5% 結構（語法有效性）
+  10% Token 效率（候選內容越小分數越高）
+  10% 回歸懲罰（當 regression_judge 觸發時的明確懲罰）
 """
 
 from __future__ import annotations
@@ -52,12 +52,12 @@ logger = logging.getLogger(__name__)
 
 
 def _prompt_hash(prompt: str) -> str:
-    """Stable hash for caching baseline results by prompt."""
+    """用於依 prompt 快取基準結果的穩定雜湊。"""
     return hashlib.sha256(prompt.encode()).hexdigest()[:16]
 
 
 class _RateLimiter:
-    """Thread-safe token-bucket rate limiter for LLM API calls."""
+    """供 LLM API 呼叫使用的執行緒安全 token-bucket rate limiter。"""
 
     def __init__(self, max_concurrent: int = 2, min_interval: float = 1.0):
         self._semaphore = threading.Semaphore(max_concurrent)
@@ -78,8 +78,8 @@ class _RateLimiter:
         self._semaphore.release()
 
 
-# Module-level rate limiter shared across evaluator instances.
-# Configurable via env vars for workspaces with stricter rate limits.
+# 模組層級的 rate limiter，由所有評估器實例共用。
+# 可透過環境變數配置，以支援 rate limit 更嚴格的工作區。
 _rate_limiter = _RateLimiter(
     max_concurrent=int(os.environ.get("GEPA_MAX_CONCURRENT_LLM", "4")),
     min_interval=float(os.environ.get("GEPA_MIN_LLM_INTERVAL", "0.2")),
@@ -87,12 +87,12 @@ _rate_limiter = _RateLimiter(
 
 
 def _completion_with_backoff(*, max_retries: int = 3, **kwargs) -> Any:
-    """Call litellm.completion with rate limiting and model fallback.
+    """以 rate limiting 與 model fallback 呼叫 litellm.completion。
 
-    Uses the centralized completion_with_fallback which handles:
-    - Rate limit errors with exponential backoff
-    - Model fallback chain on persistent rate limits
-    - AI Gateway routing when configured
+    使用集中式的 completion_with_fallback，其會處理：
+    - 使用指數退避處理 rate limit 錯誤
+    - 持續 rate limit 時的 model fallback chain
+    - 已配置時的 AI Gateway 路由
     """
     _rate_limiter.acquire()
     try:
@@ -102,7 +102,7 @@ def _completion_with_backoff(*, max_retries: int = 3, **kwargs) -> Any:
 
 
 def _run_structure_scorers(text: str) -> float:
-    """Run structure validation scorers on text, return 0.0-1.0 composite."""
+    """對文字執行結構驗證評分器，回傳 0.0-1.0 的綜合分數。"""
     outputs = {"response": text}
     scores: list[float] = []
     for scorer_fn in [python_syntax, sql_syntax, no_hallucinated_apis]:
@@ -125,7 +125,7 @@ def _run_structure_scorers(text: str) -> float:
 
 
 def _effectiveness_score(verdict: str | float) -> float:
-    """Convert effectiveness verdict to numeric score for weighting."""
+    """將效能判決轉換為用於加權的數值分數。"""
     if isinstance(verdict, (int, float)):
         return max(0.0, min(1.0, float(verdict)))
     v = str(verdict).strip().lower()
@@ -135,7 +135,7 @@ def _effectiveness_score(verdict: str | float) -> float:
         return 0.5
     elif v == "regressed":
         return 0.0
-    # Fallback: try bool-like
+    # 回退：嘗試 bool 類型
     if v in ("yes", "true"):
         return 1.0
     if v in ("no", "false"):
@@ -144,19 +144,19 @@ def _effectiveness_score(verdict: str | float) -> float:
 
 
 class SkillBenchEvaluator:
-    """GEPA-compatible evaluator using three focused judges for scoring + diagnostics.
+    """使用三個聚焦評判器進行評分與診斷的 GEPA 相容評估器。
 
-    Uses correctness, completeness, and guideline adherence judges with
-    binary ``Literal["yes", "no"]`` feedback types.
-    Produces decomposed signals for GEPA's reflection LM.
+    使用 correctness、completeness 與 guideline adherence 評判器，
+    並採用二元 ``Literal["yes", "no"]`` 回饋型別。
+    產生可供 GEPA reflection LM 使用的拆解訊號。
 
-    Args:
-        gen_model: LLM model for generating responses. Required.
-        original_token_counts: Token counts of original artifacts for efficiency scoring.
-        token_budget: Hard token ceiling; candidates exceeding this are penalized.
-        skill_guidelines: Deduplicated guidelines from ground_truth.yaml for judges.
-        judge_model: LLM model for judges. Defaults to GEPA_JUDGE_LM env
-            or databricks/databricks-claude-sonnet-4-6.
+    參數:
+        gen_model: 用於產生回應的 LLM model。必填。
+        original_token_counts: 原始成品的 Token 計數，用於效率評分。
+        token_budget: 硬性 Token 上限；超出的候選內容會被懲罰。
+        skill_guidelines: 從 ground_truth.yaml 去重後取得、供評判器使用的 guidelines。
+        judge_model: 評判器使用的 LLM model。預設為 GEPA_JUDGE_LM 環境變數
+            或 databricks/databricks-claude-sonnet-4-6。
     """
 
     def __init__(
@@ -173,7 +173,7 @@ class SkillBenchEvaluator:
             raise ValueError("SkillBench evaluator requires a gen_model. Pass --gen-model or set GEPA_GEN_LM env var.")
         self.gen_model = gen_model
         self._baseline_response_cache: dict[str, str] = {}
-        # Per-judge baseline caches (WITHOUT responses are stable across iterations)
+        # 各評判器的基準快取（不含技能的回應在各次迭代中是穩定的）
         self._baseline_correctness_cache: dict[str, JudgeFeedback] = {}
         self._baseline_completeness_cache: dict[str, JudgeFeedback] = {}
         self._original_token_counts = original_token_counts or {}
@@ -182,15 +182,15 @@ class SkillBenchEvaluator:
         self._tool_context = tool_context or ""
         self._assessment_by_task = assessment_by_task or {}
 
-        # Cache WITH-skill evaluation results keyed on (prompt_hash, candidate_hash)
-        # to avoid re-evaluation when GEPA calls the evaluator multiple times on
-        # the same candidate-task pair.
+        # 以 (prompt_hash, candidate_hash) 為鍵快取含技能的評估結果
+        # 避免當 GEPA 多次對
+        # 相同候選內容-任務配對呼叫評估器時重複評估。
         self._with_skill_cache: dict[str, tuple[float, dict]] = {}
 
-        # Discover eval criteria skill paths (static spine + adaptive layer)
+        # 探索 eval criteria 技能路徑（靜態骨幹 + 自適應層）
         skill_paths = discover_skill_paths()
 
-        # Create three focused judge instances
+        # 建立三個聚焦的評判器實例
         self._correctness_judge = create_correctness_judge(skill_paths=skill_paths, judge_model=judge_model)
         self._completeness_judge = create_completeness_judge(skill_paths=skill_paths, judge_model=judge_model)
         self._guideline_adherence_judge = create_guideline_adherence_judge(
@@ -199,7 +199,7 @@ class SkillBenchEvaluator:
         self._regression_judge = create_regression_judge(judge_model=judge_model)
 
     def _generate_response(self, prompt: str, skill_context: str | None = None) -> str:
-        """Generate a response with or without skill context."""
+        """在有或沒有技能 context 的情況下產生回應。"""
         messages = []
         if skill_context:
             messages.append(
@@ -222,7 +222,7 @@ class SkillBenchEvaluator:
         return resp.choices[0].message.content or ""
 
     def _get_baseline_response(self, prompt: str) -> str:
-        """Get WITHOUT-skill baseline response, computing once then caching."""
+        """取得不含技能的基準回應；計算一次後快取。"""
         key = _prompt_hash(prompt)
         if key not in self._baseline_response_cache:
             response = self._generate_response(prompt, skill_context=None)
@@ -234,22 +234,22 @@ class SkillBenchEvaluator:
         candidate: dict[str, str],
         example: dict,
     ) -> tuple[float, dict]:
-        """Evaluate a candidate skill against a single task example.
+        """根據單一任務範例評估候選技能。
 
-        GEPA-compatible signature: (candidate, example) -> (score, side_info)
+        GEPA 相容簽章：(candidate, example) -> (score, side_info)
         """
         skill_md = candidate.get("skill_md", "")
 
-        # Check candidate-level cache
+        # 檢查候選內容層級的快取
         prompt = example.get("input", "")
         candidate_hash = hashlib.sha256(json.dumps(candidate, sort_keys=True).encode()).hexdigest()[:16]
         cache_key = f"{_prompt_hash(prompt)}:{candidate_hash}"
         if cache_key in self._with_skill_cache:
             return self._with_skill_cache[cache_key]
 
-        # Build combined context: skill + read-only tool descriptions
-        # During skill optimization, tools come from self._tool_context (read-only).
-        # During tool optimization, tools come from candidate keys (optimizable).
+        # 建立合併 context：技能 + 唯讀工具描述
+        # 在技能優化期間，工具來自 self._tool_context（唯讀）。
+        # 在工具優化期間，工具來自 candidate 的鍵（可優化）。
         tool_parts = []
         for key in sorted(candidate):
             if key.startswith("tools_"):
@@ -261,7 +261,7 @@ class SkillBenchEvaluator:
         elif self._tool_context:
             full_context += "\n\n## Available MCP Tools\n\n" + self._tool_context
 
-        # Decode expectations
+        # 解碼 expectations
         expectations: dict[str, Any] = {}
         expectations_json = example.get("additional_context", {}).get("expectations", "")
         if expectations_json:
@@ -273,19 +273,19 @@ class SkillBenchEvaluator:
         if not prompt or not expectations:
             return 0.0, {"_error": "No prompt or expectations for this task"}
 
-        # Phase 1: Generate WITH-skill response
+        # Phase 1：產生含技能回應
         with_response = self._generate_response(prompt, skill_context=full_context)
 
-        # Phase 2: Generate WITHOUT-skill response (cached)
+        # Phase 2：產生不含技能回應（已快取）
         without_response = self._get_baseline_response(prompt)
 
-        # Phase 3: Multi-judge scoring
+        # Phase 3：多評判器評分
         facts = expectations.get("expected_facts", [])
         patterns = expectations.get("expected_patterns", [])
         guidelines = expectations.get("guidelines", [])
 
-        # Build flat strings for judge templates — make_judge only supports
-        # top-level {{ inputs }}, {{ outputs }}, {{ expectations }} variables.
+        # 為評判器範本建立扁平字串——make_judge 只支援
+        # 頂層的 {{ inputs }}、{{ outputs }}、{{ expectations }} 變數。
         facts_str = "\n".join(f"- {f}" for f in facts) if facts else "None specified"
         patterns_str = (
             "\n".join(
@@ -300,12 +300,12 @@ class SkillBenchEvaluator:
             f"Expected facts:\n{facts_str}\n\nExpected patterns:\n{patterns_str}\n\nGuidelines:\n{guidelines_str}"
         )
 
-        # make_judge requires expectations as dict, inputs/outputs as Any.
+        # make_judge 要求 expectations 為 dict，inputs/outputs 為 Any。
         expectations_dict = {"criteria": expectations_text}
 
         baseline_key = _prompt_hash(prompt)
 
-        # --- Correctness judge: WITH + WITHOUT (WITHOUT cached) ---
+        # --- Correctness 評判器：含技能 + 不含技能（不含技能已快取）---
         correctness_with_fb = run_judge_safe(
             self._correctness_judge,
             inputs=prompt,
@@ -323,7 +323,7 @@ class SkillBenchEvaluator:
             )
         correctness_without_fb = self._baseline_correctness_cache[baseline_key]
 
-        # --- Completeness judge: WITH + WITHOUT (WITHOUT cached) ---
+        # --- Completeness 評判器：含技能 + 不含技能（不含技能已快取）---
         completeness_with_fb = run_judge_safe(
             self._completeness_judge,
             inputs=prompt,
@@ -341,7 +341,7 @@ class SkillBenchEvaluator:
             )
         completeness_without_fb = self._baseline_completeness_cache[baseline_key]
 
-        # --- Guideline adherence judge: WITH only (meaningless without skill) ---
+        # --- 準則遵循評判器：僅含技能（不含技能沒有意義）---
         guideline_adherence_fb = run_judge_safe(
             self._guideline_adherence_judge,
             inputs=prompt,
@@ -350,22 +350,22 @@ class SkillBenchEvaluator:
             name="guideline_adherence",
         )
 
-        # Convert categorical verdicts to float scores
+        # 將類別判決轉換為 float 分數
         correctness_with = _safe_parse_score(correctness_with_fb.value)
         correctness_without = _safe_parse_score(correctness_without_fb.value)
         completeness_with = _safe_parse_score(completeness_with_fb.value)
         completeness_without = _safe_parse_score(completeness_without_fb.value)
         guideline_adherence_score = _safe_parse_score(guideline_adherence_fb.value)
 
-        # Per-dimension effectiveness deltas
+        # 各維度的效能差值
         correctness_delta = correctness_with - correctness_without
         completeness_delta = completeness_with - completeness_without
         effectiveness_delta = (correctness_delta + completeness_delta) / 2.0
 
-        # Quality composite: mean of all three WITH scores
+        # 品質綜合分數：三個含技能分數的平均
         quality_composite = (correctness_with + completeness_with + guideline_adherence_score) / 3.0
 
-        # Derive effectiveness verdict
+        # 推導效能判決
         if effectiveness_delta > 0.05:
             effectiveness_verdict = "improved"
         elif effectiveness_delta < -0.05:
@@ -373,7 +373,7 @@ class SkillBenchEvaluator:
         else:
             effectiveness_verdict = "same"
 
-        # --- Regression judge: conditional on delta < -0.05 ---
+        # --- Regression 評判器：僅在 delta < -0.05 時啟用 ---
         regression_penalty = 0.0
         regression_fb = None
         if effectiveness_delta < -0.05:
@@ -388,14 +388,14 @@ class SkillBenchEvaluator:
                 expectations=expectations_dict,
                 name="regression",
             )
-            # bool/yes → 1.0 (regression found), no → 0.0
+            # bool/yes → 1.0（發現 regression），no → 0.0
             reg_val = regression_fb.value
             if isinstance(reg_val, bool):
                 regression_penalty = 1.0 if reg_val else 0.0
             elif isinstance(reg_val, str) and reg_val.strip().lower() in ("yes", "true"):
                 regression_penalty = 1.0
 
-        # Phase 4: Deterministic fact/pattern assertions (zero LLM cost)
+        # Phase 4：決定性的事實/模式斷言（LLM 成本為 0）
         with_results = run_all_assertions(with_response, expectations)
         without_results = run_all_assertions(without_response, expectations)
 
@@ -404,13 +404,13 @@ class SkillBenchEvaluator:
         fact_score = sum(1 for r in fact_results if r.passed) / len(fact_results) if fact_results else 1.0
         pattern_score = sum(1 for r in pattern_results if r.passed) / len(pattern_results) if pattern_results else 1.0
 
-        # GEPA-friendly diagnostics from assertion comparison
+        # 來自斷言比較的 GEPA 友善診斷
         failure_summary = summarize_failures(with_results, without_results)
 
-        # Structure validation on the skill itself
+        # 對技能本身做結構驗證
         structure = _run_structure_scorers(skill_md) if skill_md else 1.0
 
-        # Token efficiency scoring
+        # Token 效率評分
         total_candidate_tokens = sum(count_tokens(v) for v in candidate.values())
 
         if self._total_original_tokens > 0:
@@ -426,7 +426,7 @@ class SkillBenchEvaluator:
         else:
             efficiency = 1.0
 
-        # Weighted final score with new multi-judge weights
+        # 使用新的多評判器權重計算加權最終分數
         fact_pattern = 0.5 * fact_score + 0.5 * pattern_score
         final_score = max(
             0.0,
@@ -442,16 +442,16 @@ class SkillBenchEvaluator:
             ),
         )
 
-        # Build side info with FULL judge rationale (not truncated!)
+        # 以完整評判器 rationale 建立 side_info（不截斷！）
         reference_answer = example.get("answer", "")
 
         side_info: dict[str, Any] = {}
 
-        # Task context
+        # 任務 context
         if prompt:
             side_info["Task"] = prompt[:500]
 
-        # Per-dimension judge feedback — GEPA sees each as a separate section
+        # 各維度評判器回饋——GEPA 會將每個視為獨立區段
         side_info["Judge_correctness_with"] = {
             "verdict": str(correctness_with_fb.value),
             "score": correctness_with,
@@ -478,7 +478,7 @@ class SkillBenchEvaluator:
             "rationale": guideline_adherence_fb.rationale,
         }
 
-        # Per-dimension effectiveness deltas
+        # 各維度的效能差值
         side_info["Judge_effectiveness"] = {
             "verdict": effectiveness_verdict,
             "correctness_delta": correctness_delta,
@@ -486,32 +486,32 @@ class SkillBenchEvaluator:
             "overall_delta": effectiveness_delta,
         }
 
-        # Regression analysis (only when regression detected)
+        # Regression 分析（僅在偵測到 regression 時）
         if regression_fb and regression_penalty > 0:
             side_info["Regression_Analysis"] = {
                 "rationale": regression_fb.rationale,
             }
 
-        # Assertion-based structured feedback — GEPA renders each key as a markdown header
+        # 基於斷言的結構化回饋——GEPA 會將每個鍵渲染為 Markdown 標題
         side_info["Missing_Facts"] = [r.rationale for r in fact_results if not r.passed]
         side_info["Missing_Patterns"] = [r.rationale for r in pattern_results if not r.passed]
         side_info["Passed_Facts"] = [r.rationale for r in fact_results if r.passed]
         side_info["Passed_Patterns"] = [r.rationale for r in pattern_results if r.passed]
 
-        # skill_md_specific_info — shown ONLY when reflecting on the skill component
+        # skill_md_specific_info——僅在反思技能元件時顯示
         if failure_summary.get("Error") or failure_summary.get("Regressions"):
             side_info["skill_md_specific_info"] = {
                 "Assertion_Diagnostics": failure_summary.get("Error", ""),
                 "Regressions": failure_summary.get("Regressions", ""),
             }
 
-        # Expected vs Actual for GEPA reflection
+        # 供 GEPA reflection 使用的 Expected vs Actual
         if reference_answer:
             side_info["Expected"] = reference_answer[:2000]
         if with_response:
             side_info["Actual"] = with_response[:2000]
 
-        # Score breakdown (scores dict feeds GEPA's Pareto frontier)
+        # 分數明細（scores dict 會送入 GEPA 的 Pareto frontier）
         side_info["scores"] = {
             "correctness_with": correctness_with,
             "correctness_without": correctness_without,
@@ -530,7 +530,7 @@ class SkillBenchEvaluator:
             "final": final_score,
         }
 
-        # Token counts for GEPA Pareto tracking
+        # 供 GEPA Pareto 追蹤使用的 Token 計數
         side_info["token_counts"] = {
             "candidate_total": total_candidate_tokens,
             "original_total": self._total_original_tokens,
@@ -538,7 +538,7 @@ class SkillBenchEvaluator:
         if self._token_budget:
             side_info["token_counts"]["budget"] = self._token_budget
 
-        # Inject matched real-world assessments from MLflow traces
+        # 注入來自 MLflow traces 的已匹配真實世界 assessments
         if self._assessment_by_task:
             task_id = example.get("additional_context", {}).get("task_id", "")
             matched = self._assessment_by_task.get(task_id) or self._assessment_by_task.get(_prompt_hash(prompt), [])
@@ -547,16 +547,16 @@ class SkillBenchEvaluator:
                     {"name": a.name, "value": a.value, "rationale": a.rationale} for a in matched
                 ]
 
-        # Derive diagnostic labels from assertions + judge verdicts
-        # Find weakest dimension for targeted GEPA feedback
+        # 根據斷言 + 評判器判決推導診斷標籤
+        # 找出最弱維度，以提供更具針對性的 GEPA 回饋
         weakest_dim = "correctness" if correctness_with <= completeness_with else "completeness"
         weakest_score = min(correctness_with, completeness_with)
 
         if failure_summary.get("Error"):
-            # Assertions detected specific NEEDS_SKILL/REGRESSION items
+            # 斷言偵測到特定的 NEEDS_SKILL/REGRESSION 項目
             side_info["Error"] = failure_summary["Error"]
         elif effectiveness_delta < -0.05:
-            # Per-dimension regression info
+            # 各維度 regression 資訊
             regressed_dims = []
             if correctness_delta < -0.05:
                 regressed_dims.append(f"correctness({correctness_delta:+.2f})")
@@ -575,21 +575,21 @@ class SkillBenchEvaluator:
                 f"guideline_adherence={guideline_adherence_score:.2f}"
             )
 
-        # Store in candidate-level cache
+        # 存入候選內容層級的快取
         self._with_skill_cache[cache_key] = (final_score, side_info)
 
         return final_score, side_info
 
 
 def _collect_skill_guidelines(skill_name: str) -> list[str]:
-    """Collect and deduplicate guidelines from ground_truth.yaml and manifest.yaml."""
+    """從 ground_truth.yaml 與 manifest.yaml 收集並去重 guidelines。"""
     from pathlib import Path
     import yaml
 
     seen: set[str] = set()
     guidelines: list[str] = []
 
-    # Collect from ground_truth.yaml test cases
+    # 從 ground_truth.yaml 測試案例收集
     gt_path = Path(".test/skills") / skill_name / "ground_truth.yaml"
     if gt_path.exists():
         try:
@@ -604,7 +604,7 @@ def _collect_skill_guidelines(skill_name: str) -> list[str]:
         except Exception:
             pass
 
-    # Collect from manifest.yaml default_guidelines (includes [FOCUS] guidelines)
+    # 從 manifest.yaml 的 default_guidelines 收集（包含 [FOCUS] guidelines）
     manifest_path = Path(".test/skills") / skill_name / "manifest.yaml"
     if manifest_path.exists():
         try:
@@ -630,23 +630,23 @@ def create_skillbench_evaluator(
     tool_context: str | None = None,
     assessment_by_task: dict[str, list] | None = None,
 ) -> Callable:
-    """Factory for SkillBench-style evaluator.
+    """建立 SkillBench 風格評估器的工廠函式。
 
-    Returns a GEPA-compatible callable: (candidate, example) -> (score, side_info)
+    回傳一個與 GEPA 相容的 callable：(candidate, example) -> (score, side_info)
 
-    Judges are always enabled — they are the primary scoring mechanism.
-    Guidelines from ground_truth.yaml are incorporated into the quality judge.
+    評判器一律啟用——它們是主要的評分機制。
+    ground_truth.yaml 中的 guidelines 會納入 quality judge。
 
-    Args:
-        skill_name: Name of the skill being evaluated.
-        gen_model: LLM model for generating responses. Required.
-        original_token_counts: Token counts of original artifacts for efficiency scoring.
-        token_budget: Hard token ceiling; candidates exceeding this are penalized.
-        judge_model: LLM model for judges. Defaults to GEPA_JUDGE_LM env
-            or databricks/databricks-claude-sonnet-4-6.
-        tool_context: Read-only tool descriptions included in generation context
-            but not optimized. Used during skill optimization so tools provide
-            context without being GEPA components.
+    參數:
+        skill_name: 正在評估的技能名稱。
+        gen_model: 用於產生回應的 LLM model。必填。
+        original_token_counts: 原始成品的 Token 計數，用於效率評分。
+        token_budget: 硬性 Token 上限；超出的候選內容會被懲罰。
+        judge_model: 評判器使用的 LLM model。預設為 GEPA_JUDGE_LM 環境變數
+            或 databricks/databricks-claude-sonnet-4-6。
+        tool_context: 納入產生 context 但不會被優化的唯讀工具描述。
+            在技能優化期間使用，讓工具能提供 context，
+            但不會成為 GEPA 元件。
     """
     skill_guidelines = _collect_skill_guidelines(skill_name)
     if skill_guidelines:
@@ -681,10 +681,10 @@ def build_skillbench_background(
     assessment_summary: str | None = None,
     focus_areas: list[str] | None = None,
 ) -> str:
-    """Build concise GEPA reflection context for SkillBench optimization.
+    """為 SkillBench 優化建立精簡的 GEPA reflection context。
 
-    Kept short so GEPA's reflection LM spends its context on the per-example
-    diagnostics (judge rationale) rather than methodology.
+    保持簡短，讓 GEPA 的 reflection LM 能把 context 用在每個範例的
+    診斷內容（評判器 rationale），而不是方法論。
     """
     baseline_desc = ""
     if baseline_scores:

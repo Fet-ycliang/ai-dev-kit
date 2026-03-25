@@ -1,27 +1,27 @@
-# Type Conversion
+# 型別轉換
 
-Bidirectional mapping between Spark types and external system types.
+Spark 型別與外部系統型別間的雙向對應。
 
-## Spark to External System
+## Spark 轉換至外部系統
 
-Convert Spark/Python values to external system types:
+將 Spark/Python 值轉換至外部系統型別：
 
 ```python
 def convert_spark_to_external(value, external_type):
-    """Convert Spark/Python value to external system type."""
+    """將 Spark/Python 值轉換至外部系統型別。"""
     if value is None:
         return None
 
     external_type_lower = external_type.lower()
 
-    # UUID conversion
+    # UUID 轉換
     if "uuid" in external_type_lower:
         import uuid
         if isinstance(value, uuid.UUID):
             return value
         return uuid.UUID(str(value))
 
-    # Timestamp conversion
+    # 時間戳記轉換
     if "timestamp" in external_type_lower:
         from datetime import datetime
         if isinstance(value, datetime):
@@ -31,38 +31,38 @@ def convert_spark_to_external(value, external_type):
         if isinstance(value, (int, float)):
             return datetime.fromtimestamp(value)
 
-    # IP address conversion
+    # IP 位址轉換
     if "inet" in external_type_lower:
         import ipaddress
         if isinstance(value, (ipaddress.IPv4Address, ipaddress.IPv6Address)):
             return value
         return ipaddress.ip_address(str(value))
 
-    # Decimal conversion
+    # 十進位轉換
     if "decimal" in external_type_lower:
         from decimal import Decimal
         if isinstance(value, Decimal):
             return value
         return Decimal(str(value))
 
-    # Collections
+    # 集合
     if "list" in external_type_lower or "set" in external_type_lower:
         if not isinstance(value, (list, set)):
-            raise ValueError(f"Expected list/set, got {type(value)}")
+            raise ValueError(f"預期清單/集合，得到 {type(value)}")
         return list(value)
 
     if "map" in external_type_lower:
         if not isinstance(value, dict):
-            raise ValueError(f"Expected dict, got {type(value)}")
+            raise ValueError(f"預期字典，得到 {type(value)}")
         return value
 
-    # Numeric types
+    # 數值型別
     if "int" in external_type_lower:
         return int(value)
     if "float" in external_type_lower or "double" in external_type_lower:
         return float(value)
 
-    # Boolean
+    # 布林值
     if "bool" in external_type_lower:
         if isinstance(value, bool):
             return value
@@ -70,17 +70,17 @@ def convert_spark_to_external(value, external_type):
             return value.lower() in ("true", "1", "yes")
         return bool(value)
 
-    # Default: return as-is
+    # 預設：按原樣傳回
     return value
 ```
 
-## External System to Spark
+## 外部系統轉換至 Spark
 
-Convert external values to Spark types:
+將外部值轉換至 Spark 型別：
 
 ```python
 def convert_external_to_spark(value, spark_type):
-    """Convert external system value to Spark type."""
+    """將外部系統值轉換至 Spark 型別。"""
     from pyspark.sql.types import (
         StringType, IntegerType, LongType, FloatType, DoubleType,
         BooleanType, TimestampType, DateType
@@ -103,12 +103,12 @@ def convert_external_to_spark(value, spark_type):
 
         elif isinstance(spark_type, (IntegerType, LongType)):
             if isinstance(value, bool):
-                raise ValueError("Cannot convert boolean to integer")
+                raise ValueError("無法將布林值轉換為整數")
             return int(value)
 
         elif isinstance(spark_type, (FloatType, DoubleType)):
             if isinstance(value, bool):
-                raise ValueError("Cannot convert boolean to float")
+                raise ValueError("無法將布林值轉換為浮點數")
             return float(value)
 
         elif isinstance(spark_type, TimestampType):
@@ -116,7 +116,7 @@ def convert_external_to_spark(value, spark_type):
                 return value
             if isinstance(value, str):
                 return datetime.fromisoformat(value.replace("Z", "+00:00"))
-            raise ValueError(f"Cannot convert {type(value)} to timestamp")
+            raise ValueError(f"無法將 {type(value)} 轉換為時間戳記")
 
         elif isinstance(spark_type, DateType):
             if isinstance(value, date) and not isinstance(value, datetime):
@@ -125,25 +125,25 @@ def convert_external_to_spark(value, spark_type):
                 return value.date()
             if isinstance(value, str):
                 return datetime.fromisoformat(value.replace("Z", "+00:00")).date()
-            raise ValueError(f"Cannot convert {type(value)} to date")
+            raise ValueError(f"無法將 {type(value)} 轉換為日期")
 
         else:
             return value
 
     except (ValueError, TypeError) as e:
         raise ValueError(
-            f"Failed to convert '{value}' (type: {type(value).__name__}) "
-            f"to {spark_type}: {e}"
+            f"無法轉換 '{value}'（型別：{type(value).__name__}）"
+            f"至 {spark_type}：{e}"
         )
 ```
 
-## Cassandra-Specific Types
+## Cassandra 特定型別
 
-Handle Cassandra complex types:
+處理 Cassandra 複雜型別：
 
 ```python
 def convert_cassandra_to_spark(value):
-    """Handle Cassandra-specific complex types."""
+    """處理 Cassandra 特定複雜型別。"""
     if value is None:
         return None
 
@@ -153,19 +153,19 @@ def convert_cassandra_to_spark(value):
     )
     import uuid
 
-    # Cassandra Date to Python date
+    # Cassandra Date 至 Python date
     if isinstance(value, Date):
         return value.date()
 
-    # Cassandra Time to nanoseconds (LongType)
+    # Cassandra Time 至奈秒 (LongType)
     if isinstance(value, Time):
         return value.nanosecond
 
-    # UUID to string
+    # UUID 至字符串
     if isinstance(value, uuid.UUID):
         return str(value)
 
-    # Duration to structured dict
+    # Duration 至結構化字典
     if isinstance(value, Duration):
         return {
             "months": value.months,
@@ -173,28 +173,28 @@ def convert_cassandra_to_spark(value):
             "nanoseconds": value.nanoseconds
         }
 
-    # OrderedMap to dict
+    # OrderedMap 至字典
     if isinstance(value, OrderedMap):
         return dict(value)
 
-    # SortedSet to list
+    # SortedSet 至清單
     if isinstance(value, SortedSet):
         return list(value)
 
-    # Geospatial types to WKT string
+    # 地理空間型別至 WKT 字符串
     if isinstance(value, (Point, LineString, Polygon)):
         return str(value)
 
     return value
 ```
 
-## Schema Inference
+## 綱要推斷
 
-Infer Spark types from Python values:
+從 Python 值推斷 Spark 型別：
 
 ```python
 def infer_spark_type(value):
-    """Infer Spark type from Python value."""
+    """從 Python 值推斷 Spark 型別。"""
     from pyspark.sql.types import (
         StringType, IntegerType, LongType, FloatType, DoubleType,
         BooleanType, TimestampType, DateType
@@ -204,7 +204,7 @@ def infer_spark_type(value):
     if value is None:
         return StringType()
 
-    # Check bool before int (bool is subclass of int)
+    # 檢查布林值先於整數（布林值為整數的子類別）
     if isinstance(value, bool):
         return BooleanType()
 
@@ -220,17 +220,17 @@ def infer_spark_type(value):
     if isinstance(value, date):
         return DateType()
 
-    # Default to string
+    # 預設為字符串
     return StringType()
 ```
 
-## External Type to Spark Type Mapping
+## 外部型別至 Spark 型別對應
 
-Map external system types to Spark types:
+將外部系統型別對應至 Spark 型別：
 
 ```python
 def map_external_type_to_spark(external_type):
-    """Map external system types to Spark types."""
+    """將外部系統型別對應至 Spark 型別。"""
     from pyspark.sql.types import (
         StringType, IntegerType, LongType, FloatType, DoubleType,
         BooleanType, TimestampType, DateType, BinaryType
@@ -238,43 +238,43 @@ def map_external_type_to_spark(external_type):
 
     type_str = str(external_type).lower()
 
-    # String types
+    # 字符串型別
     if any(t in type_str for t in ["varchar", "text", "char", "string", "uuid"]):
         return StringType()
 
-    # Integer types
+    # 整數型別
     if "int" in type_str and "big" not in type_str:
         return IntegerType()
     if "bigint" in type_str or "long" in type_str:
         return LongType()
 
-    # Floating point
+    # 浮點
     if "float" in type_str:
         return FloatType()
     if "double" in type_str or "decimal" in type_str:
         return DoubleType()
 
-    # Boolean
+    # 布林值
     if "bool" in type_str:
         return BooleanType()
 
-    # Temporal types
+    # 時間型別
     if "timestamp" in type_str:
         return TimestampType()
     if "date" in type_str:
         return DateType()
 
-    # Binary
+    # 二進位
     if "blob" in type_str or "binary" in type_str:
         return BinaryType()
 
-    # Default fallback
+    # 預設回復
     return StringType()
 ```
 
-## JSON Encoding
+## JSON 編碼
 
-Handle datetime serialization for JSON APIs:
+處理 JSON API 的 datetime 序列化：
 
 ```python
 import json
@@ -282,7 +282,7 @@ from datetime import date, datetime
 from decimal import Decimal
 
 class ExtendedJsonEncoder(json.JSONEncoder):
-    """JSON encoder that handles datetime, date, and Decimal."""
+    """處理 datetime、date 和 Decimal 的 JSON 編碼器。"""
 
     def default(self, o):
         if isinstance(o, (datetime, date)):
@@ -293,7 +293,7 @@ class ExtendedJsonEncoder(json.JSONEncoder):
 
         return super().default(o)
 
-# Usage
+# 用法
 def send_as_json(data):
     import requests
 
@@ -301,13 +301,13 @@ def send_as_json(data):
     requests.post(url, data=payload, headers={"Content-Type": "application/json"})
 ```
 
-## Complete Row Conversion
+## 完整列轉換
 
-Convert entire rows with schema:
+使用綱要轉換整個列：
 
 ```python
 def convert_row_to_external(row, column_types):
-    """Convert entire Spark row to external system format."""
+    """將整個 Spark 列轉換至外部系統格式。"""
     row_dict = row.asDict() if hasattr(row, "asDict") else dict(row)
 
     converted = {}
@@ -318,10 +318,10 @@ def convert_row_to_external(row, column_types):
     return converted
 
 def convert_external_to_row(data, schema):
-    """Convert external data to Spark Row."""
+    """將外部資料轉換至 Spark Row。"""
     from pyspark.sql import Row
 
-    # Create mapping of column names to types
+    # 建立欄名至型別的對應
     schema_map = {field.name: field.dataType for field in schema.fields}
 
     row_dict = {}
@@ -330,7 +330,7 @@ def convert_external_to_row(data, schema):
             spark_type = schema_map[col]
             row_dict[col] = convert_external_to_spark(value, spark_type)
 
-    # Add None for missing columns
+    # 為缺少欄新增 None
     for field in schema.fields:
         if field.name not in row_dict:
             row_dict[field.name] = None
@@ -338,13 +338,13 @@ def convert_external_to_row(data, schema):
     return Row(**row_dict)
 ```
 
-## Validation
+## 驗證
 
-Validate type conversions:
+驗證型別轉換：
 
 ```python
 def validate_conversion(value, expected_type):
-    """Validate that value matches expected type after conversion."""
+    """驗證值在轉換後符合預期型別。"""
     type_checks = {
         "int": lambda v: isinstance(v, int) and not isinstance(v, bool),
         "long": lambda v: isinstance(v, int) and not isinstance(v, bool),
@@ -361,10 +361,10 @@ def validate_conversion(value, expected_type):
         if type_name in expected_type_lower:
             if not check(value):
                 raise ValueError(
-                    f"Value {value} (type: {type(value)}) does not match "
-                    f"expected type {expected_type}"
+                    f"值 {value}（型別：{type(value)}）不符合"
+                    f"預期型別 {expected_type}"
                 )
             return
 
-    # No specific check - accept any value
+    # 無特定檢查 - 接受任何值
 ```

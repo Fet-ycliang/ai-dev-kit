@@ -1,29 +1,29 @@
-# Setup and Execution Guide
+# 設定和執行指南
 
-This guide covers all execution modes for synthetic data generation, organized by Databricks Connect version and Python version.
+本指南涵蓋所有合成資料產生的執行模式，依 Databricks Connect 版本和 Python 版本進行組織。
 
-## Quick Decision Matrix
+## 快速決策矩陣
 
-| Your Environment | Recommended Approach |
-|------------------|---------------------|
-| Python 3.12+ with databricks-connect >= 16.4 | DatabricksEnv with withDependencies API |
-| Python 3.10/3.11 with older databricks-connect | Serverless job with environments parameter |
-| Classic compute (fallback only) | Manual cluster setup |
+| 您的環境 | 建議方法 |
+|----------|---------|
+| Python 3.12+ 搭配 databricks-connect >= 16.4 | 使用 withDependencies API 的 DatabricksEnv |
+| Python 3.10/3.11 搭配舊版 databricks-connect | 使用 environments 參數的無伺服器工作 |
+| 經典計算叢集（僅作為備用） | 手動叢集設定 |
 
-## Option 1: Databricks Connect 16.4+ with Serverless (Recommended)
+## 選項 1：Databricks Connect 16.4+ 搭配無伺服器計算（推薦）
 
-**Best for:** Python 3.12+, local development with serverless compute
+**適用於：** Python 3.12+、本地開發搭配無伺服器計算
 
-**Install locally:**
+**在本地安裝：**
 ```bash
-# Preferred
+# 首選
 uv pip install "databricks-connect>=16.4,<17.4" faker numpy pandas holidays
 
-# Fallback if uv not available
+# 若 uv 不可用則使用備用方案
 pip install "databricks-connect>=16.4,<17.4" faker numpy pandas holidays
 ```
 
-**Configure ~/.databrickscfg:**
+**設定 ~/.databrickscfg：**
 ```ini
 [DEFAULT]
 host = https://your-workspace.cloud.databricks.com/
@@ -31,14 +31,14 @@ serverless_compute_id = auto
 auth_type = databricks-cli
 ```
 
-**In your script:**
+**在您的指令碼中：**
 ```python
 from databricks.connect import DatabricksSession, DatabricksEnv
 
-# Pass dependencies as simple package name strings
+# 將相依性傳遞為簡單的套件名稱字串
 env = DatabricksEnv().withDependencies("faker", "pandas", "numpy", "holidays")
 
-# Create session with managed dependencies
+# 建立使用受管理相依性的工作階段
 spark = (
     DatabricksSession.builder
     .withEnvironment(env)
@@ -46,15 +46,15 @@ spark = (
     .getOrCreate()
 )
 
-# Spark operations now execute on serverless compute with managed dependencies
+# Spark 操作現在在無伺服器計算上執行，具有受管理相依性
 ```
 
-**Version Detection (if needed):**
+**版本檢測（如需要）：**
 ```python
 import importlib.metadata
 
 def get_databricks_connect_version():
-    """Get databricks-connect version as (major, minor) tuple."""
+    """取得 databricks-connect 版本為 (major, minor) 元組。"""
     try:
         version_str = importlib.metadata.version('databricks-connect')
         parts = version_str.split('.')
@@ -64,25 +64,25 @@ def get_databricks_connect_version():
 
 db_version = get_databricks_connect_version()
 if db_version and db_version >= (16, 4):
-    # Use DatabricksEnv with withDependencies
+    # 使用 DatabricksEnv 搭配 withDependencies
     pass
 ```
 
-**Benefits:**
-- Instant start, no cluster wait
-- Local debugging and fast iteration
-- Automatic dependency management
-- Edit file, re-run immediately
+**優點：**
+- 瞬間啟動，無需等待叢集
+- 本地偵錯和快速迭代
+- 自動相依性管理
+- 編輯檔案、立即重新執行
 
-## Option 2: Older Databricks Connect or Python < 3.12
+## 選項 2：舊版 Databricks Connect 或 Python < 3.12
 
-**Best for:** Python 3.10/3.11, databricks-connect 15.1-16.3
+**適用於：** Python 3.10/3.11、databricks-connect 15.1-16.3
 
-`DatabricksEnv()` and `withEnvironment()` are NOT available in older versions. Use serverless jobs with environments parameter instead.
+舊版本中不提供 `DatabricksEnv()` 和 `withEnvironment()`。改用使用 environments 參數的無伺服器工作。
 
-### Serverless Job Configuration Requirements
+### 無伺服器工作設定需求
 
-**MUST use `"client": "4"` in the Environment Spec:**
+**必須在環境規格中使用 `"client": "4"`：**
 
 ```json
 {
@@ -96,11 +96,11 @@ if db_version and db_version >= (16, 4):
 }
 ```
 
-> **Note:** Using `"client": "1"` will fail with environment configuration errors.
+> **注意：** 使用 `"client": "1"` 將導致環境設定錯誤失敗。
 
-### Script Deployment
+### 指令碼部署
 
-Deploy Python files (.py) to the workspace for serverless jobs:
+將 Python 檔案 (.py) 部署到工作區供無伺服器工作使用：
 
 ```bash
 databricks workspace import /Users/<user>@databricks.com/scripts/my_script.py \
@@ -109,7 +109,7 @@ databricks workspace import /Users/<user>@databricks.com/scripts/my_script.py \
 databricks workspace list /Users/<user>@databricks.com/scripts/
 ```
 
-**Job config must reference the workspace path:**
+**工作設定必須參考工作區路徑：**
 
 ```json
 {
@@ -120,7 +120,7 @@ databricks workspace list /Users/<user>@databricks.com/scripts/
 }
 ```
 
-**DABs bundle configuration:**
+**DABs 套件設定：**
 ```yaml
 # databricks.yml
 bundle:
@@ -129,7 +129,7 @@ bundle:
 resources:
   jobs:
     generate_data:
-      name: "Generate Synthetic Data"
+      name: "產生合成資料"
       tasks:
         - task_key: generate
           spark_python_task:
@@ -147,61 +147,61 @@ environments:
         - holidays
 ```
 
-## Option 3: Classic Cluster
+## 選項 3：經典叢集
 
-**Use when:** Serverless unavailable, or specific cluster features needed (GPUs, custom init scripts)
+**使用時機：** 無伺服器無法使用，或需要特定叢集功能（GPU、自訂初始化指令碼）
 
-### Step 1: Check Python Version Compatibility
+### 步驟 1：檢查 Python 版本相容性
 
-Pandas UDFs require matching Python minor versions between local and cluster.
+Pandas UDF 需要本地和叢集之間的 Python 次要版本相符。
 
 ```bash
-# Check local Python
-uv run python --version  # or: python --version
+# 檢查本地 Python
+uv run python --version  # 或：python --version
 
-# Check cluster DBR version → Python version
+# 檢查叢集 DBR 版本 → Python 版本
 # DBR 17.x = Python 3.12
 # DBR 15.4 LTS = Python 3.11
 # DBR 14.3 LTS = Python 3.10
 databricks clusters get <cluster-id> | grep spark_version
 ```
 
-### Step 2a: If Versions Match → Use Databricks Connect
+### 步驟 2a：如果版本相符 → 使用 Databricks Connect
 
 ```bash
-# Install matching databricks-connect version (must match DBR major.minor)
+# 安裝相符的 databricks-connect 版本（必須符合 DBR 主要版本.次要版本）
 uv pip install "databricks-connect==17.3.*" faker numpy pandas holidays
 ```
 
 ```bash
-# Install libraries on cluster
-`databricks libraries install --json '{"cluster_id": "<cluster_id>", "libraries": [{"pypi": {"package": "faker"}}, {"pypi": {"package": "holidays"}}]}'`
+# 在叢集上安裝程式庫
+databricks libraries install --json '{"cluster_id": "<cluster-id>", "libraries": [{"pypi": {"package": "faker"}}, {"pypi": {"package": "holidays"}}]}'
 
-# Wait for INSTALLED status
+# 等待 INSTALLED 狀態
 databricks libraries cluster-status <cluster-id>
 ```
 
 ```python
-# Run locally via Databricks Connect
+# 透過 Databricks Connect 在本地執行
 from databricks.connect import DatabricksSession
 
 spark = DatabricksSession.builder.clusterId("<cluster-id>").getOrCreate()
-# Your Spark code runs on the cluster
+# 您的 Spark 程式碼在叢集上執行
 ```
 
-### Step 2b: If Versions Don't Match → Submit as Job
+### 步驟 2b：如果版本不符 → 作為工作提交
 
-**Ask user for approval before submitting.** Example prompt:
-> "Your local Python (3.11) doesn't match the cluster (3.12). Pandas UDFs require matching versions. Should I submit this as a job to run directly on the cluster instead?"
+**提交前請要求使用者批准。** 範例提示：
+> "您的本地 Python (3.11) 與叢集 (3.12) 不符。Pandas UDF 需要版本相符。應該改為將其作為工作提交到叢集上直接執行嗎？"
 
 ```bash
-# Upload script to workspace
+# 上傳指令碼到工作區
 databricks workspace import /Users/you@company.com/scripts/generate_data.py \
   --file generate_data.py --format AUTO --overwrite
 
-# Submit job to run on cluster
+# 提交工作到叢集執行
 databricks jobs submit --json '{
-  "run_name": "Generate Data",
+  "run_name": "產生資料",
   "tasks": [{
     "task_key": "generate",
     "existing_cluster_id": "<cluster-id>",
@@ -212,40 +212,40 @@ databricks jobs submit --json '{
 }'
 ```
 
-### Classic Cluster Decision Flow
+### 經典叢集決策流程
 
 ```
-Local Python == Cluster Python?
-  ├─ YES → Install libs on cluster, run via Databricks Connect
-  └─ NO  → Ask user: "Submit as job instead?"
-           └─ Upload script + submit job
+本地 Python == 叢集 Python？
+  ├─ 是 → 在叢集上安裝程式庫，透過 Databricks Connect 執行
+  └─ 否 → 詢問使用者：「改為提交作為工作？」
+           └─ 上傳指令碼 + 提交工作
 ```
 
-## Required Libraries
+## 必需程式庫
 
-Standard libraries for generating realistic synthetic data:
+用於產生逼真合成資料的標準程式庫：
 
-| Library | Purpose | Required For |
-|---------|---------|--------------|
-| **faker** | Realistic names, addresses, emails, companies | Text data generation |
-| **numpy** | Statistical distributions | Non-linear distributions |
-| **pandas** | Data manipulation, Pandas UDFs | Spark UDF definitions |
-| **holidays** | Country-specific holiday calendars | Time-based patterns |
+| 程式庫 | 目的 | 所需條件 |
+|--------|------|---------|
+| **faker** | 逼真的名字、地址、電子郵件、公司 | 文字資料產生 |
+| **numpy** | 統計分佈 | 非線性分佈 |
+| **pandas** | 資料操作、Pandas UDF | Spark UDF 定義 |
+| **holidays** | 國家特定假日日曆 | 基於時間的模式 |
 
-## Environment Detection Pattern
+## 環境檢測模式
 
-Use this pattern to auto-detect environment and choose the right session creation:
+使用此模式自動偵測環境並選擇正確的工作階段建立方式：
 
 ```python
 import os
 import importlib.metadata
 
 def is_databricks_runtime():
-    """Check if running on Databricks Runtime vs locally."""
+    """檢查是否在 Databricks Runtime 上執行，相對於本地。"""
     return "DATABRICKS_RUNTIME_VERSION" in os.environ
 
 def get_databricks_connect_version():
-    """Get databricks-connect version as (major, minor) tuple or None."""
+    """取得 databricks-connect 版本為 (major, minor) 元組或 None。"""
     try:
         version_str = importlib.metadata.version('databricks-connect')
         parts = version_str.split('.')
@@ -256,7 +256,7 @@ def get_databricks_connect_version():
 on_runtime = is_databricks_runtime()
 db_version = get_databricks_connect_version()
 
-# Use DatabricksEnv if: locally + databricks-connect >= 16.4
+# 使用 DatabricksEnv 如果：本地 + databricks-connect >= 16.4
 use_auto_dependencies = (not on_runtime) and db_version and db_version >= (16, 4)
 
 if use_auto_dependencies:
@@ -268,11 +268,11 @@ else:
     spark = DatabricksSession.builder.serverless(True).getOrCreate()
 ```
 
-## Common Setup Issues
+## 常見設定問題
 
-| Issue | Solution |
-|-------|----------|
-| `ModuleNotFoundError: faker` | Install dependencies per execution mode above |
-| `DatabricksEnv not found` | Upgrade to databricks-connect >= 16.4 or use job with environments |
-| `serverless_compute_id` error | Add `serverless_compute_id = auto` to ~/.databrickscfg |
-| Classic cluster startup slow | Use serverless instead (instant start) |
+| 問題 | 解決方案 |
+|------|--------|
+| `ModuleNotFoundError: faker` | 依執行模式安裝相依性 |
+| `DatabricksEnv not found` | 升級到 databricks-connect >= 16.4 或使用具 environments 的工作 |
+| `serverless_compute_id` 錯誤 | 在 ~/.databrickscfg 中新增 `serverless_compute_id = auto` |
+| 經典叢集啟動緩慢 | 改用無伺服器計算（瞬間啟動） |

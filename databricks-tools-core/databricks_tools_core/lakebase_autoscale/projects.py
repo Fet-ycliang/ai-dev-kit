@@ -1,8 +1,8 @@
 """
-Lakebase Autoscaling Project Operations
+Lakebase Autoscaling 專案操作
 
-Functions for creating, managing, and deleting Lakebase Autoscaling projects.
-Projects are the top-level container for branches, computes, databases, and roles.
+用於建立、管理與刪除 Lakebase Autoscaling 專案的函式。
+專案是分支、compute、資料庫與角色的最上層容器。
 """
 
 import logging
@@ -14,7 +14,7 @@ logger = logging.getLogger(__name__)
 
 
 def _normalize_project_name(name: str) -> str:
-    """Ensure project name has the 'projects/' prefix."""
+    """確保專案名稱具有 'projects/' 前綴。"""
     if not name.startswith("projects/"):
         return f"projects/{name}"
     return name
@@ -26,22 +26,22 @@ def create_project(
     pg_version: str = "17",
 ) -> Dict[str, Any]:
     """
-    Create a Lakebase Autoscaling project.
+    建立 Lakebase Autoscaling 專案。
 
-    Args:
-        project_id: Project identifier (1-63 chars, lowercase letters, digits, hyphens).
-        display_name: Human-readable display name. Defaults to project_id.
-        pg_version: Postgres version ("16" or "17"). Default: "17".
+    參數:
+        project_id: 專案識別子（1-63 個字元，限小寫字母、數字與連字號）。
+        display_name: 人類可讀的顯示名稱。預設為 project_id。
+        pg_version: Postgres 版本（"16" 或 "17"）。預設："17"。
 
-    Returns:
-        Dictionary with:
-        - name: Project resource name (projects/{project_id})
-        - display_name: Display name
-        - pg_version: Postgres version
-        - status: Creation status
+    回傳:
+        包含以下欄位的字典：
+        - name: 專案資源名稱（projects/{project_id}）
+        - display_name: 顯示名稱
+        - pg_version: Postgres 版本
+        - status: 建立狀態
 
-    Raises:
-        Exception: If creation fails
+    引發:
+        Exception: 當建立失敗時
     """
     client = get_workspace_client()
 
@@ -90,27 +90,27 @@ def create_project(
             return {
                 "name": f"projects/{project_id}",
                 "status": "ALREADY_EXISTS",
-                "error": f"Project '{project_id}' already exists",
+                "error": f"專案 '{project_id}' 已存在",
             }
-        raise Exception(f"Failed to create Lakebase Autoscaling project '{project_id}': {error_msg}")
+        raise Exception(f"建立 Lakebase Autoscaling 專案 '{project_id}' 失敗：{error_msg}")
 
 
 def get_project(name: str) -> Dict[str, Any]:
     """
-    Get Lakebase Autoscaling project details.
+    取得 Lakebase Autoscaling 專案詳細資料。
 
-    Args:
-        name: Project resource name (e.g., "projects/my-app" or "my-app")
+    參數:
+        name: 專案資源名稱（例如："projects/my-app" 或 "my-app"）
 
-    Returns:
-        Dictionary with:
-        - name: Project resource name
-        - display_name: Display name
-        - pg_version: Postgres version
-        - state: Current state (READY, CREATING, etc.)
+    回傳:
+        包含以下欄位的字典：
+        - name: 專案資源名稱
+        - display_name: 顯示名稱
+        - pg_version: Postgres 版本
+        - state: 目前狀態（READY、CREATING 等）
 
-    Raises:
-        Exception: If API request fails
+    引發:
+        Exception: 當 API 請求失敗時
     """
     client = get_workspace_client()
     full_name = _normalize_project_name(name)
@@ -123,9 +123,9 @@ def get_project(name: str) -> Dict[str, Any]:
             return {
                 "name": full_name,
                 "state": "NOT_FOUND",
-                "error": f"Project '{full_name}' not found",
+                "error": f"找不到專案 '{full_name}'",
             }
-        raise Exception(f"Failed to get Lakebase Autoscaling project '{full_name}': {error_msg}")
+        raise Exception(f"取得 Lakebase Autoscaling 專案 '{full_name}' 失敗：{error_msg}")
 
     result: Dict[str, Any] = {"name": project.name}
 
@@ -147,20 +147,20 @@ def get_project(name: str) -> Dict[str, Any]:
 
 def list_projects() -> List[Dict[str, Any]]:
     """
-    List all Lakebase Autoscaling projects in the workspace.
+    列出工作區中所有 Lakebase Autoscaling 專案。
 
-    Returns:
-        List of project dictionaries with name, display_name, pg_version, state.
+    回傳:
+        包含 name、display_name、pg_version、state 的專案字典清單。
 
-    Raises:
-        Exception: If API request fails
+    引發:
+        Exception: 當 API 請求失敗時
     """
     client = get_workspace_client()
 
     try:
         response = client.postgres.list_projects()
     except Exception as e:
-        raise Exception(f"Failed to list Lakebase Autoscaling projects: {str(e)}")
+        raise Exception(f"列出 Lakebase Autoscaling 專案失敗：{str(e)}")
 
     result = []
     projects = list(response) if response else []
@@ -190,17 +190,17 @@ def update_project(
     display_name: Optional[str] = None,
 ) -> Dict[str, Any]:
     """
-    Update a Lakebase Autoscaling project.
+    更新 Lakebase Autoscaling 專案。
 
-    Args:
-        name: Project resource name (e.g., "projects/my-app" or "my-app")
-        display_name: New display name for the project
+    參數:
+        name: 專案資源名稱（例如："projects/my-app" 或 "my-app"）
+        display_name: 專案的新顯示名稱
 
-    Returns:
-        Dictionary with updated project details
+    回傳:
+        包含更新後專案詳細資料的字典
 
-    Raises:
-        Exception: If update fails
+    引發:
+        Exception: 當更新失敗時
     """
     client = get_workspace_client()
     full_name = _normalize_project_name(name)
@@ -219,7 +219,7 @@ def update_project(
             return {
                 "name": full_name,
                 "status": "NO_CHANGES",
-                "error": "No fields specified for update",
+                "error": "未指定要更新的欄位",
             }
 
         operation = client.postgres.update_project(
@@ -249,26 +249,26 @@ def update_project(
 
         return result
     except Exception as e:
-        raise Exception(f"Failed to update Lakebase Autoscaling project '{full_name}': {str(e)}")
+        raise Exception(f"更新 Lakebase Autoscaling 專案 '{full_name}' 失敗：{str(e)}")
 
 
 def delete_project(name: str) -> Dict[str, Any]:
     """
-    Delete a Lakebase Autoscaling project and all its resources.
+    刪除 Lakebase Autoscaling 專案及其所有資源。
 
-    WARNING: This permanently deletes all branches, computes, databases,
-    roles, and data in the project.
+    注意：
+        此操作會永久刪除專案中的所有分支、compute、資料庫、角色與資料。
 
-    Args:
-        name: Project resource name (e.g., "projects/my-app" or "my-app")
+    參數:
+        name: 專案資源名稱（例如："projects/my-app" 或 "my-app"）
 
-    Returns:
-        Dictionary with:
-        - name: Project resource name
-        - status: "deleted" or error info
+    回傳:
+        包含以下欄位的字典：
+        - name: 專案資源名稱
+        - status: "deleted" 或錯誤資訊
 
-    Raises:
-        Exception: If deletion fails
+    引發:
+        Exception: 當刪除失敗時
     """
     client = get_workspace_client()
     full_name = _normalize_project_name(name)
@@ -286,6 +286,6 @@ def delete_project(name: str) -> Dict[str, Any]:
             return {
                 "name": full_name,
                 "status": "NOT_FOUND",
-                "error": f"Project '{full_name}' not found",
+                "error": f"找不到專案 '{full_name}'",
             }
-        raise Exception(f"Failed to delete Lakebase Autoscaling project '{full_name}': {error_msg}")
+        raise Exception(f"刪除 Lakebase Autoscaling 專案 '{full_name}' 失敗：{error_msg}")

@@ -1,7 +1,7 @@
 """
-Unity Catalog - Catalog Operations
+Unity Catalog - Catalog 作業
 
-Functions for managing catalogs in Unity Catalog.
+用於管理 Unity Catalog 中 Catalog 的函式。
 """
 
 from typing import Dict, List, Optional
@@ -12,13 +12,13 @@ from ..auth import get_workspace_client
 
 def list_catalogs() -> List[CatalogInfo]:
     """
-    List all catalogs in Unity Catalog.
+    列出 Unity Catalog 中的所有 Catalog。
 
-    Returns:
-        List of CatalogInfo objects with catalog metadata
+    回傳:
+        包含 Catalog 中繼資料的 CatalogInfo 物件清單
 
-    Raises:
-        DatabricksError: If API request fails
+    引發:
+        DatabricksError: 如果 API 請求失敗
     """
     w = get_workspace_client()
     return list(w.catalogs.list())
@@ -26,19 +26,19 @@ def list_catalogs() -> List[CatalogInfo]:
 
 def get_catalog(catalog_name: str) -> CatalogInfo:
     """
-    Get detailed information about a specific catalog.
+    取得特定 Catalog 的詳細資訊。
 
-    Args:
-        catalog_name: Name of the catalog
+    參數:
+        catalog_name: Catalog 名稱
 
-    Returns:
-        CatalogInfo object with catalog metadata including:
+    回傳:
+        包含以下 Catalog 中繼資料的 CatalogInfo 物件：
         - name, full_name, owner, comment
         - created_at, updated_at
         - storage_location
 
-    Raises:
-        DatabricksError: If API request fails
+    引發:
+        DatabricksError: 如果 API 請求失敗
     """
     w = get_workspace_client()
     return w.catalogs.get(name=catalog_name)
@@ -51,19 +51,19 @@ def create_catalog(
     properties: Optional[Dict[str, str]] = None,
 ) -> CatalogInfo:
     """
-    Create a new catalog in Unity Catalog.
+    在 Unity Catalog 中建立新的 Catalog。
 
-    Args:
-        name: Name of the catalog to create
-        comment: Optional description
-        storage_root: Optional managed storage location (cloud URL)
-        properties: Optional key-value properties
+    參數:
+        name: 要建立的 Catalog 名稱
+        comment: 可選的說明
+        storage_root: 可選的受控儲存位置（雲端 URL）
+        properties: 可選的鍵值屬性
 
-    Returns:
-        CatalogInfo object with created catalog metadata
+    回傳:
+        包含已建立 Catalog 中繼資料的 CatalogInfo 物件
 
-    Raises:
-        DatabricksError: If API request fails
+    引發:
+        DatabricksError: 如果 API 請求失敗
     """
     w = get_workspace_client()
     kwargs: Dict = {"name": name}
@@ -84,24 +84,24 @@ def update_catalog(
     isolation_mode: Optional[str] = None,
 ) -> CatalogInfo:
     """
-    Update an existing catalog in Unity Catalog.
+    更新 Unity Catalog 中既有的 Catalog。
 
-    Args:
-        catalog_name: Current name of the catalog
-        new_name: New name for the catalog
-        comment: New comment/description
-        owner: New owner (user or group)
-        isolation_mode: Isolation mode ("OPEN" or "ISOLATED")
+    參數:
+        catalog_name: Catalog 目前的名稱
+        new_name: Catalog 的新名稱
+        comment: 新的 comment／說明
+        owner: 新的擁有者（user 或 group）
+        isolation_mode: 隔離模式（"OPEN" 或 "ISOLATED"）
 
-    Returns:
-        CatalogInfo object with updated catalog metadata
+    回傳:
+        包含更新後 Catalog 中繼資料的 CatalogInfo 物件
 
-    Raises:
-        ValueError: If no fields are provided to update
-        DatabricksError: If API request fails
+    引發:
+        ValueError: 如果未提供任何要更新的欄位
+        DatabricksError: 如果 API 請求失敗
     """
     if not any([new_name, comment, owner, isolation_mode]):
-        raise ValueError("At least one field must be provided to update")
+        raise ValueError("至少必須提供一個欄位以進行更新")
 
     w = get_workspace_client()
     kwargs: Dict = {"name": catalog_name}
@@ -118,14 +118,14 @@ def update_catalog(
 
 def delete_catalog(catalog_name: str, force: bool = False) -> None:
     """
-    Delete a catalog from Unity Catalog.
+    從 Unity Catalog 刪除 Catalog。
 
-    Args:
-        catalog_name: Name of the catalog to delete
-        force: If True, force deletion even if catalog contains schemas
+    參數:
+        catalog_name: 要刪除的 Catalog 名稱
+        force: 若為 True，即使 Catalog 包含 Schema 也會強制刪除
 
-    Raises:
-        DatabricksError: If API request fails
+    引發:
+        DatabricksError: 如果 API 請求失敗
     """
     w = get_workspace_client()
     w.catalogs.delete(name=catalog_name, force=force)

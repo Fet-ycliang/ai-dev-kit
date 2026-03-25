@@ -1,16 +1,16 @@
-# Complete Dashboard Examples
+# 完整儀表板範例
 
-Production-ready templates you can adapt for your use case.
+可直接用於正式環境的範本，你可以依需求調整。
 
-## Basic Dashboard (NYC Taxi)
+## 基本儀表板（NYC Taxi）
 
 ```python
 import json
 
-# Step 1: Check table schema
+# 步驟 1：檢查資料表 schema
 table_info = get_table_details(catalog="samples", schema="nyctaxi")
 
-# Step 2: Test queries
+# 步驟 2：測試查詢
 execute_sql("SELECT COUNT(*) as trips, AVG(fare_amount) as avg_fare, AVG(trip_distance) as avg_distance FROM samples.nyctaxi.trips")
 execute_sql("""
     SELECT pickup_zip, COUNT(*) as trip_count
@@ -20,12 +20,12 @@ execute_sql("""
     LIMIT 10
 """)
 
-# Step 3: Build dashboard JSON
+# 步驟 3：建立儀表板 JSON
 dashboard = {
     "datasets": [
         {
             "name": "summary",
-            "displayName": "Summary Stats",
+            "displayName": "摘要統計",
             "queryLines": [
                 "SELECT COUNT(*) as trips, AVG(fare_amount) as avg_fare, ",
                 "AVG(trip_distance) as avg_distance ",
@@ -34,7 +34,7 @@ dashboard = {
         },
         {
             "name": "by_zip",
-            "displayName": "Trips by ZIP",
+            "displayName": "各 ZIP 的行程數",
             "queryLines": [
                 "SELECT pickup_zip, COUNT(*) as trip_count ",
                 "FROM samples.nyctaxi.trips ",
@@ -46,15 +46,15 @@ dashboard = {
     ],
     "pages": [{
         "name": "overview",
-        "displayName": "NYC Taxi Overview",
+        "displayName": "NYC Taxi 概覽",
         "pageType": "PAGE_TYPE_CANVAS",
         "layout": [
-            # Text header - NO spec block! Use SEPARATE widgets for title and subtitle!
+            # 文字標頭 - 不可使用 spec 區塊！標題與副標題請使用分開的元件！
             {
                 "widget": {
                     "name": "title",
                     "multilineTextboxSpec": {
-                        "lines": ["## NYC Taxi Dashboard"]
+                        "lines": ["## NYC Taxi 儀表板"]
                     }
                 },
                 "position": {"x": 0, "y": 0, "width": 6, "height": 1}
@@ -63,12 +63,12 @@ dashboard = {
                 "widget": {
                     "name": "subtitle",
                     "multilineTextboxSpec": {
-                        "lines": ["Trip statistics and analysis"]
+                        "lines": ["行程統計與分析"]
                     }
                 },
                 "position": {"x": 0, "y": 1, "width": 6, "height": 1}
             },
-            # Counter - version 2, width 2!
+            # 計數器 - version 2，寬度要 2！
             {
                 "widget": {
                     "name": "total-trips",
@@ -84,9 +84,9 @@ dashboard = {
                         "version": 2,
                         "widgetType": "counter",
                         "encodings": {
-                            "value": {"fieldName": "trips", "displayName": "Total Trips"}
+                            "value": {"fieldName": "trips", "displayName": "總行程數"}
                         },
-                        "frame": {"title": "Total Trips", "showTitle": True}
+                        "frame": {"title": "總行程數", "showTitle": True}
                     }
                 },
                 "position": {"x": 0, "y": 2, "width": 2, "height": 3}
@@ -106,9 +106,9 @@ dashboard = {
                         "version": 2,
                         "widgetType": "counter",
                         "encodings": {
-                            "value": {"fieldName": "avg_fare", "displayName": "Avg Fare"}
+                            "value": {"fieldName": "avg_fare", "displayName": "平均車資"}
                         },
-                        "frame": {"title": "Average Fare", "showTitle": True}
+                        "frame": {"title": "平均車資", "showTitle": True}
                     }
                 },
                 "position": {"x": 2, "y": 2, "width": 2, "height": 3}
@@ -128,14 +128,14 @@ dashboard = {
                         "version": 2,
                         "widgetType": "counter",
                         "encodings": {
-                            "value": {"fieldName": "avg_distance", "displayName": "Avg Distance"}
+                            "value": {"fieldName": "avg_distance", "displayName": "平均距離"}
                         },
-                        "frame": {"title": "Average Distance", "showTitle": True}
+                        "frame": {"title": "平均距離", "showTitle": True}
                     }
                 },
                 "position": {"x": 4, "y": 2, "width": 2, "height": 3}
             },
-            # Bar chart - version 3
+            # 長條圖 - version 3
             {
                 "widget": {
                     "name": "trips-by-zip",
@@ -155,14 +155,14 @@ dashboard = {
                         "widgetType": "bar",
                         "encodings": {
                             "x": {"fieldName": "pickup_zip", "scale": {"type": "categorical"}, "displayName": "ZIP"},
-                            "y": {"fieldName": "trip_count", "scale": {"type": "quantitative"}, "displayName": "Trips"}
+                            "y": {"fieldName": "trip_count", "scale": {"type": "quantitative"}, "displayName": "行程數"}
                         },
-                        "frame": {"title": "Trips by Pickup ZIP", "showTitle": True}
+                        "frame": {"title": "依上車 ZIP 的行程數", "showTitle": True}
                     }
                 },
                 "position": {"x": 0, "y": 5, "width": 6, "height": 5}
             },
-            # Table - version 2, minimal column props!
+            # 資料表 - version 2，欄位屬性保持最少！
             {
                 "widget": {
                     "name": "zip-table",
@@ -182,11 +182,11 @@ dashboard = {
                         "widgetType": "table",
                         "encodings": {
                             "columns": [
-                                {"fieldName": "pickup_zip", "displayName": "ZIP Code"},
-                                {"fieldName": "trip_count", "displayName": "Trip Count"}
+                                {"fieldName": "pickup_zip", "displayName": "ZIP 郵遞區號"},
+                                {"fieldName": "trip_count", "displayName": "行程數"}
                             ]
                         },
-                        "frame": {"title": "Top ZIP Codes", "showTitle": True}
+                        "frame": {"title": "熱門 ZIP 郵遞區號", "showTitle": True}
                     }
                 },
                 "position": {"x": 0, "y": 10, "width": 6, "height": 5}
@@ -195,9 +195,9 @@ dashboard = {
     }]
 }
 
-# Step 4: Deploy
+# 步驟 4：部署
 result = create_or_update_dashboard(
-    display_name="NYC Taxi Dashboard",
+    display_name="NYC Taxi 儀表板",
     parent_path="/Workspace/Users/me/dashboards",
     serialized_dashboard=json.dumps(dashboard),
     warehouse_id=get_best_warehouse(),
@@ -205,17 +205,17 @@ result = create_or_update_dashboard(
 print(result["url"])
 ```
 
-## Dashboard with Global Filters
+## 含全域篩選器的儀表板
 
 ```python
 import json
 
-# Dashboard with a global filter for region
+# 含有區域全域篩選器的儀表板
 dashboard_with_filters = {
     "datasets": [
         {
             "name": "sales",
-            "displayName": "Sales Data",
+            "displayName": "銷售資料",
             "queryLines": [
                 "SELECT region, SUM(revenue) as total_revenue ",
                 "FROM catalog.schema.sales ",
@@ -226,7 +226,7 @@ dashboard_with_filters = {
     "pages": [
         {
             "name": "overview",
-            "displayName": "Sales Overview",
+            "displayName": "銷售概覽",
             "pageType": "PAGE_TYPE_CANVAS",
             "layout": [
                 {
@@ -241,12 +241,12 @@ dashboard_with_filters = {
                             }
                         }],
                         "spec": {
-                            "version": 2,  # Version 2 for counters!
+                            "version": 2,  # 計數器使用 version 2！
                             "widgetType": "counter",
                             "encodings": {
-                                "value": {"fieldName": "total_revenue", "displayName": "Total Revenue"}
+                                "value": {"fieldName": "total_revenue", "displayName": "總營收"}
                             },
-                            "frame": {"title": "Total Revenue", "showTitle": True}
+                            "frame": {"title": "總營收", "showTitle": True}
                         }
                     },
                     "position": {"x": 0, "y": 0, "width": 6, "height": 3}
@@ -255,8 +255,8 @@ dashboard_with_filters = {
         },
         {
             "name": "filters",
-            "displayName": "Filters",
-            "pageType": "PAGE_TYPE_GLOBAL_FILTERS",  # Required for global filter page!
+            "displayName": "篩選器",
+            "pageType": "PAGE_TYPE_GLOBAL_FILTERS",  # 全域篩選器頁面必填！
             "layout": [
                 {
                     "widget": {
@@ -267,22 +267,22 @@ dashboard_with_filters = {
                                 "datasetName": "sales",
                                 "fields": [
                                     {"name": "region", "expression": "`region`"}
-                                    # DO NOT use associative_filter_predicate_group - causes SQL errors!
+                                    # 不要使用 associative_filter_predicate_group - 會造成 SQL 錯誤！
                                 ],
-                                "disaggregated": False  # False for filters!
+                                "disaggregated": False  # 篩選器要用 False！
                             }
                         }],
                         "spec": {
-                            "version": 2,  # Version 2 for filters!
-                            "widgetType": "filter-multi-select",  # NOT "filter"!
+                            "version": 2,  # 篩選器使用 version 2！
+                            "widgetType": "filter-multi-select",  # 不是 "filter"！
                             "encodings": {
                                 "fields": [{
                                     "fieldName": "region",
-                                    "displayName": "Region",
-                                    "queryName": "ds_sales_region"  # Must match query name!
+                                    "displayName": "區域",
+                                    "queryName": "ds_sales_region"  # 必須與 query 名稱一致！
                                 }]
                             },
-                            "frame": {"showTitle": True, "title": "Region"}  # Always show title!
+                            "frame": {"showTitle": True, "title": "區域"}  # 一律顯示標題！
                         }
                     },
                     "position": {"x": 0, "y": 0, "width": 2, "height": 2}
@@ -292,9 +292,9 @@ dashboard_with_filters = {
     ]
 }
 
-# Deploy with filters
+# 部署含篩選器的儀表板
 result = create_or_update_dashboard(
-    display_name="Sales Dashboard with Filters",
+    display_name="含篩選器的銷售儀表板",
     parent_path="/Workspace/Users/me/dashboards",
     serialized_dashboard=json.dumps(dashboard_with_filters),
     warehouse_id=get_best_warehouse(),

@@ -1,14 +1,14 @@
-"""Async database connection and session management.
+"""非同步資料庫連線與 session 管理。
 
-Uses PostgreSQL via Lakebase with async SQLAlchemy and psycopg3 driver.
+透過 Lakebase 使用 PostgreSQL，搭配非同步 SQLAlchemy 與 psycopg3 driver。
 
-Implements automatic OAuth token refresh for Databricks Apps deployment:
-- Tokens are refreshed every 50 minutes (before 1-hour expiry)
-- SQLAlchemy's do_connect event injects fresh tokens into connections
-- Falls back to static LAKEBASE_PG_URL for local development
+實作自動 OAuth token 更新機制用於 Databricks Apps 部署：
+- Token 每 50 分鐘更新一次（在 1 小時過期前）
+- SQLAlchemy 的 do_connect event 注入最新 tokens 到連線中
+- 本地開發環境回退使用靜態 LAKEBASE_PG_URL
 
-Note: Uses psycopg3 (postgresql+psycopg) driver which supports hostaddr
-parameter for DNS resolution workaround on macOS.
+註：使用 psycopg3 (postgresql+psycopg) driver，支援 hostaddr
+參數用於 macOS 的 DNS 解析方案。
 """
 
 import asyncio
@@ -33,36 +33,36 @@ from .models import Base
 
 logger = logging.getLogger(__name__)
 
-# Global engine and session factory
+# 全域 engine 與 session factory
 _engine: Optional[AsyncEngine] = None
 _async_session_maker: Optional[async_sessionmaker[AsyncSession]] = None
 
-# Token refresh state
+# Token 更新狀態
 _current_token: Optional[str] = None
 _token_refresh_task: Optional[asyncio.Task] = None
 _lakebase_instance_name: Optional[str] = None
 
-# Token refresh interval (50 minutes - tokens expire after 1 hour)
+# Token 更新間隔（50 分鐘 - tokens 在 1 小時後過期）
 TOKEN_REFRESH_INTERVAL_SECONDS = 50 * 60
 
-# Cached resolved hostaddr for DNS workaround
+# 快取解析的 hostaddr 用於 DNS 方案
 _resolved_hostaddr: Optional[str] = None
 
 
 def _resolve_hostname(hostname: str) -> Optional[str]:
-    """Resolve hostname to IP address using system DNS tools.
+    """使用系統 DNS 工具將 hostname 解析為 IP 位址。
 
-    Python's socket.getaddrinfo() fails on macOS with long hostnames like
-    Lakebase instance hostnames. This function uses the 'dig' command as
-    a fallback to resolve the hostname.
+    Python 的 socket.getaddrinfo() 在 macOS 上對長 hostname（如
+    Lakebase instance hostnames）會失敗。此函式使用 'dig' 命令作為
+    後備方案來解析 hostname。
 
     Args:
-        hostname: The hostname to resolve
+        hostname: 要解析的 hostname
 
     Returns:
-        IP address string or None if resolution fails
+        IP 位址字串，若解析失敗則回傳 None
     """
-    # First try Python's native resolution
+    # 先嘗試 Python 原生解析
     try:
         result = socket.getaddrinfo(hostname, 5432)
         if result:
@@ -70,7 +70,7 @@ def _resolve_hostname(hostname: str) -> Optional[str]:
     except socket.gaierror:
         pass
 
-    # Fall back to dig command (works on macOS/Linux)
+    # 回退到 dig 命令（macOS/Linux 可用）
     try:
         result = subprocess.run(
             ["dig", "+short", hostname, "A"],
@@ -89,16 +89,16 @@ def _resolve_hostname(hostname: str) -> Optional[str]:
 
 
 def _has_oauth_credentials() -> bool:
-    """Check if OAuth credentials (SP) are configured in environment."""
+    """檢查環境中是否已設定 OAuth credentials (SP)。"""
     import os
     return bool(os.environ.get('DATABRICKS_CLIENT_ID') and os.environ.get('DATABRICKS_CLIENT_SECRET'))
 
 
 def _get_workspace_client():
-    """Get Databricks WorkspaceClient for token generation.
+    """取得用於產生 token 的 Databricks WorkspaceClient。
 
-    In Databricks Apps, explicitly uses OAuth M2M to avoid conflicts with other auth methods.
-    Returns None if not running in a Databricks environment.
+    在 Databricks Apps 中，明確使用 OAuth M2M 以避免與其他認證方法衝突。
+    若非在 Databricks 環境中執行則回傳 None。
     """
     try:
         import os
@@ -107,7 +107,7 @@ def _get_workspace_client():
 
         product_kwargs = dict(product=PRODUCT_NAME, product_version=PRODUCT_VERSION)
         if _has_oauth_credentials():
-            # Explicitly configure OAuth M2M to prevent auth conflicts
+            # 明確設定 OAuth M2M 以避免認證衝突
             return WorkspaceClient(
                 host=os.environ.get('DATABRICKS_HOST', ''),
                 client_id=os.environ.get('DATABRICKS_CLIENT_ID', ''),
@@ -115,7 +115,7 @@ def _get_workspace_client():
                 auth_type='oauth-m2m',
                 **product_kwargs,
             )
-        # Development mode - use default SDK auth
+        # 開發模式 - 使用預設 SDK 認證
         return WorkspaceClient(**product_kwargs)
     except Exception as e:
         logger.debug(f"Could not create WorkspaceClient: {e}")
@@ -123,15 +123,15 @@ def _get_workspace_client():
 
 
 def _generate_lakebase_token(instance_name: str) -> Optional[str]:
-    """Generate a fresh OAuth token for Lakebase connection.
+    """為 Lakebase 連線產生新的 OAuth token。
 
-    Supports both autoscale (LAKEBASE_ENDPOINT) and provisioned (instance_name) modes.
+    支援 autoscale (LAKEBASE_ENDPOINT) 與 provisioned (instance_name) 兩種模式。
 
     Args:
-        instance_name: Lakebase instance name (provisioned) or endpoint name (autoscale)
+        instance_name: Lakebase instance name (provisioned) 或 endpoint name (autoscale)
 
     Returns:
-        OAuth token string or None if generation fails
+        OAuth token 字串，若產生失敗則回傳 None
     """
     client = _get_workspace_client()
     if not client:
@@ -140,10 +140,10 @@ def _generate_lakebase_token(instance_name: str) -> Optional[str]:
     try:
         endpoint_name = os.environ.get("LAKEBASE_ENDPOINT")
         if endpoint_name:
-            # Autoscale: use client.postgres with the endpoint resource name
+            # Autoscale: 使用 client.postgres 搭配 endpoint resource name
             cred = client.postgres.generate_database_credential(endpoint=endpoint_name)
         else:
-            # Provisioned: use client.database with instance_names
+            # Provisioned: 使用 client.database 搭配 instance_names
             cred = client.database.generate_database_credential(
                 request_id=str(uuid.uuid4()),
                 instance_names=[instance_name],
@@ -156,7 +156,7 @@ def _generate_lakebase_token(instance_name: str) -> Optional[str]:
 
 
 async def _token_refresh_loop():
-    """Background task to refresh Lakebase OAuth token every 50 minutes."""
+    """背景任務，每 50 分鐘更新 Lakebase OAuth token。"""
     global _current_token, _lakebase_instance_name
 
     while True:
@@ -177,11 +177,11 @@ async def _token_refresh_loop():
             break
         except Exception as e:
             logger.error(f"Error in token refresh loop: {e}")
-            # Continue the loop, will retry on next interval
+            # 繼續迴圈，將於下一間隔重試
 
 
 async def start_token_refresh():
-    """Start the background token refresh task."""
+    """啟動背景 token 更新任務。"""
     global _token_refresh_task
 
     if _token_refresh_task is not None:
@@ -193,7 +193,7 @@ async def start_token_refresh():
 
 
 async def stop_token_refresh():
-    """Stop the background token refresh task."""
+    """停止背景 token 更新任務。"""
     global _token_refresh_task
 
     if _token_refresh_task is not None:
@@ -207,12 +207,12 @@ async def stop_token_refresh():
 
 
 def get_database_url() -> Optional[str]:
-    """Get database URL from environment.
+    """從環境變數取得資料庫 URL。
 
-    Converts standard PostgreSQL URL to psycopg3 async format if needed.
+    必要時將標準 PostgreSQL URL 轉換為 psycopg3 非同步格式。
 
     Returns:
-        Database URL string or None if not configured
+        資料庫 URL 字串，若未設定則回傳 None
     """
     url = os.environ.get("LAKEBASE_PG_URL")
     if url and url.startswith("postgresql://"):
@@ -221,15 +221,15 @@ def get_database_url() -> Optional[str]:
 
 
 def _prepare_async_url(url: str) -> tuple[str, dict]:
-    """Prepare URL for psycopg3 async driver.
+    """為 psycopg3 非同步 driver 準備 URL。
 
-    Extracts hostname for DNS resolution workaround and prepares connect_args.
+    擷取 hostname 用於 DNS 解析方案並準備 connect_args。
 
     Args:
-        url: Database URL (may contain sslmode parameter)
+        url: 資料庫 URL（可能包含 sslmode 參數）
 
     Returns:
-        Tuple of (cleaned_url, connect_args)
+        Tuple (cleaned_url, connect_args)
     """
     global _resolved_hostaddr
 
@@ -241,7 +241,7 @@ def _prepare_async_url(url: str) -> tuple[str, dict]:
     parsed = urlparse(url)
     connect_args = {}
 
-    # Try to resolve hostname for DNS workaround
+    # 嘗試解析 hostname 用於 DNS 方案
     if parsed.hostname:
         hostaddr = _resolve_hostname(parsed.hostname)
         if hostaddr:
@@ -253,7 +253,7 @@ def _prepare_async_url(url: str) -> tuple[str, dict]:
 
 
 def _get_current_user_email() -> Optional[str]:
-    """Get the current user's email from Databricks SDK."""
+    """從 Databricks SDK 取得目前使用者的 email。"""
     client = _get_workspace_client()
     if client:
         try:
@@ -271,69 +271,69 @@ def _build_lakebase_url(
     host: Optional[str] = None,
     port: int = 5432,
 ) -> str:
-    """Build Lakebase connection URL (without password - injected via do_connect).
+    """建構 Lakebase 連線 URL（不含密碼 - 透過 do_connect 注入）。
 
     Args:
-        instance_name: Lakebase instance name (provisioned) or endpoint resource name (autoscale)
-        database_name: Database name to connect to
-        username: Database username (defaults to current user's email)
-        host: Database host (defaults to instance endpoint)
-        port: Database port (default 5432)
+        instance_name: Lakebase instance name (provisioned) 或 endpoint resource name (autoscale)
+        database_name: 要連線的資料庫名稱
+        username: 資料庫使用者名稱（預設為目前使用者的 email）
+        host: 資料庫主機（預設為 instance endpoint）
+        port: 資料庫埠（預設 5432）
 
     Returns:
-        PostgreSQL connection URL
+        PostgreSQL 連線 URL
     """
-    # Username defaults to current user's email
+    # username 預設為目前使用者的 email
     if not username:
         username = os.environ.get("LAKEBASE_USERNAME")
     if not username:
         username = _get_current_user_email()
     if not username:
-        username = instance_name  # Fallback
+        username = instance_name  # 後備方案
 
-    # URL-encode the username (emails contain @)
+    # URL-encode username（emails 包含 @）
     from urllib.parse import quote
     encoded_username = quote(username, safe="")
 
-    # Host defaults to the Lakebase instance endpoint
+    # Host 預設為 Lakebase instance endpoint
     if not host:
         host = os.environ.get("LAKEBASE_HOST")
     if not host:
-        # Lakebase endpoints follow this pattern
+        # Lakebase endpoints 遵循此模式
         host = f"{instance_name}.database.us-east-1.cloud.databricks.com"
 
-    # URL format: postgresql+asyncpg://username@host:port/database
-    # Password is injected via do_connect event
+    # URL 格式：postgresql+asyncpg://username@host:port/database
+    # 密碼透過 do_connect event 注入
     return f"postgresql+asyncpg://{encoded_username}@{host}:{port}/{database_name}"
 
 
 def init_database(database_url: Optional[str] = None) -> AsyncEngine:
-    """Initialize async database connection.
+    """初始化非同步資料庫連線。
 
-    Supports two modes:
-    1. Static URL mode (local dev): Uses LAKEBASE_PG_URL with embedded password
-    2. Dynamic token mode (production): Uses Databricks SDK for OAuth tokens
+    支援兩種模式：
+    1. 靜態 URL 模式（本地開發）：使用 LAKEBASE_PG_URL 含嵌入密碼
+    2. 動態 token 模式（正式環境）：使用 Databricks SDK 取得 OAuth tokens
 
     Args:
-        database_url: Optional database URL. If not provided, reads from environment
+        database_url: 可選資料庫 URL。若未提供，從環境變數讀取
 
     Returns:
-        SQLAlchemy AsyncEngine instance
+        SQLAlchemy AsyncEngine 實例
 
     Raises:
-        ValueError: If no database configuration is available
+        ValueError: 若無可用資料庫設定
     """
     global _engine, _async_session_maker, _current_token, _lakebase_instance_name
 
-    # Check for static URL first (backward compatibility / local dev)
+    # 先檢查靜態 URL（向後相容 / 本地開發）
     url = database_url or get_database_url()
 
     if url:
-        # Static URL mode - use as-is
+        # 靜態 URL 模式 - 直接使用
         logger.info("Using static LAKEBASE_PG_URL for database connection")
         url, connect_args = _prepare_async_url(url)
     else:
-        # Dynamic token mode - build URL from components
+        # 動態 token 模式 - 從組件建構 URL
         endpoint_name = os.environ.get("LAKEBASE_ENDPOINT")
         instance_name = os.environ.get("LAKEBASE_INSTANCE_NAME")
         database_name = os.environ.get("LAKEBASE_DATABASE_NAME")
@@ -351,50 +351,50 @@ def init_database(database_url: Optional[str] = None) -> AsyncEngine:
             raise ValueError("Could not create Databricks WorkspaceClient")
 
         if endpoint_name:
-            # Autoscale mode: look up host from endpoint resource, token via client.postgres
+            # Autoscale 模式：從 endpoint resource 取得 host，token 透過 client.postgres
             _lakebase_instance_name = endpoint_name
             endpoint = client.postgres.get_endpoint(name=endpoint_name)
             host = endpoint.status.hosts.host
             logger.info(f"Using autoscale Lakebase endpoint: {endpoint_name} ({host})")
         else:
-            # Provisioned mode: look up host from instance, token via client.database
+            # Provisioned 模式：從 instance 取得 host，token 透過 client.database
             _lakebase_instance_name = instance_name
             instance = client.database.get_database_instance(name=instance_name)
             host = instance.read_write_dns
             logger.info(f"Using provisioned Lakebase instance: {instance_name} ({host})")
 
-        # Generate initial token
+        # 產生初始 token
         _current_token = _generate_lakebase_token(_lakebase_instance_name)
         if not _current_token:
             raise ValueError(
                 f"Failed to generate initial Lakebase token for: {_lakebase_instance_name}"
             )
 
-        # Get username (prefer explicit env var for Databricks Apps where service principal is used)
+        # 取得 username（在 Databricks Apps 使用 service principal 時優先採用明確設定的環境變數）
         username = os.environ.get("LAKEBASE_USERNAME") or _get_current_user_email() or _lakebase_instance_name
 
-        # Resolve hostname for DNS workaround (macOS Python DNS issues with long hostnames)
+        # 解析 hostname 以處理 DNS 問題（macOS 的 Python 在長 hostname 上可能有 DNS 問題）
         global _resolved_hostaddr
         _resolved_hostaddr = _resolve_hostname(host)
         if _resolved_hostaddr:
             logger.info(f"Resolved {host} -> {_resolved_hostaddr}")
 
-        # Build URL using URL.create() with psycopg3 driver (supports hostaddr)
+        # 使用 URL.create() 建構 URL，搭配 psycopg3 driver（支援 hostaddr）
         url = URL.create(
-            drivername="postgresql+psycopg",  # psycopg3 async driver
+            drivername="postgresql+psycopg",  # psycopg3 非同步 driver
             username=username,
-            password="",  # Will be set by do_connect event handler
-            host=host,  # Used for SNI in TLS handshake
+            password="",  # 將由 do_connect event handler 設定
+            host=host,  # 用於 TLS handshake 的 SNI
             port=int(os.environ.get("DATABRICKS_DATABASE_PORT", "5432")),
             database=database_name,
         )
 
-        # Connect args for psycopg3 with DNS workaround
+        # psycopg3 的連線參數搭配 DNS 方案
         connect_args = {
             "sslmode": "require",
             "options": f"-c search_path={os.environ.get('LAKEBASE_SCHEMA_NAME', 'builder_app')},public",
         }
-        # Add hostaddr if DNS resolution was needed (bypasses Python's getaddrinfo)
+        # 若需要 DNS 解析則加入 hostaddr（繞過 Python 的 getaddrinfo）
         if _resolved_hostaddr:
             connect_args["hostaddr"] = _resolved_hostaddr
 
@@ -409,11 +409,11 @@ def init_database(database_url: Optional[str] = None) -> AsyncEngine:
         connect_args=connect_args,
     )
 
-    # Register do_connect event to inject fresh tokens
+    # 註冊 do_connect event 以注入最新 tokens
     if _lakebase_instance_name:
         @event.listens_for(_engine.sync_engine, "do_connect")
         def provide_token(dialect, conn_rec, cargs, cparams):
-            """Inject current OAuth token into connection parameters."""
+            """將目前 OAuth token 注入到連線參數中。"""
             if _current_token:
                 cparams["password"] = _current_token
 
@@ -428,7 +428,7 @@ def init_database(database_url: Optional[str] = None) -> AsyncEngine:
 
 
 def get_engine() -> AsyncEngine:
-    """Get the database engine, initializing if needed."""
+    """取得資料庫 engine，必要時初始化。"""
     global _engine
     if _engine is None:
         init_database()
@@ -436,7 +436,7 @@ def get_engine() -> AsyncEngine:
 
 
 def get_session_factory() -> async_sessionmaker[AsyncSession]:
-    """Get the async session factory, initializing if needed."""
+    """取得非同步 session factory，必要時初始化。"""
     global _async_session_maker
     if _async_session_maker is None:
         init_database()
@@ -444,18 +444,18 @@ def get_session_factory() -> async_sessionmaker[AsyncSession]:
 
 
 async def get_session() -> AsyncSession:
-    """Create a new async database session."""
+    """建立新的非同步資料庫 session。"""
     factory = get_session_factory()
     return factory()
 
 
-# Retry settings for scale-to-zero wake-up (autoscale Lakebase)
+# scale-to-zero 喚醒的重試設定（autoscale Lakebase）
 _SESSION_MAX_RETRIES = int(os.environ.get("DB_SESSION_MAX_RETRIES", "3"))
 _SESSION_RETRY_BASE_DELAY = float(os.environ.get("DB_SESSION_RETRY_DELAY", "1.0"))
 
 
 def _is_connection_error(exc: Exception) -> bool:
-    """Check if an exception is a transient connection error worth retrying."""
+    """檢查例外是否為值得重試的暫時性連線錯誤。"""
     from sqlalchemy.exc import OperationalError, InterfaceError
 
     if not isinstance(exc, (OperationalError, InterfaceError, OSError)):
@@ -472,20 +472,20 @@ def _is_connection_error(exc: Exception) -> bool:
         "ssl connection has been closed",
         "broken pipe",
         "network is unreachable",
-        "password authentication failed",  # can occur during compute wake-up
+        "password authentication failed",  # 可能在 compute 喚醒期間發生
     ]
     return any(p in msg for p in transient_patterns)
 
 
 @asynccontextmanager
 async def session_scope() -> AsyncGenerator[AsyncSession, None]:
-    """Provide a transactional scope around a series of operations.
+    """提供圍繞一系列操作的交易範圍。
 
-    Retries on transient connection errors (e.g., autoscale compute waking
-    from idle) with exponential backoff before propagating the failure.
+    遇到暫時性連線錯誤（例如 autoscale compute 從閒置喚醒）時
+    會以指數退避重試，然後才傳播失敗。
 
     Yields:
-        SQLAlchemy AsyncSession instance
+        SQLAlchemy AsyncSession 實例
 
     Example:
         async with session_scope() as session:
@@ -519,9 +519,9 @@ async def session_scope() -> AsyncGenerator[AsyncSession, None]:
 
 
 async def create_tables():
-    """Create all database tables asynchronously.
+    """非同步建立所有資料庫表格。
 
-    For production, use Alembic migrations instead.
+    正式環境請改用 Alembic migrations。
     """
     engine = get_engine()
     async with engine.begin() as conn:
@@ -529,7 +529,7 @@ async def create_tables():
 
 
 def is_postgres_configured() -> bool:
-    """Check if PostgreSQL is configured (either static URL or dynamic OAuth)."""
+    """檢查 PostgreSQL 是否已設定（靜態 URL 或動態 OAuth）。"""
     return bool(
         os.environ.get("LAKEBASE_PG_URL")
         or (
@@ -544,7 +544,7 @@ def is_postgres_configured() -> bool:
 
 
 def is_dynamic_token_mode() -> bool:
-    """Check if using dynamic OAuth token mode (vs static URL)."""
+    """檢查是否使用動態 OAuth token 模式（相對於靜態 URL）。"""
     return bool(
         not os.environ.get("LAKEBASE_PG_URL")
         and os.environ.get("LAKEBASE_DATABASE_NAME")
@@ -556,15 +556,15 @@ def is_dynamic_token_mode() -> bool:
 
 
 def get_lakebase_project_id() -> Optional[str]:
-    """Get Lakebase project ID from environment."""
+    """從環境變數取得 Lakebase project ID。"""
     return os.environ.get("LAKEBASE_PROJECT_ID") or None
 
 
 async def test_database_connection() -> Optional[str]:
-    """Test database connection and return error message if failed.
+    """測試資料庫連線，若失敗則回傳錯誤訊息。
 
     Returns:
-        None if connection is successful, error message string if failed
+        連線成功則回傳 None，失敗則回傳錯誤訊息字串
     """
     if not is_postgres_configured():
         return None
@@ -584,9 +584,9 @@ async def test_database_connection() -> Optional[str]:
 
 
 def run_migrations() -> None:
-    """Run Alembic migrations programmatically.
+    """程式化執行 Alembic migrations。
 
-    Safe to run multiple times - Alembic tracks applied migrations.
+    可安全執行多次 - Alembic 會追蹤已套用的 migrations。
     """
     if not is_postgres_configured():
         return
@@ -601,15 +601,15 @@ def run_migrations() -> None:
     logger.info("Running database migrations...")
 
     try:
-        # Find the app root directory (where alembic.ini lives)
-        # This file is at server/db/database.py, so app root is 2 levels up
+        # 找到 app root 目錄（alembic.ini 所在位置）
+        # 此檔案位於 server/db/database.py，所以 app root 在往上 2 層
         app_root = Path(__file__).parent.parent.parent
 
-        # Check multiple possible locations for alembic.ini
+        # 檢查多個可能的 alembic.ini 位置
         possible_paths = [
-            app_root / "alembic.ini",  # Standard location
+            app_root / "alembic.ini",  # 標準位置
             Path("/app/python/source_code") / "alembic.ini",  # Databricks Apps
-            Path(".") / "alembic.ini",  # Current directory fallback
+            Path(".") / "alembic.ini",  # 目前目錄後備方案
         ]
 
         alembic_ini_path = None
@@ -629,12 +629,12 @@ def run_migrations() -> None:
 
         alembic_cfg = Config(str(alembic_ini_path))
 
-        # Set script_location to absolute path to avoid working directory issues
+        # 設定 script_location 為絕對路徑以避免工作目錄問題
         alembic_dir = alembic_ini_path.parent / "alembic"
         if alembic_dir.exists():
             alembic_cfg.set_main_option("script_location", str(alembic_dir))
 
-        # Pass the schema name to Alembic env.py via config
+        # 透過 config 傳遞 schema name 給 Alembic env.py
         schema_name = os.environ.get("LAKEBASE_SCHEMA_NAME", "builder_app")
         alembic_cfg.set_main_option("lakebase_schema_name", schema_name)
 

@@ -1,38 +1,38 @@
-# Streaming Patterns
+# 串流模式
 
-Offset management and streaming implementation patterns for exactly-once semantics.
+用於 exactly-once semantics 的 offset 管理與串流實作模式。
 
-## Basic Offset Implementation
+## 基本 Offset 實作
 
-Simple JSON-serializable offset:
+簡單的可 JSON 序列化 offset：
 
 ```python
 class SimpleOffset:
-    """Basic offset with single timestamp field."""
+    """具有單一 timestamp 欄位的基本 offset。"""
 
     def __init__(self, timestamp):
         self.timestamp = timestamp
 
     def json(self):
-        """Serialize to JSON string."""
+        """序列化為 JSON 字串。"""
         import json
         return json.dumps({"timestamp": self.timestamp})
 
     @staticmethod
     def from_json(json_str):
-        """Deserialize from JSON string."""
+        """從 JSON 字串反序列化。"""
         import json
         data = json.loads(json_str)
         return SimpleOffset(data["timestamp"])
 ```
 
-## Multi-Field Offset
+## 多欄位 Offset
 
-Complex offset with multiple fields:
+包含多個欄位的複合 offset：
 
 ```python
 class MultiFieldOffset:
-    """Offset with timestamp, sequence ID, and partition."""
+    """包含 timestamp、sequence ID 與 partition 的 offset。"""
 
     def __init__(self, timestamp, sequence_id, partition_id):
         self.timestamp = timestamp
@@ -58,7 +58,7 @@ class MultiFieldOffset:
         )
 
     def __lt__(self, other):
-        """Enable offset comparison for ordering."""
+        """支援 offset 的排序比較。"""
         if self.timestamp != other.timestamp:
             return self.timestamp < other.timestamp
         if self.sequence_id != other.sequence_id:
@@ -66,9 +66,9 @@ class MultiFieldOffset:
         return self.partition_id < other.partition_id
 ```
 
-## Stream Reader Implementation
+## Stream Reader 實作
 
-Complete streaming reader with offset management:
+具備 offset 管理的完整串流 reader：
 
 ```python
 from pyspark.sql.datasource import DataSourceStreamReader
@@ -77,7 +77,7 @@ class YourStreamReader(DataSourceStreamReader):
     def __init__(self, options, schema):
         super().__init__(options, schema)
 
-        # Parse start time option
+        # 解析起始時間選項
         start_time = options.get("start_time", "latest")
 
         if start_time == "latest":
@@ -85,20 +85,20 @@ class YourStreamReader(DataSourceStreamReader):
             self.start_time = datetime.now(timezone.utc).isoformat()
 
         elif start_time == "earliest":
-            # Query for earliest timestamp (one-time cost)
+            # 查詢最早的 timestamp（一次性成本）
             self.start_time = self._get_earliest_timestamp()
 
         else:
-            # Validate ISO 8601 format
+            # 驗證 ISO 8601 格式
             from datetime import datetime
             datetime.fromisoformat(start_time.replace("Z", "+00:00"))
             self.start_time = start_time
 
-        # Partition duration (e.g., 1 hour)
+        # 分區持續時間（例如 1 小時）
         self.partition_duration = int(options.get("partition_duration", "3600"))
 
     def _get_earliest_timestamp(self):
-        """Find earliest data timestamp for 'earliest' option."""
+        """為 `earliest` 選項找出最早的資料 timestamp。"""
         from datetime import datetime, timezone
 
         timestamp_column = self.options.get("timestamp_column", "timestamp")
@@ -113,15 +113,15 @@ class YourStreamReader(DataSourceStreamReader):
                     return earliest_value.isoformat()
                 return str(earliest_value)
 
-        # Fallback to current time
+        # fallback 為目前時間
         return datetime.now(timezone.utc).isoformat()
 
     def initialOffset(self):
         """
-        Return initial offset (start time minus 1 microsecond).
+        回傳初始 offset（起始時間減去 1 微秒）。
 
-        Subtract 1µs to compensate for +1µs in partitions() method,
-        preventing overlap between batches.
+        減去 1µs 是為了搭配 partitions() 方法中的 +1µs，
+        以避免批次之間發生重疊。
         """
         from datetime import datetime, timedelta
 
@@ -130,7 +130,7 @@ class YourStreamReader(DataSourceStreamReader):
         return SimpleOffset(adjusted.isoformat()).json()
 
     def latestOffset(self):
-        """Return latest offset (current time)."""
+        """回傳最新 offset（目前時間）。"""
         from datetime import datetime, timezone
 
         current_time = datetime.now(timezone.utc).isoformat()
@@ -138,9 +138,9 @@ class YourStreamReader(DataSourceStreamReader):
 
     def partitions(self, start, end):
         """
-        Create non-overlapping partitions for offset range.
+        依 offset 範圍建立不重疊的分區。
 
-        Adds 1µs to start to prevent overlap with previous batch.
+        會在起點加上 1µs，以避免與前一個批次重疊。
         """
         from datetime import datetime, timedelta
 
@@ -150,13 +150,13 @@ class YourStreamReader(DataSourceStreamReader):
         start_time = datetime.fromisoformat(start_offset.timestamp.replace("Z", "+00:00"))
         end_time = datetime.fromisoformat(end_offset.timestamp.replace("Z", "+00:00"))
 
-        # Add 1µs to prevent overlap with previous batch
-        # This works with -1µs in initialOffset() to ensure:
-        # - Initial batch: (start - 1µs) + 1µs = start (correct)
-        # - Subsequent batches: previous_end + 1µs (no overlap)
+        # 加上 1µs 以避免與前一個批次重疊
+        # 這會搭配 initialOffset() 中的 -1µs，確保：
+        # - 初始批次：(start - 1µs) + 1µs = start（正確）
+        # - 後續批次：previous_end + 1µs（不重疊）
         start_time = start_time + timedelta(microseconds=1)
 
-        # Create fixed-duration partitions
+        # 建立固定持續時間的分區
         partitions = []
         current = start_time
         delta = timedelta(seconds=self.partition_duration)
@@ -164,17 +164,17 @@ class YourStreamReader(DataSourceStreamReader):
         while current < end_time:
             next_time = min(current + delta, end_time)
             partitions.append(TimeRangePartition(current, next_time))
-            current = next_time + timedelta(microseconds=1)  # No overlap
+            current = next_time + timedelta(microseconds=1)  # 不重疊
 
         return partitions if partitions else [TimeRangePartition(start_time, end_time)]
 
     def commit(self, end):
-        """Called when batch is successfully processed."""
-        # Spark handles checkpointing - usually no action needed
+        """當批次成功處理後呼叫。"""
+        # Spark 會處理 checkpointing；通常不需要額外動作
         pass
 
     def read(self, partition):
-        """Read data for partition time range."""
+        """讀取指定分區時間範圍內的資料。"""
         response = self._query_api(
             start=partition.start_time,
             end=partition.end_time
@@ -184,21 +184,21 @@ class YourStreamReader(DataSourceStreamReader):
             yield self._convert_to_row(item)
 ```
 
-## Watermarking Support
+## Watermarking 支援
 
-Support for event-time watermarking:
+支援事件時間 watermarking：
 
 ```python
 class WatermarkedStreamReader(DataSourceStreamReader):
     def __init__(self, options, schema):
         super().__init__(options, schema)
 
-        # Watermark configuration
+        # watermark 設定
         self.watermark_column = options.get("watermark_column")
         self.watermark_delay = options.get("watermark_delay", "10 minutes")
 
     def read(self, partition):
-        """Read with event-time watermarking."""
+        """以事件時間 watermarking 方式讀取。"""
         from datetime import datetime
 
         response = self._query_api(
@@ -209,38 +209,38 @@ class WatermarkedStreamReader(DataSourceStreamReader):
         for item in response:
             row = self._convert_to_row(item)
 
-            # Validate watermark column exists
+            # 驗證 watermark 欄位存在
             if self.watermark_column:
                 if not hasattr(row, self.watermark_column):
                     raise ValueError(
-                        f"Watermark column '{self.watermark_column}' not found in row"
+                        f"在資料列中找不到 watermark 欄位 '{self.watermark_column}'"
                     )
 
-                # Ensure watermark column is timestamp
+                # 確保 watermark 欄位是 timestamp
                 watermark_value = getattr(row, self.watermark_column)
                 if not isinstance(watermark_value, datetime):
                     raise ValueError(
-                        f"Watermark column must be timestamp, got {type(watermark_value)}"
+                        f"watermark 欄位必須是 timestamp，實際為 {type(watermark_value)}"
                     )
 
             yield row
 ```
 
-## Stateful Streaming
+## 狀態式串流
 
-Track state across batches:
+跨批次追蹤狀態：
 
 ```python
 class StatefulStreamReader(DataSourceStreamReader):
     def __init__(self, options, schema):
         super().__init__(options, schema)
 
-        # State management
+        # 狀態管理
         self.checkpoint_location = options.get("checkpoint_location")
         self._state = {}
 
     def _load_state(self):
-        """Load state from checkpoint location."""
+        """從 checkpoint 位置載入狀態。"""
         import json
         import os
 
@@ -256,7 +256,7 @@ class StatefulStreamReader(DataSourceStreamReader):
         return {}
 
     def _save_state(self):
-        """Save state to checkpoint location."""
+        """將狀態儲存到 checkpoint 位置。"""
         import json
         import os
 
@@ -270,26 +270,26 @@ class StatefulStreamReader(DataSourceStreamReader):
             json.dump(self._state, f)
 
     def initialOffset(self):
-        """Load state and return initial offset."""
+        """載入狀態並回傳初始 offset。"""
         self._state = self._load_state()
 
-        # Check if we have previous state
+        # 檢查是否已有先前狀態
         if "last_offset" in self._state:
             return self._state["last_offset"]
 
-        # First run - use configured start time
+        # 第一次執行 - 使用設定的起始時間
         return self._create_initial_offset()
 
     def commit(self, end):
-        """Save state after successful batch."""
+        """在批次成功後儲存狀態。"""
         self._state["last_offset"] = end
         self._state["last_commit_time"] = datetime.now().isoformat()
         self._save_state()
 ```
 
-## Exactly-Once Semantics
+## Exactly-Once 語意
 
-Ensure exactly-once delivery with idempotent writes:
+透過冪等寫入確保 exactly-once 投遞語意：
 
 ```python
 class ExactlyOnceWriter(DataSourceStreamWriter):
@@ -298,7 +298,7 @@ class ExactlyOnceWriter(DataSourceStreamWriter):
         self.enable_idempotency = options.get("enable_idempotency", "true").lower() == "true"
 
     def write(self, iterator):
-        """Write with idempotency key."""
+        """使用冪等鍵進行寫入。"""
         import hashlib
         from pyspark import TaskContext
 
@@ -307,7 +307,7 @@ class ExactlyOnceWriter(DataSourceStreamWriter):
         batch_id = getattr(context, 'batchId', lambda: 0)()
 
         for row in iterator:
-            # Generate idempotency key from batch_id + partition_id + row content
+            # 以 batch_id + partition_id + 資料列內容產生冪等鍵
             row_dict = row.asDict()
 
             if self.enable_idempotency:
@@ -318,11 +318,11 @@ class ExactlyOnceWriter(DataSourceStreamWriter):
                 )
                 row_dict["_idempotency_key"] = idempotency_key
 
-            # Write with idempotency check
+            # 搭配冪等檢查寫入
             self._write_with_idempotency_check(row_dict)
 
     def _generate_idempotency_key(self, batch_id, partition_id, row_dict):
-        """Generate deterministic idempotency key."""
+        """產生具決定性的冪等鍵。"""
         import hashlib
         import json
 
@@ -336,36 +336,36 @@ class ExactlyOnceWriter(DataSourceStreamWriter):
         return hashlib.sha256(key_str.encode()).hexdigest()
 
     def _write_with_idempotency_check(self, row_dict):
-        """Write only if idempotency key not seen before."""
+        """僅在冪等鍵尚未出現時才寫入。"""
         idempotency_key = row_dict.get("_idempotency_key")
 
         if idempotency_key:
-            # Check if already written (implementation depends on target system)
+            # 檢查是否已經寫入（實作方式取決於目標系統）
             if self._is_already_written(idempotency_key):
-                return  # Skip duplicate
+                return  # 跳過重複資料
 
-        # Write data
+        # 寫入資料
         self._write_data(row_dict)
 
     def commit(self, messages, batchId):
-        """Commit batch after all writes succeed."""
-        # Log successful batch
-        print(f"Batch {batchId} committed successfully")
+        """在所有寫入成功後提交批次。"""
+        # 記錄成功的批次
+        print(f"批次 {batchId} 已成功提交")
 
     def abort(self, messages, batchId):
-        """Handle failed batch."""
-        # Log failed batch
-        print(f"Batch {batchId} aborted")
+        """處理失敗的批次。"""
+        # 記錄失敗的批次
+        print(f"批次 {batchId} 已中止")
 ```
 
-## Monitoring and Progress
+## 監控與進度
 
-Track streaming progress:
+追蹤串流處理進度：
 
 ```python
 class MonitoredStreamReader(DataSourceStreamReader):
     def read(self, partition):
-        """Read with progress tracking."""
+        """在讀取時追蹤進度。"""
         from datetime import datetime
 
         start_time = datetime.now()
@@ -377,7 +377,7 @@ class MonitoredStreamReader(DataSourceStreamReader):
 
         duration = (datetime.now() - start_time).total_seconds()
 
-        # Log metrics
+        # 記錄指標
         self._log_partition_metrics(
             partition_id=partition.partition_id,
             row_count=row_count,
@@ -385,16 +385,16 @@ class MonitoredStreamReader(DataSourceStreamReader):
         )
 
     def _log_partition_metrics(self, partition_id, row_count, duration):
-        """Log partition processing metrics."""
-        print(f"Partition {partition_id}: {row_count} rows in {duration:.2f}s")
+        """記錄分區處理指標。"""
+        print(f"分區 {partition_id}：{row_count} 筆資料，用時 {duration:.2f}s")
 ```
 
-## Best Practices
+## 最佳實務
 
-1. **Non-Overlapping Partitions**: Use microsecond adjustments to prevent duplicates
-2. **Idempotency**: Generate deterministic keys for exactly-once semantics
-3. **State Management**: Store offsets in Spark checkpoints
-4. **Watermarking**: Support event-time processing for late data
-5. **Monitoring**: Track batch progress and lag metrics
-6. **Error Handling**: Streaming writers are especially susceptible to transient failures (network blips, rate limits) since they run continuously. Use retry with exponential backoff from [error-handling.md](error-handling.md) in your `write()` methods.
-7. **Backpressure**: Respect rate limits with appropriate partition sizing
+1. **不重疊分區**：使用微秒調整避免重複資料
+2. **冪等性**：產生具決定性的鍵以實現 exactly-once 語意
+3. **狀態管理**：將 offsets 儲存在 Spark checkpoints 中
+4. **Watermarking**：支援事件時間處理以處理延遲到達的資料
+5. **監控**：追蹤批次進度與 lag 指標
+6. **錯誤處理**：串流 writers 會持續執行，因此特別容易受到暫時性失敗（網路抖動、rate limits）影響。請在 `write()` 方法中使用 [error-handling.md](error-handling.md) 的指數退避重試模式。
+7. **Backpressure**：使用適當的分區大小來遵守速率限制

@@ -1,85 +1,85 @@
-# System Tables
+# 系統資料表
 
-Comprehensive reference for Unity Catalog system tables: lineage, audit, billing, compute, jobs, and metadata.
+Unity Catalog 系統資料表完整參考：資料血緣、稽核、計費、計算資源、Jobs 與中繼資料。
 
-## Overview
+## 概覽
 
-System tables are read-only tables in the `system` catalog providing operational data about your Databricks account.
+系統資料表是 `system` Catalog 中的唯讀資料表，提供 Databricks 帳戶的營運資料。
 
-| Schema | Purpose |
-|--------|---------|
-| `system.access` | Audit logs, lineage tracking |
-| `system.billing` | Usage and cost data |
-| `system.compute` | Clusters, warehouses, node metrics |
-| `system.lakeflow` | Jobs and pipelines |
-| `system.query` | Query history and performance |
-| `system.storage` | Storage metrics and predictive IO |
-| `system.information_schema` | Metadata about UC objects |
+| Schema | 用途 |
+|--------|------|
+| `system.access` | 稽核日誌、資料血緣追蹤 |
+| `system.billing` | 使用量與成本資料 |
+| `system.compute` | 叢集、Warehouse、節點指標 |
+| `system.lakeflow` | Jobs 與管道 |
+| `system.query` | 查詢歷程與效能 |
+| `system.storage` | 儲存指標與預測性 IO |
+| `system.information_schema` | UC 物件的中繼資料 |
 
 ---
 
-## Enable System Schemas
+## 啟用系統 Schema
 
-System schemas must be enabled before querying.
+查詢前須先啟用系統 Schema。
 
-**SQL:**
+**SQL：**
 ```sql
--- Check available system schemas
+-- 查看可用的系統 Schema
 SELECT * FROM system.information_schema.schemata
 WHERE catalog_name = 'system';
 ```
 
-**Python SDK:**
+**Python SDK：**
 ```python
 from databricks.sdk import WorkspaceClient
 
 w = WorkspaceClient()
 
-# List system schemas and their state
+# 列出系統 Schema 及其狀態
 for schema in w.system_schemas.list(metastore_id="your-metastore-id"):
     print(f"{schema.schema}: {schema.state}")
 
-# Enable a system schema
+# 啟用系統 Schema
 w.system_schemas.enable(
     metastore_id="your-metastore-id",
     schema_name="access"
 )
 ```
 
-**CLI:**
+**CLI：**
 ```bash
-# List system schemas
+# 列出系統 Schema
 databricks system-schemas list --metastore-id your-metastore-id
 
-# Enable system schema
+# 啟用系統 Schema
 databricks system-schemas enable --metastore-id your-metastore-id \
     --schema-name access
 ```
 
 ---
 
-## Access Schema (Audit & Lineage)
+## Access Schema（稽核與血緣）
 
 ### system.access.audit
 
-Audit logs for all Unity Catalog operations.
+所有 Unity Catalog 操作的稽核日誌。
 
-**Schema:**
-| Column | Type | Description |
-|--------|------|-------------|
-| `event_date` | DATE | Partition key - always filter on this |
-| `event_time` | TIMESTAMP | When the event occurred |
-| `workspace_id` | BIGINT | Workspace where event occurred |
-| `user_identity` | STRUCT | User email, IP, session info |
-| `action_name` | STRING | Operation performed |
-| `request_params` | MAP | Request parameters |
-| `response` | STRUCT | Response status and error |
-| `source_ip_address` | STRING | Client IP address |
+**欄位結構：**
+| 欄位 | 類型 | 說明 |
+|------|------|------|
+| `event_date` | DATE | 分區鍵——務必以此篩選 |
+| `event_time` | TIMESTAMP | 事件發生時間 |
+| `workspace_id` | BIGINT | 事件所在工作區 |
+| `user_identity` | STRUCT | 使用者 Email、IP、Session 資訊 |
+| `action_name` | STRING | 執行的操作 |
+| `request_params` | MAP | 請求參數 |
+| `response` | STRUCT | 回應狀態與錯誤 |
+| `source_ip_address` | STRING | 用戶端 IP 位址 |
 
-**Common Queries:**
+**常用查詢：**
 
 ```sql
--- Recent table access events
+-- 近期資料表存取事件
 SELECT
     event_time,
     user_identity.email AS user_email,
@@ -92,7 +92,7 @@ WHERE event_date >= current_date() - 7
 ORDER BY event_time DESC
 LIMIT 100;
 
--- Permission changes in last 30 days
+-- 近 30 天的權限變更紀錄
 SELECT
     event_time,
     user_identity.email AS changed_by,
@@ -105,7 +105,7 @@ WHERE event_date >= current_date() - 30
   AND action_name IN ('updatePermissions', 'grantPermission', 'revokePermission')
 ORDER BY event_time DESC;
 
--- Failed access attempts (security monitoring)
+-- 存取失敗事件（資安監控）
 SELECT
     event_time,
     user_identity.email AS user_email,
@@ -118,7 +118,7 @@ WHERE event_date >= current_date() - 7
   AND response.status_code != '200'
 ORDER BY event_time DESC;
 
--- Most active users by query count
+-- 依查詢次數排序最活躍使用者
 SELECT
     user_identity.email AS user_email,
     COUNT(*) AS query_count,
@@ -130,7 +130,7 @@ GROUP BY user_identity.email
 ORDER BY query_count DESC
 LIMIT 20;
 
--- Catalog/schema creation events
+-- Catalog/Schema 建立事件
 SELECT
     event_time,
     user_identity.email AS created_by,
@@ -142,7 +142,7 @@ WHERE event_date >= current_date() - 30
   AND action_name IN ('createCatalog', 'createSchema', 'deleteCatalog', 'deleteSchema')
 ORDER BY event_time DESC;
 
--- Who created a specific table?
+-- 誰建立了特定資料表？
 SELECT
     event_time,
     user_identity.email AS created_by,
@@ -153,7 +153,7 @@ WHERE action_name = 'createTable'
 ORDER BY event_time DESC
 LIMIT 1;
 
--- What tables did a user access?
+-- 某使用者存取了哪些資料表？
 SELECT DISTINCT
     request_params.full_name_arg AS table_name,
     MIN(event_time) AS first_access,
@@ -166,7 +166,7 @@ WHERE user_identity.email = 'analyst@company.com'
 GROUP BY request_params.full_name_arg
 ORDER BY access_count DESC;
 
--- Track sensitive table access
+-- 追蹤敏感資料表存取
 SELECT
     event_time,
     user_identity.email AS user_email,
@@ -183,22 +183,22 @@ ORDER BY event_time DESC;
 
 ### system.access.table_lineage
 
-Track data flow between tables.
+追蹤資料表之間的資料流向。
 
-**Schema:**
-| Column | Type | Description |
-|--------|------|-------------|
-| `source_table_full_name` | STRING | Source table (catalog.schema.table) |
-| `source_type` | STRING | TABLE, VIEW, PATH |
-| `target_table_full_name` | STRING | Target table |
-| `target_type` | STRING | TABLE, VIEW |
-| `created_by` | STRING | User who created the lineage |
-| `event_time` | TIMESTAMP | When lineage was captured |
+**欄位結構：**
+| 欄位 | 類型 | 說明 |
+|------|------|------|
+| `source_table_full_name` | STRING | 來源資料表（catalog.schema.table） |
+| `source_type` | STRING | TABLE、VIEW、PATH |
+| `target_table_full_name` | STRING | 目標資料表 |
+| `target_type` | STRING | TABLE、VIEW |
+| `created_by` | STRING | 建立血緣關係的使用者 |
+| `event_time` | TIMESTAMP | 血緣被捕捉的時間 |
 
-**Common Queries:**
+**常用查詢：**
 
 ```sql
--- Find upstream tables (what feeds this table)
+-- 找出上游資料表（哪些資料表提供資料給此資料表）
 SELECT DISTINCT
     source_table_full_name,
     source_type,
@@ -208,7 +208,7 @@ WHERE target_table_full_name = 'analytics.gold.customer_360'
 GROUP BY source_table_full_name, source_type
 ORDER BY last_updated DESC;
 
--- Find downstream tables (what this table feeds)
+-- 找出下游資料表（此資料表提供資料給哪些資料表）
 SELECT DISTINCT
     target_table_full_name,
     target_type,
@@ -218,7 +218,7 @@ WHERE source_table_full_name = 'analytics.bronze.raw_orders'
 GROUP BY target_table_full_name, target_type
 ORDER BY last_updated DESC;
 
--- Full lineage chain (recursive)
+-- 完整血緣鏈（遞迴查詢）
 WITH RECURSIVE lineage AS (
     SELECT
         source_table_full_name,
@@ -239,7 +239,7 @@ WITH RECURSIVE lineage AS (
 )
 SELECT DISTINCT * FROM lineage ORDER BY depth;
 
--- Tables with most dependencies
+-- 依賴資料表最多的目標資料表
 SELECT
     target_table_full_name,
     COUNT(DISTINCT source_table_full_name) AS upstream_count
@@ -249,7 +249,7 @@ GROUP BY target_table_full_name
 ORDER BY upstream_count DESC
 LIMIT 20;
 
--- Lineage with entity types
+-- 含實體類型的血緣關係
 SELECT
     source_table_full_name,
     source_type,
@@ -264,12 +264,12 @@ WHERE target_table_full_name LIKE 'analytics.gold.%'
 
 ### system.access.column_lineage
 
-Column-level lineage tracking.
+欄位層級的血緣追蹤。
 
-**Common Queries:**
+**常用查詢：**
 
 ```sql
--- Find column origins
+-- 找出欄位來源
 SELECT
     source_table_full_name,
     source_column_name,
@@ -280,7 +280,7 @@ WHERE target_table_full_name = 'analytics.gold.customer_360'
   AND target_column_name = 'total_orders'
 ORDER BY event_time DESC;
 
--- Impact analysis: what uses this column?
+-- 影響分析：哪些地方使用了此欄位？
 SELECT DISTINCT
     target_table_full_name,
     target_column_name
@@ -288,7 +288,7 @@ FROM system.access.column_lineage
 WHERE source_table_full_name = 'analytics.bronze.raw_customers'
   AND source_column_name = 'email';
 
--- PII column tracking
+-- 個人資料（PII）欄位追蹤
 SELECT
     source_table_full_name,
     source_column_name,
@@ -298,7 +298,7 @@ FROM system.access.column_lineage
 WHERE source_column_name IN ('email', 'ssn', 'phone', 'address')
 ORDER BY event_time DESC;
 
--- Find all transformations for a column
+-- 找出某欄位的所有轉換過程
 SELECT
     source_table_full_name,
     source_column_name,
@@ -315,23 +315,23 @@ ORDER BY event_time DESC;
 
 ### system.billing.usage
 
-Detailed usage records for cost analysis.
+詳細使用紀錄，用於成本分析。
 
-**Schema:**
-| Column | Type | Description |
-|--------|------|-------------|
-| `usage_date` | DATE | Date of usage |
-| `workspace_id` | BIGINT | Workspace ID |
-| `sku_name` | STRING | Product SKU |
-| `usage_quantity` | DECIMAL | Amount consumed |
-| `usage_unit` | STRING | Unit of measure (DBU) |
-| `cloud` | STRING | Cloud provider |
-| `usage_metadata` | MAP | Additional metadata |
+**欄位結構：**
+| 欄位 | 類型 | 說明 |
+|------|------|------|
+| `usage_date` | DATE | 使用日期 |
+| `workspace_id` | BIGINT | 工作區 ID |
+| `sku_name` | STRING | 產品 SKU |
+| `usage_quantity` | DECIMAL | 消耗量 |
+| `usage_unit` | STRING | 計量單位（DBU） |
+| `cloud` | STRING | 雲端供應商 |
+| `usage_metadata` | MAP | 額外中繼資料 |
 
-**Common Queries:**
+**常用查詢：**
 
 ```sql
--- Daily DBU consumption by SKU
+-- 依 SKU 統計每日 DBU 消耗量
 SELECT
     usage_date,
     sku_name,
@@ -341,14 +341,14 @@ WHERE usage_date >= current_date() - 30
 GROUP BY usage_date, sku_name
 ORDER BY usage_date DESC, total_dbus DESC;
 
--- Compute vs SQL Warehouse usage
+-- 計算資源 vs SQL Warehouse 使用比較
 SELECT
     CASE
-        WHEN sku_name LIKE '%ALL_PURPOSE%' THEN 'All-Purpose Compute'
-        WHEN sku_name LIKE '%JOBS%' THEN 'Jobs Compute'
+        WHEN sku_name LIKE '%ALL_PURPOSE%' THEN '通用計算'
+        WHEN sku_name LIKE '%JOBS%' THEN 'Jobs 計算'
         WHEN sku_name LIKE '%SQL%' THEN 'SQL Warehouse'
-        WHEN sku_name LIKE '%SERVERLESS%' THEN 'Serverless'
-        ELSE 'Other'
+        WHEN sku_name LIKE '%SERVERLESS%' THEN '無伺服器'
+        ELSE '其他'
     END AS compute_type,
     SUM(usage_quantity) AS total_dbus
 FROM system.billing.usage
@@ -356,7 +356,7 @@ WHERE usage_date >= current_date() - 30
 GROUP BY 1
 ORDER BY total_dbus DESC;
 
--- Daily trend with 7-day moving average
+-- 每日趨勢與 7 日移動平均
 SELECT
     usage_date,
     SUM(usage_quantity) AS daily_dbus,
@@ -369,7 +369,7 @@ WHERE usage_date >= current_date() - 60
 GROUP BY usage_date
 ORDER BY usage_date;
 
--- Top cost drivers by cluster
+-- 依叢集排序的主要成本來源
 SELECT
     usage_metadata.cluster_id,
     usage_metadata.cluster_name,
@@ -381,7 +381,7 @@ GROUP BY usage_metadata.cluster_id, usage_metadata.cluster_name
 ORDER BY total_dbus DESC
 LIMIT 20;
 
--- Cost by workspace with list prices
+-- 各工作區成本（含定價）
 SELECT
     workspace_id,
     u.sku_name,
@@ -398,10 +398,10 @@ ORDER BY estimated_cost DESC;
 
 ### system.billing.list_prices
 
-Reference prices for SKUs.
+SKU 的參考定價。
 
 ```sql
--- Get current list prices
+-- 查詢目前定價
 SELECT
     sku_name,
     cloud,
@@ -418,10 +418,10 @@ ORDER BY sku_name;
 
 ### system.compute.clusters
 
-Cluster configurations and metadata (historical definitions, not live state).
+叢集設定與中繼資料（歷史定義，非即時狀態）。
 
 ```sql
--- Clusters by source type
+-- 依來源類型統計叢集數量
 SELECT
     cluster_source,
     COUNT(*) AS cluster_count
@@ -429,7 +429,7 @@ FROM system.compute.clusters
 WHERE delete_time IS NULL
 GROUP BY cluster_source;
 
--- Clusters by Databricks Runtime version
+-- 依 Databricks Runtime 版本統計叢集
 SELECT
     dbr_version,
     COUNT(*) AS cluster_count
@@ -438,7 +438,7 @@ WHERE delete_time IS NULL
 GROUP BY dbr_version
 ORDER BY cluster_count DESC;
 
--- Recently created clusters
+-- 近期建立的叢集
 SELECT
     cluster_id,
     cluster_name,
@@ -452,7 +452,7 @@ WHERE delete_time IS NULL
 ORDER BY create_time DESC
 LIMIT 20;
 
--- Clusters by node type
+-- 依節點類型統計叢集
 SELECT
     worker_node_type,
     COUNT(*) AS cluster_count
@@ -464,10 +464,10 @@ ORDER BY cluster_count DESC;
 
 ### system.compute.warehouse_events
 
-SQL Warehouse scaling and state events.
+SQL Warehouse 擴縮與狀態事件。
 
 ```sql
--- Warehouse uptime analysis
+-- Warehouse 運作時間分析
 SELECT
     warehouse_id,
     event_type,
@@ -477,7 +477,7 @@ WHERE event_time >= current_date() - 7
 GROUP BY warehouse_id, event_type
 ORDER BY warehouse_id, event_count DESC;
 
--- Warehouse scaling patterns by hour
+-- 依小時統計 Warehouse 擴縮模式
 SELECT
     DATE(event_time) AS event_date,
     HOUR(event_time) AS event_hour,
@@ -491,28 +491,28 @@ ORDER BY event_date, event_hour;
 
 ---
 
-## Lakeflow Schema (Jobs & Pipelines)
+## Lakeflow Schema（Jobs 與管道）
 
 ### system.lakeflow.jobs
 
-Job definitions and configurations.
+Job 定義與設定。
 
 ```sql
--- Jobs by trigger type
+-- 依觸發類型統計 Job 數量
 SELECT
     CASE
-        WHEN trigger.schedule IS NOT NULL THEN 'Scheduled'
-        WHEN trigger.file_arrival IS NOT NULL THEN 'File Arrival'
-        WHEN trigger.continuous IS NOT NULL THEN 'Continuous'
-        WHEN trigger.table_update IS NOT NULL THEN 'Table Update'
-        ELSE 'Manual/API'
+        WHEN trigger.schedule IS NOT NULL THEN '排程'
+        WHEN trigger.file_arrival IS NOT NULL THEN '檔案到達'
+        WHEN trigger.continuous IS NOT NULL THEN '持續執行'
+        WHEN trigger.table_update IS NOT NULL THEN '資料表更新'
+        ELSE '手動/API'
     END AS job_trigger_type,
     COUNT(*) AS job_count
 FROM system.lakeflow.jobs
 WHERE delete_time IS NULL
 GROUP BY 1;
 
--- Jobs with no recent runs (potentially stale)
+-- 近期無執行紀錄的 Job（可能已過時）
 SELECT
     j.job_id,
     j.name,
@@ -529,10 +529,10 @@ HAVING MAX(r.period_start_time) < current_date() - 30
 
 ### system.lakeflow.job_run_timeline
 
-Job run history and performance.
+Job 執行歷程與效能。
 
 ```sql
--- Job success rate
+-- Job 成功率
 SELECT
     job_id,
     COUNT(*) AS total_runs,
@@ -544,7 +544,7 @@ GROUP BY job_id
 HAVING COUNT(*) >= 5
 ORDER BY success_rate ASC;
 
--- Average job duration by day
+-- 每日平均 Job 執行時間
 SELECT
     DATE(period_start_time) AS run_date,
     job_id,
@@ -555,7 +555,7 @@ WHERE period_start_time >= current_date() - 30
 GROUP BY DATE(period_start_time), job_id
 ORDER BY run_date DESC;
 
--- Failed jobs in last 24 hours
+-- 近 24 小時失敗的 Job
 SELECT
     job_id,
     run_id,
@@ -567,7 +567,7 @@ WHERE period_start_time >= current_timestamp() - INTERVAL 24 HOURS
   AND result_state IN ('FAILED', 'TIMEDOUT', 'CANCELED')
 ORDER BY period_start_time DESC;
 
--- Job run duration percentiles
+-- Job 執行時間百分位數
 SELECT
     job_id,
     PERCENTILE(run_duration_seconds / 60, 0.5) AS p50_minutes,
@@ -581,10 +581,10 @@ GROUP BY job_id;
 
 ### system.lakeflow.pipeline_events
 
-DLT/SDP pipeline execution events.
+DLT/SDP 管道執行事件。
 
 ```sql
--- Pipeline success rate
+-- 管道成功率
 SELECT
     pipeline_id,
     COUNT(*) AS total_updates,
@@ -595,7 +595,7 @@ WHERE timestamp >= current_date() - 30
   AND event_type IN ('update_success', 'update_failed')
 GROUP BY pipeline_id;
 
--- Recent pipeline failures
+-- 近期管道失敗事件
 SELECT
     pipeline_id,
     pipeline_name,
@@ -614,10 +614,10 @@ ORDER BY timestamp DESC;
 
 ### system.query.history
 
-Query execution history and performance.
+查詢執行歷程與效能。
 
 ```sql
--- Slowest queries in last 7 days
+-- 近 7 天最慢的查詢
 SELECT
     statement_id,
     executed_by,
@@ -631,7 +631,7 @@ WHERE start_time >= current_date() - 7
 ORDER BY total_duration_ms DESC
 LIMIT 20;
 
--- Query volume by hour
+-- 依小時統計查詢量
 SELECT
     DATE(start_time) AS query_date,
     HOUR(start_time) AS query_hour,
@@ -642,7 +642,7 @@ WHERE start_time >= current_date() - 7
 GROUP BY DATE(start_time), HOUR(start_time)
 ORDER BY query_date DESC, query_hour;
 
--- Most active query users
+-- 最活躍的查詢使用者
 SELECT
     executed_by,
     COUNT(*) AS query_count,
@@ -654,7 +654,7 @@ GROUP BY executed_by
 ORDER BY query_count DESC
 LIMIT 20;
 
--- Failed queries analysis
+-- 查詢失敗分析
 SELECT
     executed_by,
     error_message,
@@ -666,7 +666,7 @@ GROUP BY executed_by, error_message
 ORDER BY failure_count DESC
 LIMIT 20;
 
--- Queries by statement type
+-- 依語句類型統計查詢
 SELECT
     statement_type,
     COUNT(*) AS query_count,
@@ -682,21 +682,21 @@ ORDER BY query_count DESC;
 
 ## Information Schema
 
-Metadata about Unity Catalog objects.
+Unity Catalog 物件的中繼資料。
 
 ```sql
--- List all catalogs
+-- 列出所有 Catalog
 SELECT catalog_name, catalog_owner, comment, created, created_by
 FROM system.information_schema.catalogs
 ORDER BY catalog_name;
 
--- List all schemas in a catalog
+-- 列出某 Catalog 下的所有 Schema
 SELECT schema_name, schema_owner, comment, created
 FROM system.information_schema.schemata
 WHERE catalog_name = 'analytics'
 ORDER BY schema_name;
 
--- List all tables
+-- 列出所有資料表
 SELECT
     table_catalog,
     table_schema,
@@ -708,7 +708,7 @@ WHERE table_catalog = 'analytics'
   AND table_schema = 'gold'
 ORDER BY table_name;
 
--- Column details for a table
+-- 查詢資料表欄位詳情
 SELECT
     column_name,
     data_type,
@@ -721,7 +721,7 @@ WHERE table_catalog = 'analytics'
   AND table_name = 'customers'
 ORDER BY ordinal_position;
 
--- Find tables by column name (data discovery)
+-- 依欄位名稱搜尋資料表（資料探索）
 SELECT DISTINCT
     table_catalog,
     table_schema,
@@ -730,7 +730,7 @@ FROM system.information_schema.columns
 WHERE column_name LIKE '%email%'
    OR column_name LIKE '%customer_id%';
 
--- Tables without comments (governance gap)
+-- 找出缺少說明的資料表（治理缺口）
 SELECT
     table_catalog,
     table_schema,
@@ -740,7 +740,7 @@ WHERE comment IS NULL
   AND table_catalog NOT IN ('system', 'hive_metastore')
 ORDER BY table_catalog, table_schema, table_name;
 
--- Permission audit: who has access to what
+-- 權限稽核：誰有存取哪些資料的權限
 SELECT
     grantee,
     table_catalog,
@@ -751,7 +751,7 @@ FROM system.information_schema.table_privileges
 WHERE table_catalog = 'analytics'
 ORDER BY table_schema, table_name, grantee;
 
--- Schema privileges
+-- Schema 層級權限
 SELECT
     grantee,
     catalog_name,
@@ -761,7 +761,7 @@ FROM system.information_schema.schema_privileges
 WHERE catalog_name = 'analytics'
 ORDER BY schema_name, grantee;
 
--- Find all volumes
+-- 列出所有 Volumes
 SELECT
     volume_catalog,
     volume_schema,
@@ -772,7 +772,7 @@ SELECT
 FROM system.information_schema.volumes
 WHERE volume_catalog = 'analytics';
 
--- Find all functions
+-- 列出所有函式
 SELECT
     routine_catalog,
     routine_schema,
@@ -782,10 +782,10 @@ SELECT
 FROM system.information_schema.routines
 WHERE routine_catalog = 'analytics';
 
--- Share details
+-- 查詢 Share 詳情
 SELECT * FROM system.information_schema.shares;
 
--- Share objects
+-- Share 物件清單
 SELECT
     share_name,
     name AS object_name,
@@ -794,7 +794,7 @@ SELECT
 FROM system.information_schema.shared_data_objects
 WHERE share_name = 'customer_insights';
 
--- Recipient grants
+-- 接收方授權清單
 SELECT
     share_name,
     recipient_name,
@@ -804,11 +804,11 @@ FROM system.information_schema.share_recipients;
 
 ---
 
-## External Lineage
+## 外部血緣
 
-Track lineage to external systems.
+追蹤與外部系統之間的血緣關係。
 
-**Python SDK:**
+**Python SDK：**
 ```python
 from databricks.sdk import WorkspaceClient
 from databricks.sdk.service.catalog import (
@@ -819,7 +819,7 @@ from databricks.sdk.service.catalog import (
 
 w = WorkspaceClient()
 
-# Create external lineage relationship
+# 建立外部血緣關係
 w.external_lineage.create_external_lineage_relationship(
     external_lineage_relationship=CreateRequestExternalLineage(
         target=ExternalLineageObject(
@@ -832,7 +832,7 @@ w.external_lineage.create_external_lineage_relationship(
     )
 )
 
-# List external lineage
+# 列出外部血緣
 lineage = w.external_lineage.list_external_lineage_relationships(
     object_info=ExternalLineageObject(
         table_full_name="analytics.bronze.raw_orders"
@@ -843,9 +843,9 @@ for rel in lineage:
     print(f"Source: {rel.source}")
 ```
 
-**CLI:**
+**CLI：**
 ```bash
-# Create external lineage
+# 建立外部血緣
 databricks external-lineage create-external-lineage-relationship --json '{
     "source": {
         "external_system": "salesforce",
@@ -856,7 +856,7 @@ databricks external-lineage create-external-lineage-relationship --json '{
     }
 }'
 
-# List external lineage
+# 列出外部血緣
 databricks external-lineage list-external-lineage-relationships --json '{
     "object_info": {
         "table_full_name": "analytics.bronze.raw_orders"
@@ -867,28 +867,28 @@ databricks external-lineage list-external-lineage-relationships --json '{
 
 ---
 
-## Best Practices
+## 最佳實踐
 
-### Query Performance
+### 查詢效能
 
-1. **Always filter by date partitions** - System tables are partitioned by date
+1. **務必以日期分區篩選** — 系統資料表依日期分區
 ```sql
-WHERE event_date >= current_date() - 30  -- Good
-WHERE event_time >= '2024-01-01'         -- Slower (scans all partitions)
+WHERE event_date >= current_date() - 30  -- 好：使用分區鍵
+WHERE event_time >= '2024-01-01'         -- 慢：掃描所有分區
 ```
 
-2. **Use LIMIT for exploration** - System tables can be very large
+2. **探索時加上 LIMIT** — 系統資料表資料量龐大
 ```sql
-LIMIT 100  -- Always add for exploratory queries
+LIMIT 100  -- 探索性查詢務必加上
 ```
 
-3. **Create views for common queries** - Avoid repeating complex logic
+3. **建立 View 封裝常用查詢** — 避免重複撰寫複雜邏輯
 ```sql
 CREATE VIEW analytics.governance.daily_audit_summary AS
 SELECT ...
 ```
 
-4. **Schedule aggregation jobs** - Pre-aggregate for dashboards
+4. **排程彙總 Job** — 預先彙總以加速儀表板
 ```sql
 CREATE TABLE analytics.monitoring.daily_usage_summary AS
 SELECT usage_date, sku_name, SUM(usage_quantity) AS total_dbus
@@ -896,30 +896,30 @@ FROM system.billing.usage
 GROUP BY usage_date, sku_name;
 ```
 
-### Retention Periods
+### 資料保留期限
 
-| System Table | Retention |
-|--------------|-----------|
-| Audit logs | 365 days |
-| Billing usage | 365 days |
-| Query history | 30 days |
-| Lineage | 365 days |
-| Compute events | 30 days |
+| 系統資料表 | 保留期限 |
+|-----------|---------|
+| 稽核日誌 | 365 天 |
+| 計費使用量 | 365 天 |
+| 查詢歷程 | 30 天 |
+| 資料血緣 | 365 天 |
+| 計算事件 | 30 天 |
 
-### Access Control
+### 存取控制
 
 ```sql
--- Grant access to monitoring team
+-- 授予監控團隊存取權限
 GRANT SELECT ON SCHEMA system.access TO `monitoring_team`;
 GRANT SELECT ON SCHEMA system.billing TO `finance_team`;
 GRANT SELECT ON SCHEMA system.query TO `platform_team`;
 ```
 
-### Governance Tips
+### 治理建議
 
-1. **Enable system tables early** in your UC setup
-2. **Use column lineage** for sensitive data tracking
-3. **Register external sources** for complete visibility
-4. **Retain audit logs** for compliance (typically 1-7 years)
-5. **Monitor failed access** for security threats
-6. **Automate alerts** for sensitive operations
+1. 在 Unity Catalog 設定初期**盡早啟用系統資料表**
+2. 使用**欄位血緣**追蹤敏感資料流向
+3. **登記外部來源**以獲得完整可見性
+4. **保留稽核日誌**以符合法規要求（通常 1–7 年）
+5. **監控存取失敗事件**以偵測資安威脅
+6. **自動化告警**以即時通知敏感操作

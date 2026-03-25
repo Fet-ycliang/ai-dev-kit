@@ -1,17 +1,17 @@
-# Databricks Python SDK - Documentation Index
+# Databricks Python SDK - 文件索引
 
-Complete mapping of API operations to documentation URLs.
+API 作業與文件 URL 的完整對照。
 
-**Base URL:** `https://databricks-sdk-py.readthedocs.io/en/latest`
+**基底 URL：** `https://databricks-sdk-py.readthedocs.io/en/latest`
 
-> **CRITICAL:** The SDK is synchronous. In async apps (FastAPI), wrap all SDK calls with `asyncio.to_thread()` to avoid blocking the event loop. See skill.md for examples.
+> **重要：** 此 SDK 為同步式。在 async 應用程式（FastAPI）中，請以 `asyncio.to_thread()` 包裝所有 SDK 呼叫，避免阻塞事件迴圈。範例請參閱 `SKILL.md`。
 
 ---
 
-## Clusters API
-**Doc:** /workspace/compute/clusters.html
+## 叢集 API
+**文件：** /workspace/compute/clusters.html
 
-| Method | Signature |
+| 方法 | 簽章 |
 |--------|-----------|
 | `w.clusters.list()` | `([filter_by, page_size, page_token, sort_by]) → Iterator[ClusterDetails]` |
 | `w.clusters.get()` | `(cluster_id: str) → ClusterDetails` |
@@ -40,10 +40,10 @@ Complete mapping of API operations to documentation URLs.
 
 ---
 
-## Jobs API
-**Doc:** /workspace/jobs/jobs.html
+## 作業 API
+**文件：** /workspace/jobs/jobs.html
 
-| Method | Signature |
+| 方法 | 簽章 |
 |--------|-----------|
 | `w.jobs.list()` | `([expand_tasks, limit, name, offset]) → Iterator[BaseJob]` |
 | `w.jobs.get()` | `(job_id, [page_token]) → Job` |
@@ -68,10 +68,10 @@ Complete mapping of API operations to documentation URLs.
 
 ---
 
-## SQL Warehouses API
-**Doc:** /workspace/sql/warehouses.html
+## SQL 倉儲 API
+**文件：** /workspace/sql/warehouses.html
 
-| Method | Signature |
+| 方法 | 簽章 |
 |--------|-----------|
 | `w.warehouses.list()` | `([page_size, page_token, run_as_user_id]) → Iterator[EndpointInfo]` |
 | `w.warehouses.get()` | `(id: str) → GetWarehouseResponse` |
@@ -90,10 +90,10 @@ Complete mapping of API operations to documentation URLs.
 
 ---
 
-## Statement Execution API
-**Doc:** /workspace/sql/statement_execution.html
+## 陳述式執行 API
+**文件：** /workspace/sql/statement_execution.html
 
-| Method | Signature |
+| 方法 | 簽章 |
 |--------|-----------|
 | `w.statement_execution.execute_statement()` | `(statement, warehouse_id, [catalog, schema, wait_timeout, ...]) → StatementResponse` |
 | `w.statement_execution.get_statement()` | `(statement_id) → StatementResponse` |
@@ -102,10 +102,10 @@ Complete mapping of API operations to documentation URLs.
 
 ---
 
-## Tables API (Unity Catalog)
-**Doc:** /workspace/catalog/tables.html
+## 資料表 API（Unity Catalog）
+**文件：** /workspace/catalog/tables.html
 
-| Method | Signature |
+| 方法 | 簽章 |
 |--------|-----------|
 | `w.tables.list()` | `(catalog_name, schema_name, [max_results, omit_columns, ...]) → Iterator[TableInfo]` |
 | `w.tables.list_summaries()` | `(catalog_name, [schema_name_pattern, table_name_pattern, ...]) → Iterator[TableSummary]` |
@@ -117,10 +117,10 @@ Complete mapping of API operations to documentation URLs.
 
 ---
 
-## Catalogs API
-**Doc:** /workspace/catalog/catalogs.html
+## 目錄 API
+**文件：** /workspace/catalog/catalogs.html
 
-| Method | Signature |
+| 方法 | 簽章 |
 |--------|-----------|
 | `w.catalogs.list()` | `([include_browse, max_results, page_token]) → Iterator[CatalogInfo]` |
 | `w.catalogs.get()` | `(name, [include_browse]) → CatalogInfo` |
@@ -130,10 +130,10 @@ Complete mapping of API operations to documentation URLs.
 
 ---
 
-## Schemas API
-**Doc:** /workspace/catalog/schemas.html
+## 結構描述 API
+**文件：** /workspace/catalog/schemas.html
 
-| Method | Signature |
+| 方法 | 簽章 |
 |--------|-----------|
 | `w.schemas.list()` | `(catalog_name, [max_results, page_token]) → Iterator[SchemaInfo]` |
 | `w.schemas.get()` | `(full_name) → SchemaInfo` |
@@ -143,10 +143,10 @@ Complete mapping of API operations to documentation URLs.
 
 ---
 
-## Volumes API
-**Doc:** /workspace/catalog/volumes.html
+## 磁碟區 API
+**文件：** /workspace/catalog/volumes.html
 
-| Method | Signature |
+| 方法 | 簽章 |
 |--------|-----------|
 | `w.volumes.list()` | `(catalog_name, schema_name, [max_results, page_token]) → Iterator[VolumeInfo]` |
 | `w.volumes.read()` | `(name, [include_browse]) → VolumeInfo` |
@@ -156,10 +156,10 @@ Complete mapping of API operations to documentation URLs.
 
 ---
 
-## Files API
-**Doc:** /workspace/files/files.html
+## 檔案 API
+**文件：** /workspace/files/files.html
 
-| Method | Signature |
+| 方法 | 簽章 |
 |--------|-----------|
 | `w.files.upload()` | `(file_path, contents: BinaryIO, [overwrite, use_parallel]) → UploadStreamResult` |
 | `w.files.upload_from()` | `(file_path, source_path, [overwrite, use_parallel]) → UploadFileResult` |
@@ -175,9 +175,9 @@ Complete mapping of API operations to documentation URLs.
 ---
 
 ## Serving Endpoints API
-**Doc:** /workspace/serving/serving_endpoints.html
+**文件：** /workspace/serving/serving_endpoints.html
 
-| Method | Signature |
+| 方法 | 簽章 |
 |--------|-----------|
 | `w.serving_endpoints.list()` | `() → Iterator[ServingEndpoint]` |
 | `w.serving_endpoints.get()` | `(name) → ServingEndpointDetailed` |
@@ -196,10 +196,10 @@ Complete mapping of API operations to documentation URLs.
 
 ---
 
-## Vector Search Indexes API
-**Doc:** /workspace/vectorsearch/vector_search_indexes.html
+## Vector Search 索引 API
+**文件：** /workspace/vectorsearch/vector_search_indexes.html
 
-| Method | Signature |
+| 方法 | 簽章 |
 |--------|-----------|
 | `w.vector_search_indexes.list_indexes()` | `(endpoint_name, [page_token]) → Iterator[MiniVectorIndex]` |
 | `w.vector_search_indexes.get_index()` | `(index_name, [include_reranker]) → VectorIndex` |
@@ -214,10 +214,10 @@ Complete mapping of API operations to documentation URLs.
 
 ---
 
-## Pipelines API (Delta Live Tables)
-**Doc:** /workspace/pipelines/pipelines.html
+## 管線 API（Delta Live Tables）
+**文件：** /workspace/pipelines/pipelines.html
 
-| Method | Signature |
+| 方法 | 簽章 |
 |--------|-----------|
 | `w.pipelines.list_pipelines()` | `([filter, max_results, ...]) → Iterator[PipelineStateInfo]` |
 | `w.pipelines.get()` | `(pipeline_id) → GetPipelineResponse` |
@@ -236,9 +236,9 @@ Complete mapping of API operations to documentation URLs.
 ---
 
 ## Secrets API
-**Doc:** /workspace/workspace/secrets.html
+**文件：** /workspace/workspace/secrets.html
 
-| Method | Signature |
+| 方法 | 簽章 |
 |--------|-----------|
 | `w.secrets.list_scopes()` | `() → Iterator[SecretScope]` |
 | `w.secrets.create_scope()` | `(scope, [backend_azure_keyvault, scope_backend_type]) → None` |
@@ -255,13 +255,13 @@ Complete mapping of API operations to documentation URLs.
 ---
 
 ## DBUtils
-**Doc:** /dbutils.html
+**文件：** /dbutils.html
 
 ```python
-# Access via WorkspaceClient
+# 透過 WorkspaceClient 存取
 dbutils = w.dbutils
 
-# File system
+# 檔案系統
 dbutils.fs.ls(path)
 dbutils.fs.cp(src, dst, recurse=False)
 dbutils.fs.mv(src, dst, recurse=False)
@@ -279,11 +279,11 @@ dbutils.secrets.listScopes()
 
 ---
 
-## Account-Level APIs
+## 帳戶層級 API
 
-For account-level operations, use `AccountClient`:
+若要執行帳戶層級作業，請使用 `AccountClient`：
 
-**Doc:** /account/index.html
+**文件：** /account/index.html
 
 ```python
 from databricks.sdk import AccountClient
@@ -292,25 +292,25 @@ a = AccountClient(
     account_id="your-account-id"
 )
 
-# Users
+# 使用者
 a.users.list()
 a.users.create(...)
 a.users.get(id)
 
-# Workspaces
+# 工作區
 a.workspaces.list()
 a.workspaces.create(...)
 
-# Groups
+# 群組
 a.groups.list()
 a.groups.create(...)
 ```
 
-| API | Documentation |
+| API | 文件 |
 |-----|---------------|
-| Users | /account/iam/users.html |
-| Groups | /account/iam/groups.html |
-| Service Principals | /account/iam/service_principals.html |
-| Workspaces | /account/provisioning/workspaces.html |
-| Budgets | /account/billing/budgets.html |
-| Usage | /account/billing/usage.html |
+| 使用者 | /account/iam/users.html |
+| 群組 | /account/iam/groups.html |
+| 服務主體（Service Principals） | /account/iam/service_principals.html |
+| 工作區 | /account/provisioning/workspaces.html |
+| 預算 | /account/billing/budgets.html |
+| 使用量 | /account/billing/usage.html |

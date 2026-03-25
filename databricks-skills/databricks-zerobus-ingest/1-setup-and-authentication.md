@@ -1,31 +1,31 @@
-# Setup and Authentication
+# 設定與認證
 
-Complete setup guide for Zerobus Ingest: endpoint configuration, service principal creation, table preparation, SDK installation, and firewall requirements.
+Zerobus Ingest 的完整設定指南：端點設定、service principal 建立、資料表準備、SDK 安裝與防火牆需求。
 
 ---
 
-## 1. Determine Your Server Endpoint
+## 1. 判定你的伺服器端點
 
-The Zerobus server endpoint format depends on your cloud provider:
+Zerobus 伺服器端點格式取決於你的雲端供應商：
 
-| Cloud | Server Endpoint Format | Workspace URL Format |
+| 雲端 | 伺服器端點格式 | 工作區 URL 格式 |
 |-------|------------------------|----------------------|
 | **AWS** | `<workspace-id>.zerobus.<region>.cloud.databricks.com` | `https://<instance>.cloud.databricks.com` |
 | **Azure** | `<workspace-id>.zerobus.<region>.azuredatabricks.net` | `https://<instance>.azuredatabricks.net` |
 
-**Example (AWS):**
+**範例（AWS）：**
 ```
-Server endpoint: 1234567890123456.zerobus.us-west-2.cloud.databricks.com
-Workspace URL:   https://dbc-a1b2c3d4-e5f6.cloud.databricks.com
+伺服器端點: 1234567890123456.zerobus.us-west-2.cloud.databricks.com
+工作區 URL:   https://dbc-a1b2c3d4-e5f6.cloud.databricks.com
 ```
 
-**Finding your workspace ID:** Extract the numeric ID from your workspace URL or workspace settings page. It is the first segment of the server endpoint.
+**尋找 workspace ID 的方式：** 從你的 workspace URL 或 workspace 設定頁面擷取數字 ID。它是伺服器端點的第一個區段。
 
 ---
 
-## 2. Create the Target Table
+## 2. 建立目標資料表
 
-Zerobus does **not** create or alter tables. You must pre-create your target table as a **managed Delta table** in Unity Catalog:
+Zerobus **不會**建立或變更資料表。你必須先在 Unity Catalog 中預先建立目標資料表，且它必須是 **managed Delta 資料表**：
 
 ```sql
 CREATE TABLE catalog.schema.my_events (
@@ -37,65 +37,65 @@ CREATE TABLE catalog.schema.my_events (
 );
 ```
 
-**Constraints:**
-- Must be a **managed** Delta table (no external storage)
-- Table names limited to ASCII letters, digits, and underscores
-- Maximum 2000 columns
-- Table must be in a [supported region](#supported-regions)
+**限制：**
+- 必須是 **managed** Delta 資料表（不可使用 external storage）
+- 資料表名稱僅限 ASCII 字母、數字與底線
+- 最多 2000 個欄位
+- 資料表必須位於[支援區域](#支援區域)
 
 ---
 
-## 3. Create a Service Principal
+## 3. 建立 Service Principal
 
-Zerobus authenticates via OAuth2 service principals (M2M). Create one via the Databricks UI or CLI:
+Zerobus 透過 OAuth2 service principal（M2M）進行認證。你可以透過 Databricks UI 或 CLI 建立：
 
-### Via UI
-1. Go to **Settings > Identity and Access > Service principals**
-2. Click **Add service principal**
-3. Generate an OAuth secret: note the **client ID** and **client secret**
+### 透過 UI
+1. 前往 **Settings > Identity and Access > Service principals**
+2. 點選 **Add service principal**
+3. 產生 OAuth secret：記下 **client ID** 與 **client secret**
 
-### Via Databricks CLI
+### 透過 Databricks CLI
 ```bash
 databricks service-principals create --display-name "zerobus-producer"
 ```
 
-### Grant Table Permissions
+### 授與資料表權限
 
-The service principal needs catalog, schema, and table access:
+Service principal 需要具備 catalog、schema 與資料表的存取權：
 
 ```sql
--- Grant catalog access
+-- 授與 catalog 存取權
 GRANT USE CATALOG ON CATALOG my_catalog TO `<service-principal-uuid>`;
 
--- Grant schema access
+-- 授與 schema 存取權
 GRANT USE SCHEMA ON SCHEMA my_catalog.my_schema TO `<service-principal-uuid>`;
 
--- Grant table write access
+-- 授與資料表寫入權限
 GRANT MODIFY, SELECT ON TABLE my_catalog.my_schema.my_events TO `<service-principal-uuid>`;
 ```
 
-**Tip:** For broader access (e.g., writing to multiple tables in a schema), grant `MODIFY` and `SELECT` at the schema level instead.
+**提示：** 若需要更廣泛的存取權（例如可寫入某個 schema 中的多個資料表），請改為在 schema 層級授與 `MODIFY` 與 `SELECT`。
 
-**Important:** For Zerobus, always grant explicit table-level `MODIFY` and `SELECT` permissions in addition to catalog/schema access. Schema-level inherited grants may not be sufficient for the OAuth `authorization_details` flow used by Zerobus.
+**重要：** 對 Zerobus 而言，除了 catalog/schema 存取權外，請一律在資料表層級明確授與 `MODIFY` 與 `SELECT` 權限。對 Zerobus 使用的 OAuth `authorization_details` flow 而言，schema 層級繼承的授權可能不足。
 
 ---
 
-## 4. Install the SDK
+## 4. 安裝 SDK
 
-### Python (3.9+)
+### Python（3.9+）
 
 ```bash
 pip install databricks-zerobus-ingest-sdk>=1.0.0
 ```
 
-Or with a virtual environment:
+或搭配虛擬環境：
 ```bash
 uv pip install databricks-zerobus-ingest-sdk>=1.0.0
 ```
 
-**Note:** The Zerobus SDK cannot be pip-installed on Databricks serverless compute. Use classic compute clusters, or use the [Zerobus REST API](https://docs.databricks.com/aws/en/ingestion/zerobus-rest-api) (Beta) for notebook-based ingestion without the SDK.
+**注意：** Zerobus SDK 無法在 Databricks serverless compute 上以 pip 安裝。請改用 classic compute clusters，或使用 [Zerobus REST API](https://docs.databricks.com/aws/en/ingestion/zerobus-rest-api)（Beta）在 notebook 中進行無 SDK 的資料攝取。
 
-### Java (8+)
+### Java（8+）
 
 Maven:
 ```xml
@@ -111,19 +111,19 @@ Gradle:
 implementation 'com.databricks:zerobus-ingest-sdk:0.1.0'
 ```
 
-### Go (1.21+)
+### Go（1.21+）
 
 ```bash
 go get github.com/databricks/zerobus-sdk-go
 ```
 
-### TypeScript / Node.js (16+)
+### TypeScript / Node.js（16+）
 
 ```bash
 npm install @databricks/zerobus-ingest-sdk
 ```
 
-### Rust (1.70+)
+### Rust（1.70+）
 
 ```bash
 cargo add databricks-zerobus-ingest-sdk
@@ -132,9 +132,9 @@ cargo add tokio --features macros,rt-multi-thread
 
 ---
 
-## 5. Configure Environment Variables
+## 5. 設定環境變數
 
-Store credentials as environment variables rather than hardcoding them:
+請將認證資訊儲存為環境變數，而非直接寫死在程式碼中：
 
 ```bash
 export ZEROBUS_SERVER_ENDPOINT="1234567890123456.zerobus.us-west-2.cloud.databricks.com"
@@ -146,58 +146,58 @@ export DATABRICKS_CLIENT_SECRET="<service-principal-client-secret>"
 
 ---
 
-## 6. Firewall Allowlisting
+## 6. 防火牆 Allowlist
 
-If your client application sits behind a firewall, you must allowlist the Zerobus IP addresses for your region before testing connectivity. Contact your Databricks representative or consult the [Zerobus documentation](https://docs.databricks.com/aws/en/ingestion/zerobus-overview) for the current IP ranges.
+若你的 client 應用程式位於防火牆後方，請先將該區域的 Zerobus IP 位址加入 allowlist，再測試連線能力。請聯絡你的 Databricks 代表，或參閱 [Zerobus 文件](https://docs.databricks.com/aws/en/ingestion/zerobus-overview) 以取得目前的 IP 範圍。
 
 ---
 
-## Supported Regions
+## 支援區域
 
-Workspace and target tables must reside in a supported region for your cloud provider.
+工作區與目標資料表都必須位於你的雲端供應商所支援的區域中。
 
 ### AWS
 
-| Region Code | Location |
+| 區域代碼 | 位置 |
 |-------------|----------|
-| `us-east-1` | US East (N. Virginia) |
-| `us-east-2` | US East (Ohio) |
-| `us-west-2` | US West (Oregon) |
-| `eu-central-1` | Europe (Frankfurt) |
-| `eu-west-1` | Europe (Ireland) |
-| `ap-southeast-1` | Asia Pacific (Singapore) |
-| `ap-southeast-2` | Asia Pacific (Sydney) |
-| `ap-northeast-1` | Asia Pacific (Tokyo) |
-| `ca-central-1` | Canada (Central) |
+| `us-east-1` | 美國東部（N. Virginia） |
+| `us-east-2` | 美國東部（Ohio） |
+| `us-west-2` | 美國西部（Oregon） |
+| `eu-central-1` | 歐洲（Frankfurt） |
+| `eu-west-1` | 歐洲（Ireland） |
+| `ap-southeast-1` | 亞太地區（Singapore） |
+| `ap-southeast-2` | 亞太地區（Sydney） |
+| `ap-northeast-1` | 亞太地區（Tokyo） |
+| `ca-central-1` | 加拿大（Central） |
 
 ### Azure
 
-| Region Code | Location |
+| 區域代碼 | 位置 |
 |-------------|----------|
-| `canadacentral` | Canada Central |
-| `westus` | West US |
-| `eastus` | East US |
-| `eastus2` | East US 2 |
-| `centralus` | Central US |
-| `northcentralus` | North Central US |
-| `swedencentral` | Sweden Central |
-| `westeurope` | West Europe |
-| `northeurope` | North Europe |
-| `australiaeast` | Australia East |
-| `southeastasia` | Southeast Asia |
+| `canadacentral` | 加拿大中部 |
+| `westus` | 美國西部 |
+| `eastus` | 美國東部 |
+| `eastus2` | 美國東部 2 |
+| `centralus` | 美國中部 |
+| `northcentralus` | 美國北部中部 |
+| `swedencentral` | 瑞典中部 |
+| `westeurope` | 西歐 |
+| `northeurope` | 北歐 |
+| `australiaeast` | 澳洲東部 |
+| `southeastasia` | 東南亞 |
 
 ---
 
-## Verification Checklist
+## 驗證檢查清單
 
-Before writing your first record, confirm:
+在寫入第一筆記錄之前，請確認：
 
 ```
-- [ ] Server endpoint matches your cloud provider and region
-- [ ] Workspace URL is correct
-- [ ] Target table exists as a managed Delta table
-- [ ] Service principal has USE CATALOG, USE SCHEMA, MODIFY, SELECT grants
-- [ ] SDK is installed for your target language
-- [ ] Environment variables are set (or credentials are configured in code)
-- [ ] Firewall allows outbound connections to the Zerobus endpoint (if applicable)
+- [ ] 伺服器端點與你的雲端供應商及區域相符
+- [ ] 工作區 URL 正確
+- [ ] 目標資料表已存在，且為 managed Delta 資料表
+- [ ] Service principal 具有 USE CATALOG、USE SCHEMA、MODIFY、SELECT 授權
+- [ ] 已為目標語言安裝 SDK
+- [ ] 已設定環境變數（或已在程式碼中設定認證）
+- [ ] 防火牆允許連往 Zerobus 端點的對外連線（如適用）
 ```

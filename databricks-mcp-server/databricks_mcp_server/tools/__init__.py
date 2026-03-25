@@ -1,1 +1,1 @@
-"""Tool modules for Databricks MCP Server."""
+"""Databricks MCP Server 工具模組。"""

@@ -1,14 +1,14 @@
-# AI Functions, http_request, remote_query, and read_files Reference
+# AI Functions、http_request、remote_query 與 read_files 參考
 
-Comprehensive reference for Databricks SQL advanced functions: built-in AI functions, HTTP requests, Lakehouse Federation remote queries, and file reading.
+Databricks SQL 進階函式的完整參考：內建 AI functions、HTTP requests、Lakehouse Federation 遠端查詢，以及檔案讀取。
 
 ---
 
-## Table of Contents
+## 目錄
 
-- [AI Functions Overview](#ai-functions-overview)
-- [ai_query -- General-Purpose AI Function](#ai_query----general-purpose-ai-function)
-- [Task-Specific AI Functions](#task-specific-ai-functions)
+- [AI Functions 概覽](#ai-functions-overview)
+- [ai_query -- 通用 AI 函式](#ai_query----general-purpose-ai-function)
+- [任務專用 AI 函式](#task-specific-ai-functions)
   - [ai_gen](#ai_gen)
   - [ai_classify](#ai_classify)
   - [ai_extract](#ai_extract)
@@ -18,48 +18,48 @@ Comprehensive reference for Databricks SQL advanced functions: built-in AI funct
   - [ai_translate](#ai_translate)
   - [ai_fix_grammar](#ai_fix_grammar)
   - [ai_mask](#ai_mask)
-- [Document and Multimodal AI Functions](#document-and-multimodal-ai-functions)
+- [文件與多模態 AI 函式](#document-and-multimodal-ai-functions)
   - [ai_parse_document](#ai_parse_document)
-- [Time Series AI Functions](#time-series-ai-functions)
+- [時間序列 AI 函式](#time-series-ai-functions)
   - [ai_forecast](#ai_forecast)
-- [Vector Search Function](#vector-search-function)
+- [Vector Search 函式](#vector-search-function)
   - [vector_search](#vector_search)
-- [http_request Function](#http_request-function)
-- [remote_query Function (Lakehouse Federation)](#remote_query-function-lakehouse-federation)
-- [read_files Table-Valued Function](#read_files-table-valued-function)
+- [http_request 函式](#http_request-function)
+- [remote_query 函式（Lakehouse Federation）](#remote_query-function-lakehouse-federation)
+- [read_files 資料表值函式](#read_files-table-valued-function)
 
 ---
 
-## AI Functions Overview
+## AI Functions 概覽
 
-Databricks AI Functions are built-in SQL functions that invoke state-of-the-art generative AI models directly from SQL. They run on Databricks Foundation Model APIs and are available from Databricks SQL, notebooks, Lakeflow Spark Declarative Pipelines, and Workflows.
+Databricks AI Functions 是內建 SQL 函式，可直接從 SQL 呼叫最先進的生成式 AI 模型。它們執行於 Databricks Foundation Model APIs 之上，並可從 Databricks SQL、notebooks、Lakeflow Spark Declarative Pipelines 與 Workflows 使用。
 
-**Common Requirements for All AI Functions:**
-- Workspace must be in a region supporting AI Functions optimized for batch inference
-- Not available on Databricks SQL Classic (requires Serverless SQL Warehouse)
-- Databricks Runtime 15.1+ for notebooks; 15.4 ML LTS recommended for batch workloads
-- Models licensed under Apache 2.0 or LLAMA 3.3 Community License
-- Currently tuned for English (underlying models support multiple languages)
-- Public Preview, HIPAA compliant
+**所有 AI Functions 的共同需求：**
+- Workspace 必須位於支援針對批次推論最佳化之 AI Functions 的區域
+- Databricks SQL Classic 不提供（需要 Serverless SQL Warehouse）
+- notebooks 需要 Databricks Runtime 15.1+；批次工作負載建議使用 15.4 ML LTS
+- 模型採用 Apache 2.0 或 LLAMA 3.3 Community License 授權
+- 目前針對英文最佳化（底層模型支援多種語言）
+- Public Preview，且符合 HIPAA
 
-**Rate Limits and Billing:**
-- AI Functions are subject to Foundation Model API rate limits
-- Billed as Databricks SQL compute plus token usage on Foundation Model APIs
-- Use `LIMIT` in queries during development to control costs
+**速率限制與計費：**
+- AI Functions 受 Foundation Model API 速率限制約束
+- 計費方式為 Databricks SQL 運算費用加上 Foundation Model APIs 的 Token 用量
+- 開發期間請在查詢中使用 `LIMIT` 以控制成本
 
 ---
 
-## ai_query -- General-Purpose AI Function
+## ai_query -- 通用 AI 函式
 
-The most powerful and flexible AI function. Queries any serving endpoint (Foundation Models, external models, or custom ML models) for real-time or batch inference.
+功能最強大且最具彈性的 AI 函式。可查詢任何 serving endpoint（Foundation Models、外部模型或自訂 ML 模型），進行即時或批次推論。
 
-### Syntax
+### 語法
 
 ```sql
--- Basic invocation
+-- 基本呼叫方式
 ai_query(endpoint, request)
 
--- Full invocation with all optional parameters
+-- 含所有選用參數的完整呼叫方式
 ai_query(
   endpoint,
   request,
@@ -71,33 +71,33 @@ ai_query(
 )
 ```
 
-### Parameters
+### 參數
 
-| Parameter | Type | Required | Description |
+| 參數 | 類型 | 必填 | 說明 |
 |-----------|------|----------|-------------|
-| `endpoint` | STRING | Yes | Name of a Foundation Model, external model, or custom model serving endpoint in the same workspace |
-| `request` | STRING or STRUCT | Yes | For LLM endpoints: STRING prompt. For custom ML endpoints: single column or STRUCT matching expected input features |
-| `returnType` | Expression | No | Expected return type (DDL-style). Optional in Runtime 15.2+; required in 15.1 and below |
-| `failOnError` | BOOLEAN | No | Default `true`. When `false`, returns STRUCT with `response` and `errorStatus` fields instead of failing |
-| `modelParameters` | STRUCT | No | Model parameters via `named_struct()` (Runtime 15.3+) |
-| `responseFormat` | STRING | No | Controls output format: `'text'`, `'json_object'`, or a DDL/JSON schema string (Runtime 15.4 LTS+, chat models only) |
-| `files` | Expression | No | Multimodal file input for image processing (JPEG, PNG supported) |
+| `endpoint` | STRING | 是 | 同一個 workspace 中的 Foundation Model、外部模型或自訂模型 serving endpoint 名稱 |
+| `request` | STRING 或 STRUCT | 是 | 對 LLM endpoint 而言為 STRING prompt；對自訂 ML endpoint 而言為單一欄位或符合預期輸入特徵的 STRUCT |
+| `returnType` | Expression | 否 | 預期的回傳型別（DDL 樣式）。在 Runtime 15.2+ 為選用；15.1 與更早版本為必填 |
+| `failOnError` | BOOLEAN | 否 | 預設為 `true`。若設為 `false`，會回傳含有 `response` 與 `errorStatus` 欄位的 STRUCT，而不是直接失敗 |
+| `modelParameters` | STRUCT | 否 | 透過 `named_struct()` 傳入的模型參數（Runtime 15.3+） |
+| `responseFormat` | STRING | 否 | 控制輸出格式：`'text'`、`'json_object'`，或 DDL/JSON schema 字串（Runtime 15.4 LTS+，僅限 chat models） |
+| `files` | Expression | 否 | 用於影像處理的多模態檔案輸入（支援 JPEG、PNG） |
 
-### Return Types
+### 回傳型別
 
-| Scenario | Return Type |
+| 情境 | 回傳型別 |
 |----------|-------------|
-| `failOnError => true` (default) | Parsed response matching endpoint type or `returnType` |
-| `failOnError => false` | `STRUCT<result: T, errorMessage: STRING>` where T is the parsed type |
-| With `responseFormat` | Structured output matching the specified schema |
+| `failOnError => true`（預設） | 符合 endpoint 類型或 `returnType` 的已解析回應 |
+| `failOnError => false` | `STRUCT<result: T, errorMessage: STRING>`，其中 T 為已解析型別 |
+| 使用 `responseFormat` | 符合指定 schema 的結構化輸出 |
 
-### Model Parameters
+### 模型參數
 
 ```sql
--- Control generation with modelParameters
+-- 使用 modelParameters 控制生成結果
 SELECT ai_query(
   'databricks-meta-llama-3-3-70b-instruct',
-  'Explain quantum computing in 3 sentences.',
+  '請用 3 句話解釋量子運算。',
   modelParameters => named_struct(
     'max_tokens', 256,
     'temperature', 0.1,
@@ -106,44 +106,44 @@ SELECT ai_query(
 ) AS response;
 ```
 
-Common model parameters:
-- `max_tokens` (INT) -- Maximum tokens to generate
-- `temperature` (DOUBLE) -- Randomness (0.0 = deterministic, 2.0 = max random)
-- `top_p` (DOUBLE) -- Nucleus sampling threshold
-- `stop` (ARRAY<STRING>) -- Stop sequences
+常見模型參數：
+- `max_tokens` (INT) -- 要生成的最大 Token 數
+- `temperature` (DOUBLE) -- 隨機性（0.0 = 決定性，2.0 = 最大隨機）
+- `top_p` (DOUBLE) -- nucleus sampling 門檻值
+- `stop` (ARRAY<STRING>) -- 停止序列
 
-### Structured Output with responseFormat
+### 使用 responseFormat 產生結構化輸出
 
-> **Note:** The top-level `responseFormat` STRUCT must contain exactly one field. To return multiple fields, wrap them in a single outer field.
+> **注意：** 最上層 `responseFormat` STRUCT 必須只包含一個欄位。若要回傳多個欄位，請包在單一外層欄位中。
 
 ```sql
--- Force JSON output matching a schema (top-level STRUCT must have exactly one field)
+-- 強制輸出符合 schema 的 JSON（最上層 STRUCT 必須只有一個欄位）
 SELECT ai_query(
   'databricks-meta-llama-3-3-70b-instruct',
-  'Extract the product name, price, and category from: "Sony WH-1000XM5 headphones, $348, Electronics"',
+  '請從以下內容擷取產品名稱、價格與類別：「Sony WH-1000XM5 headphones, $348, Electronics」',
   responseFormat => 'STRUCT<result: STRUCT<product_name: STRING, price: DOUBLE, category: STRING>>'
 ) AS extracted;
 ```
 
-### Batch Inference on Tables
+### 對資料表執行批次推論
 
 ```sql
--- Classify all rows in a table
+-- 對資料表中的所有資料列進行分類
 SELECT
   review_id,
   review_text,
   ai_query(
     'databricks-meta-llama-3-3-70b-instruct',
-    CONCAT('Classify the following review as positive, negative, or neutral: ', review_text),
+    CONCAT('請將以下評論分類為正面、負面或中性：', review_text),
     responseFormat => 'STRUCT<result: STRUCT<sentiment: STRING, confidence: STRING>>'
   ) AS classification
 FROM catalog.schema.product_reviews;
 ```
 
-### Custom ML Model Inference
+### 自訂 ML 模型推論
 
 ```sql
--- Query a custom sklearn/MLflow model
+-- 查詢自訂 sklearn/MLflow 模型
 SELECT ai_query(
   endpoint  => 'spam-classification-endpoint',
   request   => named_struct(
@@ -155,21 +155,21 @@ SELECT ai_query(
 FROM catalog.schema.inbox_messages;
 ```
 
-### Multimodal (Image) Input
+### 多模態（影像）輸入
 
 ```sql
--- Analyze images using a vision model
+-- 使用視覺模型分析影像
 SELECT ai_query(
   'databricks-meta-llama-3-2-90b-instruct',
-  'Describe the contents of this image.',
+  '請描述這張圖片的內容。',
   files => READ_FILES('/Volumes/catalog/schema/images/photo.jpg', format => 'binaryFile')
 ) AS description;
 ```
 
-### Error Handling with failOnError
+### 使用 failOnError 進行錯誤處理
 
 ```sql
--- Graceful error handling for batch processing
+-- 為批次處理提供平順的錯誤處理
 SELECT
   id,
   result.result AS answer,
@@ -186,10 +186,10 @@ FROM (
 );
 ```
 
-### Embedding Generation
+### 產生 Embedding
 
 ```sql
--- Generate embeddings using ai_query
+-- 使用 ai_query 產生 Embedding
 SELECT
   text,
   ai_query('databricks-gte-large-en', text) AS embedding
@@ -198,33 +198,33 @@ FROM catalog.schema.documents;
 
 ---
 
-## Task-Specific AI Functions
+## 任務專用 AI 函式
 
-These functions provide simplified, single-purpose interfaces that do not require specifying an endpoint or model.
+這些函式提供簡化且單一用途的介面，不需要指定 endpoint 或 model。
 
 ### ai_gen
 
-Generate text from a prompt.
+根據 prompt 產生文字。
 
 ```sql
 ai_gen(prompt)
 ```
 
-| Parameter | Type | Description |
+| 參數 | 類型 | 說明 |
 |-----------|------|-------------|
-| `prompt` | STRING | The user's request/prompt |
+| `prompt` | STRING | 使用者的請求／prompt |
 
-**Returns:** STRING
+**回傳：** STRING
 
 ```sql
--- Simple generation
-SELECT ai_gen('Generate a concise, cheerful email title for a summer bike sale with 20% discount');
--- Returns: "Summer Bike Sale: Grab Your Dream Bike at 20% Off!"
+-- 簡單生成
+SELECT ai_gen('請為夏季腳踏車特賣活動產生一個精簡、愉快的電子郵件標題，內容包含 20% 折扣');
+-- 回傳：「夏季腳踏車特賣：以 8 折入手你的夢幻單車！」
 
--- Generation using table data
+-- 使用資料表資料生成
 SELECT
   question,
-  ai_gen('You are a teacher. Answer the students question in 50 words: ' || question) AS answer
+  ai_gen('你是一位老師。請用 50 個字回答學生的問題：' || question) AS answer
 FROM catalog.schema.questions
 LIMIT 10;
 ```
@@ -233,38 +233,38 @@ LIMIT 10;
 
 ### ai_classify
 
-Classify text into one of the provided labels.
+將文字分類為提供標籤中的其中一項。
 
 ```sql
 ai_classify(content, labels)
 ```
 
-| Parameter | Type | Description |
+| 參數 | 類型 | 說明 |
 |-----------|------|-------------|
-| `content` | STRING | Text to classify |
-| `labels` | ARRAY<STRING> | Classification options (min 2, max 20 elements) |
+| `content` | STRING | 要分類的文字 |
+| `labels` | ARRAY<STRING> | 分類選項（最少 2 個、最多 20 個元素） |
 
-**Returns:** STRING matching one of the labels, or NULL if classification fails.
+**回傳：** STRING matching one of the labels, or NULL if classification fails.
 
 ```sql
--- Simple classification
-SELECT ai_classify('My password is leaked.', ARRAY('urgent', 'not urgent'));
--- Returns: "urgent"
+-- 簡單分類
+SELECT ai_classify('我的密碼外洩了。', ARRAY('緊急', '不緊急'));
+-- 回傳：「緊急」
 
--- Batch product categorization
+-- 批次產品分類
 SELECT
   product_name,
   description,
-  ai_classify(description, ARRAY('clothing', 'shoes', 'accessories', 'furniture')) AS category
+  ai_classify(description, ARRAY('服飾', '鞋類', '配件', '家具')) AS category
 FROM catalog.schema.products
 LIMIT 100;
 
--- Support ticket routing
+-- 支援工單路由
 SELECT
   ticket_id,
   ai_classify(
     description,
-    ARRAY('billing', 'technical', 'account', 'feature_request', 'other')
+    ARRAY('帳務', '技術', '帳號', '功能需求', '其他')
   ) AS department
 FROM catalog.schema.support_tickets;
 ```
@@ -273,35 +273,35 @@ FROM catalog.schema.support_tickets;
 
 ### ai_extract
 
-Extract named entities from text.
+從文字中擷取命名實體。
 
 ```sql
 ai_extract(content, labels)
 ```
 
-| Parameter | Type | Description |
+| 參數 | 類型 | 說明 |
 |-----------|------|-------------|
-| `content` | STRING | Text to extract entities from |
-| `labels` | ARRAY<STRING> | Entity types to extract |
+| `content` | STRING | 要從中擷取實體的文字 |
+| `labels` | ARRAY<STRING> | 要擷取的實體類型 |
 
-**Returns:** STRUCT where each field corresponds to a label, containing the extracted entity as STRING. Returns NULL if content is NULL.
+**回傳：** STRUCT，其中每個欄位對應一個標籤，並以 STRING 儲存擷取出的實體。若 content 為 NULL，則回傳 NULL。
 
 ```sql
--- Extract person, location, organization
+-- 擷取人名、地點與組織
 SELECT ai_extract(
-  'John Doe lives in New York and works for Acme Corp.',
+  'John Doe 住在 New York，並在 Acme Corp. 工作。',
   ARRAY('person', 'location', 'organization')
 );
--- Returns: {"person": "John Doe", "location": "New York", "organization": "Acme Corp."}
+-- 回傳：{"person": "John Doe", "location": "New York", "organization": "Acme Corp."}
 
--- Extract contact details
+-- 擷取聯絡資訊
 SELECT ai_extract(
-  'Send an email to jane.doe@example.com about the meeting at 10am.',
+  '請寄送電子郵件到 jane.doe@example.com，說明上午 10 點的會議。',
   ARRAY('email', 'time')
 );
--- Returns: {"email": "jane.doe@example.com", "time": "10am"}
+-- 回傳：{"email": "jane.doe@example.com", "time": "上午 10 點"}
 
--- Batch entity extraction from customer feedback
+-- 從客戶回饋中批次擷取實體
 SELECT
   feedback_id,
   ai_extract(feedback_text, ARRAY('product', 'issue', 'person')) AS entities
@@ -312,24 +312,24 @@ FROM catalog.schema.customer_feedback;
 
 ### ai_analyze_sentiment
 
-Perform sentiment analysis on text.
+對文字進行情緒分析。
 
 ```sql
 ai_analyze_sentiment(content)
 ```
 
-| Parameter | Type | Description |
+| 參數 | 類型 | 說明 |
 |-----------|------|-------------|
-| `content` | STRING | Text to analyze |
+| `content` | STRING | 要分析的文字 |
 
-**Returns:** STRING -- one of `'positive'`, `'negative'`, `'neutral'`, or `'mixed'`. Returns NULL if sentiment cannot be determined.
+**回傳：** STRING -- one of `'positive'`, `'negative'`, `'neutral'`, or `'mixed'`. Returns NULL if sentiment cannot be determined.
 
 ```sql
-SELECT ai_analyze_sentiment('I am happy');     -- Returns: "positive"
-SELECT ai_analyze_sentiment('I am sad');       -- Returns: "negative"
-SELECT ai_analyze_sentiment('It is what it is'); -- Returns: "neutral"
+SELECT ai_analyze_sentiment('我很開心。');     -- 回傳："positive"
+SELECT ai_analyze_sentiment('我很難過。');       -- 回傳："negative"
+SELECT ai_analyze_sentiment('事情就是這樣。'); -- 回傳："neutral"
 
--- Aggregate sentiment by product
+-- 依產品彙總情緒
 SELECT
   product_id,
   ai_analyze_sentiment(review_text) AS sentiment,
@@ -342,31 +342,31 @@ GROUP BY product_id, ai_analyze_sentiment(review_text);
 
 ### ai_similarity
 
-Compute semantic similarity between two text strings.
+計算兩段文字之間的語意相似度。
 
 ```sql
 ai_similarity(expr1, expr2)
 ```
 
-| Parameter | Type | Description |
+| 參數 | 類型 | 說明 |
 |-----------|------|-------------|
-| `expr1` | STRING | First text to compare |
-| `expr2` | STRING | Second text to compare |
+| `expr1` | STRING | 第一段要比較的文字 |
+| `expr2` | STRING | 第二段要比較的文字 |
 
-**Returns:** FLOAT -- Semantic similarity score where 1.0 means identical. The score is relative and should only be used for ranking.
+**回傳：** FLOAT -- 語意相似度分數，其中 1.0 代表完全相同。此分數為相對值，僅適合用於排序。
 
 ```sql
--- Exact match
+-- 完全相符
 SELECT ai_similarity('Apache Spark', 'Apache Spark');
--- Returns: 1.0
+-- 回傳：1.0
 
--- Find similar company names (fuzzy matching)
+-- 尋找相似公司名稱（模糊比對）
 SELECT company_name, ai_similarity(company_name, 'Databricks') AS score
 FROM catalog.schema.customers
 ORDER BY score DESC
 LIMIT 10;
 
--- Duplicate detection
+-- 重複資料偵測
 SELECT
   a.id AS id_a,
   b.id AS id_b,
@@ -380,32 +380,32 @@ WHERE ai_similarity(a.description, b.description) > 0.85;
 
 ### ai_summarize
 
-Generate a summary of text.
+產生文字摘要。
 
 ```sql
 ai_summarize(content [, max_words])
 ```
 
-| Parameter | Type | Required | Description |
+| 參數 | 類型 | 必填 | 說明 |
 |-----------|------|----------|-------------|
-| `content` | STRING | Yes | Text to summarize |
-| `max_words` | INTEGER | No | Target word count for summary. Default: 50. Set to 0 for no limit |
+| `content` | STRING | 是 | 要摘要的文字 |
+| `max_words` | INTEGER | 否 | 摘要的目標字數。預設為 50；設為 0 則不限制 |
 
-**Returns:** STRING. Returns NULL if content is NULL.
+**回傳：** STRING. Returns NULL if content is NULL.
 
 ```sql
--- Summarize with default 50-word limit
+-- 以預設 50 字限制產生摘要
 SELECT ai_summarize(
-  'Apache Spark is a unified analytics engine for large-scale data processing. '
-  || 'It provides high-level APIs in Java, Scala, Python and R, and an optimized '
-  || 'engine that supports general execution graphs.'
+  'Apache Spark 是一個用於大規模資料處理的統一分析引擎。'
+  || '它提供 Java、Scala、Python 與 R 的高階 API，並具備經過最佳化的'
+  || '執行引擎，可支援一般化的執行圖。'
 );
 
--- Summarize with custom word limit
+-- 以自訂字數限制產生摘要
 SELECT ai_summarize(article_body, 100) AS summary
 FROM catalog.schema.articles;
 
--- Executive summaries for reports
+-- 為報告產生高階主管摘要
 SELECT
   report_id,
   report_title,
@@ -417,31 +417,31 @@ FROM catalog.schema.quarterly_reports;
 
 ### ai_translate
 
-Translate text to a target language.
+將文字翻譯成目標語言。
 
 ```sql
 ai_translate(content, to_lang)
 ```
 
-| Parameter | Type | Description |
+| 參數 | 類型 | 說明 |
 |-----------|------|-------------|
-| `content` | STRING | Text to translate |
-| `to_lang` | STRING | Target language code |
+| `content` | STRING | 要翻譯的文字 |
+| `to_lang` | STRING | 目標語言代碼 |
 
-**Supported Languages:** English (`en`), German (`de`), French (`fr`), Italian (`it`), Portuguese (`pt`), Hindi (`hi`), Spanish (`es`), Thai (`th`).
+**支援語言：** English (`en`)、German (`de`)、French (`fr`)、Italian (`it`)、Portuguese (`pt`)、Hindi (`hi`)、Spanish (`es`)、Thai (`th`)。
 
-**Returns:** STRING. Returns NULL if content is NULL.
+**回傳：** STRING. Returns NULL if content is NULL.
 
 ```sql
--- English to Spanish
-SELECT ai_translate('Hello, how are you?', 'es');
--- Returns: "Hola, como estas?"
+-- 英文翻譯為西班牙文
+SELECT ai_translate('你好，你最近好嗎？', 'es');
+-- 回傳：「Hola, como estas?」
 
--- Spanish to English
+-- 西班牙文翻譯為英文
 SELECT ai_translate('La vida es un hermoso viaje.', 'en');
--- Returns: "Life is a beautiful journey."
+-- 回傳：「Life is a beautiful journey.」
 
--- Translate product descriptions for localization
+-- 為在地化翻譯產品描述
 SELECT
   product_id,
   description AS original,
@@ -454,26 +454,26 @@ FROM catalog.schema.products;
 
 ### ai_fix_grammar
 
-Correct grammatical errors in text.
+修正文法錯誤。
 
 ```sql
 ai_fix_grammar(content)
 ```
 
-| Parameter | Type | Description |
+| 參數 | 類型 | 說明 |
 |-----------|------|-------------|
-| `content` | STRING | Text to correct |
+| `content` | STRING | 要修正的文字 |
 
-**Returns:** STRING with corrected grammar. Returns NULL if content is NULL.
+**回傳：** STRING with corrected grammar. Returns NULL if content is NULL.
 
 ```sql
 SELECT ai_fix_grammar('This sentence have some mistake');
--- Returns: "This sentence has some mistakes"
+-- 回傳：「This sentence has some mistakes」
 
 SELECT ai_fix_grammar('She dont know what to did.');
--- Returns: "She doesn't know what to do."
+-- 回傳：「She doesn't know what to do.」
 
--- Clean up user-generated content
+-- 清理使用者產生內容
 SELECT
   comment_id,
   original_text,
@@ -485,35 +485,35 @@ FROM catalog.schema.user_comments;
 
 ### ai_mask
 
-Mask specified entity types in text (PII redaction).
+遮罩文字中指定的實體類型（PII 去識別化）。
 
 ```sql
 ai_mask(content, labels)
 ```
 
-| Parameter | Type | Description |
+| 參數 | 類型 | 說明 |
 |-----------|------|-------------|
-| `content` | STRING | Text containing entities to mask |
-| `labels` | ARRAY<STRING> | Entity types to mask (e.g., `'person'`, `'email'`, `'phone'`, `'address'`, `'location'`, `'ssn'`, `'credit_card'`) |
+| `content` | STRING | 含有待遮罩實體的文字 |
+| `labels` | ARRAY<STRING> | 要遮罩的實體類型（例如 `'person'`、`'email'`、`'phone'`、`'address'`、`'location'`、`'ssn'`、`'credit_card'`） |
 
-**Returns:** STRING with specified entities replaced by `[MASKED]`. Returns NULL if content is NULL.
+**回傳：** STRING with specified entities replaced by `[MASKED]`. Returns NULL if content is NULL.
 
 ```sql
--- Mask personal information
+-- 遮罩個人資訊
 SELECT ai_mask(
-  'John Doe lives in New York. His email is john.doe@example.com.',
+  'John Doe 住在 New York。他的電子郵件是 john.doe@example.com。',
   ARRAY('person', 'email')
 );
--- Returns: "[MASKED] lives in New York. His email is [MASKED]."
+-- 回傳：「[MASKED] 住在 New York。他的電子郵件是 [MASKED]。」
 
--- Mask contact details
+-- 遮罩聯絡資訊
 SELECT ai_mask(
-  'Contact me at 555-1234 or visit us at 123 Main St.',
+  '請撥打 555-1234 聯絡我，或前往 123 Main St.。',
   ARRAY('phone', 'address')
 );
--- Returns: "Contact me at [MASKED] or visit us at [MASKED]"
+-- 回傳：「請透過 [MASKED] 聯絡我，或前往 [MASKED]」
 
--- Create anonymized dataset
+-- 建立匿名化資料集
 CREATE TABLE catalog.schema.anonymized_feedback AS
 SELECT
   feedback_id,
@@ -524,46 +524,46 @@ FROM catalog.schema.customer_feedback;
 
 ---
 
-## Document and Multimodal AI Functions
+## 文件與多模態 AI 函式
 
 ### ai_parse_document
 
-Extract structured content from unstructured documents (PDF, DOCX, PPTX, images).
+從非結構化文件（PDF、DOCX、PPTX、影像）中擷取結構化內容。
 
 ```sql
 ai_parse_document(content)
 ai_parse_document(content, options_map)
 ```
 
-| Parameter | Type | Required | Description |
+| 參數 | 類型 | 必填 | 說明 |
 |-----------|------|----------|-------------|
-| `content` | BINARY | Yes | Document as binary blob data |
-| `options` | MAP<STRING, STRING> | No | Configuration options |
+| `content` | BINARY | 是 | 以二進位 blob 資料表示的文件 |
+| `options` | MAP<STRING, STRING> | 否 | 設定選項 |
 
-**Options Map Keys:**
+**Options Map 鍵值：**
 
-| Key | Values | Description |
+| 鍵值 | 值 | 說明 |
 |-----|--------|-------------|
-| `version` | `'2.0'` | Output schema version |
-| `imageOutputPath` | Volume path | Path to save rendered page images in Unity Catalog volume |
-| `descriptionElementTypes` | `''`, `'figure'`, `'*'` | Controls AI-generated descriptions. Default: `'*'` (all elements) |
+| `version` | `'2.0'` | 輸出 schema 版本 |
+| `imageOutputPath` | Volume path | 儲存轉譯後頁面影像的 Unity Catalog volume 路徑 |
+| `descriptionElementTypes` | `''`、`'figure'`、`'*'` | 控制 AI 產生描述的方式。預設為 `'*'`（所有元素） |
 
-**Returns:** VARIANT with structure:
-- `document.pages[]` -- Page metadata (id, image_uri)
-- `document.elements[]` -- Extracted content (type, content, bbox, description)
-- `error_status[]` -- Error details per page
-- `metadata` -- File and schema version info
+**回傳：** 具有以下結構的 VARIANT：
+- `document.pages[]` -- 頁面中繼資料（id、image_uri）
+- `document.elements[]` -- 擷取內容（type、content、bbox、description）
+- `error_status[]` -- 每頁的錯誤詳細資料
+- `metadata` -- 檔案與 schema 版本資訊
 
-**Supported Formats:** PDF, JPG/JPEG, PNG, DOC/DOCX, PPT/PPTX
+**支援格式：** PDF、JPG/JPEG、PNG、DOC/DOCX、PPT/PPTX
 
-**Requirements:** Databricks Runtime 17.1+, US/EU region or cross-geography routing enabled.
+**需求：** Databricks Runtime 17.1+，且位於 US/EU 區域或已啟用跨地域路由。
 
 ```sql
--- Basic document parsing
+-- 基本文件解析
 SELECT ai_parse_document(content)
 FROM READ_FILES('/Volumes/catalog/schema/volume/docs/', format => 'binaryFile');
 
--- Parse with options (save images, version 2.0)
+-- 使用選項解析（儲存影像、版本 2.0）
 SELECT ai_parse_document(
   content,
   map(
@@ -574,7 +574,7 @@ SELECT ai_parse_document(
 )
 FROM READ_FILES('/Volumes/catalog/schema/volume/invoices/', format => 'binaryFile');
 
--- Parse documents then extract structured data with ai_query
+-- 先解析文件，再以 ai_query 擷取結構化資料
 WITH parsed AS (
   SELECT
     path,
@@ -585,7 +585,7 @@ SELECT
   path,
   ai_query(
     'databricks-meta-llama-3-3-70b-instruct',
-    CONCAT('Extract vendor name, invoice number, and total from: ', doc:document:elements[0]:content::STRING),
+    CONCAT('請從以下內容擷取供應商名稱、發票號碼與總額：', doc:document:elements[0]:content::STRING),
     responseFormat => 'STRUCT<vendor: STRING, invoice_number: STRING, total: DOUBLE>'
   ) AS invoice_data
 FROM parsed;
@@ -593,11 +593,11 @@ FROM parsed;
 
 ---
 
-## Time Series AI Functions
+## 時間序列 AI 函式
 
 ### ai_forecast
 
-Forecast time series data using a built-in prophet-like model. This is a table-valued function (TVF).
+使用內建、類似 prophet 的模型預測時間序列資料。這是一個資料表值函式（TVF）。
 
 ```sql
 ai_forecast(
@@ -613,38 +613,38 @@ ai_forecast(
 )
 ```
 
-### Parameters
+### 參數
 
-| Parameter | Type | Default | Description |
+| 參數 | 類型 | 預設值 | 說明 |
 |-----------|------|---------|-------------|
-| `observed` | TABLE | Required | Training data passed as `TABLE(subquery)` or `TABLE(table_name)` |
-| `horizon` | DATE/TIMESTAMP/STRING | Required | Right-exclusive forecast end time |
-| `time_col` | STRING | Required | Name of DATE or TIMESTAMP column in observed data |
-| `value_col` | STRING or ARRAY<STRING> | Required | One or more numeric columns to forecast |
-| `group_col` | STRING, ARRAY<STRING>, or NULL | NULL | Partition column(s) for independent per-group forecasts |
-| `prediction_interval_width` | DOUBLE | 0.95 | Confidence level for prediction bounds (0 to 1) |
-| `frequency` | STRING | `'auto'` | Time granularity. Auto-infers from recent data. For DATE columns use: `'day'`, `'week'`, `'month'`. For TIMESTAMP columns: `'D'`, `'W'`, `'M'`, `'H'`, etc. |
-| `seed` | INTEGER or NULL | NULL | Random seed for reproducibility |
-| `parameters` | STRING | `'{}'` | JSON-encoded advanced settings |
+| `observed` | TABLE | 必填 | 以 `TABLE(subquery)` 或 `TABLE(table_name)` 傳入的訓練資料 |
+| `horizon` | DATE/TIMESTAMP/STRING | 必填 | 不包含在內的預測結束時間 |
+| `time_col` | STRING | 必填 | observed 資料中 DATE 或 TIMESTAMP 欄位的名稱 |
+| `value_col` | STRING 或 ARRAY<STRING> | 必填 | 要預測的一個或多個數值欄位 |
+| `group_col` | STRING、ARRAY<STRING> 或 NULL | NULL | 用於各群組獨立預測的分割欄位 |
+| `prediction_interval_width` | DOUBLE | 0.95 | 預測區間界限的信賴水準（0 到 1） |
+| `frequency` | STRING | `'auto'` | 時間粒度。會根據近期資料自動推斷。DATE 欄位可使用 `'day'`、`'week'`、`'month'`；TIMESTAMP 欄位可使用 `'D'`、`'W'`、`'M'`、`'H'` 等。 |
+| `seed` | INTEGER 或 NULL | NULL | 供重現結果使用的隨機種子 |
+| `parameters` | STRING | `'{}'` | JSON 編碼的進階設定 |
 
-**Advanced Parameters (JSON):**
-- `global_cap` -- Upper bound for logistic growth
-- `global_floor` -- Lower bound for logistic growth
-- `daily_order` -- Fourier order for daily seasonality
-- `weekly_order` -- Fourier order for weekly seasonality
+**進階參數（JSON）：**
+- `global_cap` -- logistic growth 的上界
+- `global_floor` -- logistic growth 的下界
+- `daily_order` -- 每日季節性的 Fourier 階數
+- `weekly_order` -- 每週季節性的 Fourier 階數
 
-### Return Columns
+### 回傳欄位
 
-For each `value_col` named `v`, the output contains:
-- `{v}_forecast` (DOUBLE) -- Point forecast
-- `{v}_upper` (DOUBLE) -- Upper prediction bound
-- `{v}_lower` (DOUBLE) -- Lower prediction bound
-- Plus the original time column and group columns
+對於每個名為 `v` 的 `value_col`，輸出內容包含：
+- `{v}_forecast` (DOUBLE) -- 點預測值
+- `{v}_upper` (DOUBLE) -- 預測上界
+- `{v}_lower` (DOUBLE) -- 預測下界
+- 以及原始時間欄位與群組欄位
 
-**Requirements:** Serverless SQL Warehouse.
+**需求：** Serverless SQL Warehouse。
 
 ```sql
--- Basic revenue forecast
+-- 基本營收預測
 SELECT * FROM ai_forecast(
   TABLE(SELECT ds, revenue FROM catalog.schema.daily_sales),
   horizon    => '2025-12-31',
@@ -652,7 +652,7 @@ SELECT * FROM ai_forecast(
   value_col  => 'revenue'
 );
 
--- Multi-metric forecast by group
+-- 依群組進行多指標預測
 SELECT * FROM ai_forecast(
   TABLE(
     SELECT date, zipcode, revenue, trip_count
@@ -666,7 +666,7 @@ SELECT * FROM ai_forecast(
   frequency                 => 'D'
 );
 
--- Monthly forecast with growth constraints (use 'month' for DATE columns, not 'M')
+-- 具成長限制的每月預測（DATE 欄位請使用 'month'，不要用 'M'）
 SELECT * FROM ai_forecast(
   TABLE(catalog.schema.monthly_kpis),
   horizon    => '2026-01-01',
@@ -679,11 +679,11 @@ SELECT * FROM ai_forecast(
 
 ---
 
-## Vector Search Function
+## Vector Search 函式
 
 ### vector_search
 
-Query a Mosaic AI Vector Search index using SQL. This is a table-valued function.
+使用 SQL 查詢 Mosaic AI Vector Search 索引。這是一個資料表值函式。
 
 ```sql
 -- Databricks Runtime 15.3+
@@ -695,44 +695,44 @@ SELECT * FROM vector_search(
 )
 ```
 
-### Parameters (Named Arguments Required)
+### 參數 (Named Arguments Required)
 
-| Parameter | Type | Default | Description |
+| 參數 | 類型 | 預設值 | 說明 |
 |-----------|------|---------|-------------|
-| `index` | STRING constant | Required | Fully qualified name of the vector search index |
-| `query_text` | STRING | -- | Search string (for Delta Sync indexes with embedding source) |
-| `query_vector` | ARRAY<FLOAT\|DOUBLE\|DECIMAL> | -- | Pre-computed embedding vector to search |
-| `num_results` | INTEGER | 10 | Max records returned (max 100) |
-| `query_type` | STRING | `'ANN'` | `'ANN'` for approximate nearest neighbor, `'HYBRID'` for hybrid search |
+| `index` | STRING 常值 | 必填 | vector search 索引的完整名稱 |
+| `query_text` | STRING | -- | 搜尋字串（適用於具有 embedding 來源的 Delta Sync 索引） |
+| `query_vector` | ARRAY<FLOAT\|DOUBLE\|DECIMAL> | -- | 用於搜尋的預先計算 embedding 向量 |
+| `num_results` | INTEGER | 10 | 最多回傳的筆數（上限 100） |
+| `query_type` | STRING | `'ANN'` | `'ANN'` 代表 approximate nearest neighbor，`'HYBRID'` 代表混合搜尋 |
 
-**Returns:** Table containing all index columns with top matching records.
+**回傳：** 包含索引所有欄位與最佳匹配紀錄的資料表。
 
-**Requirements:** Serverless SQL Warehouse, Select permission on the index.
+**需求：** Serverless SQL Warehouse，且需具有索引的 Select 權限。
 
 ```sql
--- Text-based similarity search
+-- 以文字為基礎的相似度搜尋
 SELECT * FROM vector_search(
   index      => 'catalog.schema.product_index',
-  query_text => 'wireless noise canceling headphones',
+  query_text => '無線降噪耳機',
   num_results => 5
 );
 
--- Hybrid search (combines keyword + semantic)
+-- 混合搜尋（結合關鍵字與語意）
 SELECT * FROM vector_search(
   index       => 'catalog.schema.support_docs_index',
-  query_text  => 'Wi-Fi connection issues with router model LMP-9R2',
+  query_text  => '路由器型號 LMP-9R2 的 Wi‑Fi 連線問題',
   query_type  => 'HYBRID',
   num_results => 3
 );
 
--- Vector-based search with pre-computed embedding
+-- 使用預先計算 embedding 的向量搜尋
 SELECT * FROM vector_search(
   index        => 'catalog.schema.embeddings_index',
   query_vector => ARRAY(0.45, -0.35, 0.78, 0.22),
   num_results  => 10
 );
 
--- Batch search using LATERAL join
+-- 使用 LATERAL join 進行批次搜尋
 SELECT
   q.query_text,
   q.query_id,
@@ -749,11 +749,11 @@ LATERAL (
 
 ---
 
-## http_request Function
+## http_request 函式
 
-Make HTTP requests to external services from SQL using Unity Catalog HTTP connections.
+透過 Unity Catalog HTTP connections，從 SQL 對外部服務發送 HTTP requests。
 
-### Syntax
+### 語法
 
 ```sql
 http_request(
@@ -766,29 +766,29 @@ http_request(
 )
 ```
 
-### Parameters
+### 參數
 
-| Parameter | Type | Required | Description |
+| 參數 | 類型 | 必填 | 說明 |
 |-----------|------|----------|-------------|
-| `CONN` | STRING constant | Yes | Name of an existing HTTP connection |
-| `METHOD` | STRING constant | Yes | HTTP method: `'GET'`, `'POST'`, `'PUT'`, `'DELETE'`, `'PATCH'` |
-| `PATH` | STRING constant | Yes | Path appended to the connection's base_path. Cannot contain directory traversal (`../`) |
-| `HEADERS` | MAP<STRING, STRING> | No | Request headers. Default: NULL |
-| `PARAMS` | MAP<STRING, STRING> | No | Query parameters. Default: NULL |
-| `JSON` | STRING expression | No | Request body as JSON string |
+| `CONN` | STRING 常值 | 是 | 既有 HTTP connection 的名稱 |
+| `METHOD` | STRING 常值 | 是 | HTTP 方法：`'GET'`、`'POST'`、`'PUT'`、`'DELETE'`、`'PATCH'` |
+| `PATH` | STRING 常值 | 是 | 會附加到 connection `base_path` 的路徑。不得包含目錄跳脫（`../`） |
+| `HEADERS` | MAP<STRING, STRING> | 否 | Request headers。預設為 NULL |
+| `PARAMS` | MAP<STRING, STRING> | 否 | Query 參數。預設為 NULL |
+| `JSON` | STRING expression | 否 | 以 JSON 字串表示的 request body |
 
-### Return Type
+### 回傳型別
 
 `STRUCT<status_code: INT, text: STRING>`
-- `status_code` -- HTTP response status (e.g., 200, 403, 404)
-- `text` -- Response body (typically JSON)
+- `status_code` -- HTTP 回應狀態（例如 200、403、404）
+- `text` -- 回應本文（通常為 JSON）
 
-**Requirements:** Databricks Runtime 16.2+, Unity Catalog enabled workspace, USE CONNECTION privilege.
+**需求：** Databricks Runtime 16.2+、已啟用 Unity Catalog 的 workspace，以及 USE CONNECTION 權限。
 
-### Creating HTTP Connections
+### 建立 HTTP Connections
 
 ```sql
--- Bearer token authentication
+-- Bearer Token 驗證
 CREATE CONNECTION slack_conn TYPE HTTP
 OPTIONS (
   host         'https://slack.com',
@@ -810,33 +810,33 @@ OPTIONS (
 );
 ```
 
-**Connection Options:**
+**Connection 選項：**
 
-| Option | Type | Description |
+| 選項 | 類型 | 說明 |
 |--------|------|-------------|
-| `host` | STRING | Base URL of the external service |
-| `port` | STRING | Network port (typically `'443'` for HTTPS) |
-| `base_path` | STRING | Root path for API endpoints |
-| `bearer_token` | STRING | Auth token (use `secret()` for security) |
-| `client_id` | STRING | OAuth application identifier |
-| `client_secret` | STRING | OAuth application secret |
-| `oauth_scope` | STRING | Space-delimited OAuth scopes |
-| `token_endpoint` | STRING | OAuth token endpoint URL |
-| `authorization_endpoint` | STRING | OAuth authorization redirect URL |
-| `oauth_credential_exchange_method` | STRING | `'header_and_body'`, `'body_only'`, or `'header_only'` |
+| `host` | STRING | 外部服務的基礎 URL |
+| `port` | STRING | 網路連接埠（HTTPS 通常為 `'443'`） |
+| `base_path` | STRING | API endpoints 的根路徑 |
+| `bearer_token` | STRING | Auth Token（為了安全請使用 `secret()`） |
+| `client_id` | STRING | OAuth 應用程式識別碼 |
+| `client_secret` | STRING | OAuth 應用程式密鑰 |
+| `oauth_scope` | STRING | 以空格分隔的 OAuth scopes |
+| `token_endpoint` | STRING | OAuth Token endpoint URL |
+| `authorization_endpoint` | STRING | OAuth 授權重新導向 URL |
+| `oauth_credential_exchange_method` | STRING | `'header_and_body'`、`'body_only'` 或 `'header_only'` |
 
-### Examples
+### 範例
 
 ```sql
--- POST a Slack message
+-- POST 一則 Slack 訊息
 SELECT http_request(
   CONN   => 'slack_conn',
   METHOD => 'POST',
   PATH   => '/chat.postMessage',
-  JSON   => to_json(named_struct('channel', '#alerts', 'text', 'Pipeline completed successfully'))
+  JSON   => to_json(named_struct('channel', '#alerts', 'text', '管線已成功完成'))
 );
 
--- GET request with headers and params
+-- 含 headers 與 params 的 GET request
 SELECT http_request(
   CONN    => 'github_conn',
   METHOD  => 'GET',
@@ -845,7 +845,7 @@ SELECT http_request(
   PARAMS  => map('state', 'open', 'per_page', '5')
 );
 
--- Parse JSON response
+-- 解析 JSON 回應
 SELECT
   response.status_code,
   from_json(response.text, 'STRUCT<id: INT, title: STRING, state: STRING>') AS issue
@@ -857,7 +857,7 @@ FROM (
   ) AS response
 );
 
--- Webhook notification triggered by data changes
+-- 由資料變更觸發的 Webhook 通知
 SELECT http_request(
   CONN   => 'webhook_conn',
   METHOD => 'POST',
@@ -865,7 +865,7 @@ SELECT http_request(
   JSON   => to_json(named_struct(
     'event', 'data_quality_alert',
     'table', 'catalog.schema.orders',
-    'message', CONCAT('Null rate exceeded threshold: ', CAST(null_pct AS STRING))
+    'message', CONCAT('空值比率超過門檻：', CAST(null_pct AS STRING))
   ))
 )
 FROM catalog.schema.data_quality_metrics
@@ -874,17 +874,17 @@ WHERE null_pct > 0.05;
 
 ---
 
-## remote_query Function (Lakehouse Federation)
+## remote_query 函式（Lakehouse Federation）
 
-Run SQL queries against external databases using their native SQL syntax, returning results as a table in Databricks SQL. This is a table-valued function.
+使用外部資料庫原生 SQL 語法執行查詢，並將結果以 Databricks SQL 中的資料表形式回傳。這是一個資料表值函式。
 
-### Overview
+### 概覽
 
-Lakehouse Federation enables querying external databases without migrating data. It supports two modes:
-- **Query Federation** -- Queries are pushed down to external databases via JDBC
-- **Catalog Federation** -- Queries access foreign tables directly in object storage
+Lakehouse Federation 可讓你在不遷移資料的情況下查詢外部資料庫。支援兩種模式：
+- **Query Federation** -- 查詢會透過 JDBC 下推到外部資料庫
+- **Catalog Federation** -- 查詢可直接存取 object storage 中的 foreign tables
 
-### Syntax
+### 語法
 
 ```sql
 SELECT * FROM remote_query(
@@ -894,9 +894,9 @@ SELECT * FROM remote_query(
 )
 ```
 
-### Supported Databases
+### 支援的資料庫
 
-| Database | Connection Type |
+| 資料庫 | Connection 類型 |
 |----------|----------------|
 | PostgreSQL | `POSTGRESQL` |
 | MySQL | `MYSQL` |
@@ -908,69 +908,69 @@ SELECT * FROM remote_query(
 | Google BigQuery | `BIGQUERY` |
 | Databricks | `DATABRICKS` |
 
-### Parameters by Database Type
+### 參數 by Database Type
 
-**PostgreSQL / MySQL / SQL Server / Redshift / Teradata:**
+**PostgreSQL / MySQL / SQL Server / Redshift / Teradata：**
 
-| Parameter | Type | Required | Description |
+| 參數 | 類型 | 必填 | 說明 |
 |-----------|------|----------|-------------|
-| `database` | STRING | Yes | Remote database name |
-| `query` | STRING | One of query/dbtable | SQL query in the remote database's native syntax |
-| `dbtable` | STRING | One of query/dbtable | Fully qualified table name |
-| `fetchsize` | STRING | No | Number of rows to fetch per round trip |
-| `partitionColumn` | STRING | No | Column used for parallel read partitioning |
-| `lowerBound` | STRING | No | Lower bound for partition column |
-| `upperBound` | STRING | No | Upper bound for partition column |
-| `numPartitions` | STRING | No | Number of parallel partitions |
+| `database` | STRING | 是 | 遠端資料庫名稱 |
+| `query` | STRING | query/dbtable 擇一 | 使用遠端資料庫原生語法撰寫的 SQL 查詢 |
+| `dbtable` | STRING | query/dbtable 擇一 | 完整限定資料表名稱 |
+| `fetchsize` | STRING | 否 | 每次往返抓取的資料列數量 |
+| `partitionColumn` | STRING | 否 | 用於平行讀取分割的欄位 |
+| `lowerBound` | STRING | 否 | 分割欄位的下界 |
+| `upperBound` | STRING | 否 | 分割欄位的上界 |
+| `numPartitions` | STRING | 否 | 平行分割數量 |
 
-**Oracle (uses `service_name` instead of `database`):**
+**Oracle（以 `service_name` 取代 `database`）：**
 
-| Parameter | Type | Required | Description |
+| 參數 | 類型 | 必填 | 說明 |
 |-----------|------|----------|-------------|
-| `service_name` | STRING | Yes | Oracle service name |
-| `query` or `dbtable` | STRING | Yes (one required) | Query or table reference |
+| `service_name` | STRING | 是 | Oracle service 名稱 |
+| `query` 或 `dbtable` | STRING | 是（擇一必填） | 查詢或資料表參照 |
 
-**Snowflake:**
+**Snowflake：**
 
-| Parameter | Type | Required | Description |
+| 參數 | 類型 | 必填 | 說明 |
 |-----------|------|----------|-------------|
-| `database` | STRING | Yes | Snowflake database |
-| `schema` | STRING | No | Schema name (defaults to `public`) |
-| `query` or `dbtable` | STRING | Yes (one required) | Query or table reference |
-| `query_timeout` | STRING | No | Query timeout in seconds |
-| `partition_size_in_mb` | STRING | No | Partition size for reads |
+| `database` | STRING | 是 | Snowflake 資料庫 |
+| `schema` | STRING | 否 | Schema 名稱（預設為 `public`） |
+| `query` 或 `dbtable` | STRING | 是（擇一必填） | 查詢或資料表參照 |
+| `query_timeout` | STRING | 否 | 查詢逾時秒數 |
+| `partition_size_in_mb` | STRING | 否 | 讀取時的分割大小 |
 
-**BigQuery:**
+**BigQuery：**
 
-| Parameter | Type | Required | Description |
+| 參數 | 類型 | 必填 | 說明 |
 |-----------|------|----------|-------------|
-| `query` or `dbtable` | STRING | Yes (one required) | Query or table reference |
-| `materializationDataset` | STRING | For views/complex queries | Dataset for materialization |
-| `materializationProject` | STRING | No | GCP project for materialization |
-| `parentProject` | STRING | No | Parent GCP project |
+| `query` 或 `dbtable` | STRING | 是（擇一必填） | 查詢或資料表參照 |
+| `materializationDataset` | STRING | 適用於 views／複雜查詢 | 用於 materialization 的 dataset |
+| `materializationProject` | STRING | 否 | 用於 materialization 的 GCP project |
+| `parentProject` | STRING | 否 | 上層 GCP project |
 
-### Pushdown Control
+### Pushdown 控制
 
-| Option | Default | Description |
+| 選項 | 預設值 | 說明 |
 |--------|---------|-------------|
-| `pushdown.limit.enabled` | `true` | Push LIMIT to remote |
-| `pushdown.offset.enabled` | `true` | Push OFFSET to remote |
-| `pushdown.filters.enabled` | `true` | Push WHERE filters to remote |
-| `pushdown.aggregates.enabled` | `true` | Push aggregations to remote |
-| `pushdown.sortLimit.enabled` | `true` | Push ORDER BY + LIMIT to remote |
+| `pushdown.limit.enabled` | `true` | 將 LIMIT 下推到遠端 |
+| `pushdown.offset.enabled` | `true` | 將 OFFSET 下推到遠端 |
+| `pushdown.filters.enabled` | `true` | 將 WHERE 篩選條件下推到遠端 |
+| `pushdown.aggregates.enabled` | `true` | 將彙總計算下推到遠端 |
+| `pushdown.sortLimit.enabled` | `true` | 將 ORDER BY + LIMIT 下推到遠端 |
 
-### Requirements
+### 需求
 
-- Unity Catalog enabled workspace
-- Databricks Runtime 17.3+ (clusters) or SQL Warehouse 2025.35+ (Pro/Serverless)
-- Network connectivity to target database
-- `USE CONNECTION` privilege or `SELECT` on a wrapping view
+- 已啟用 Unity Catalog 的 workspace
+- Databricks Runtime 17.3+（clusters）或 SQL Warehouse 2025.35+（Pro/Serverless）
+- 與目標資料庫的網路連通性
+- 需具備 `USE CONNECTION` 權限，或包裝 view 上的 `SELECT` 權限
 
-### Limitations
+### 限制
 
-- **Read-only**: Only SELECT queries supported (no INSERT, UPDATE, DELETE, MERGE, DDL, or stored procedures)
+- **唯讀**：僅支援 SELECT 查詢（不支援 INSERT、UPDATE、DELETE、MERGE、DDL 或 stored procedures）
 
-### Creating Connections
+### 建立 Connections
 
 ```sql
 -- PostgreSQL connection
@@ -992,17 +992,17 @@ OPTIONS (
 );
 ```
 
-### Examples
+### 範例
 
 ```sql
--- Basic query against PostgreSQL
+-- 對 PostgreSQL 執行基本查詢
 SELECT * FROM remote_query(
   'my_postgres',
   database => 'sales_db',
   query    => 'SELECT customer_id, name, email FROM customers WHERE active = true'
 );
 
--- Parallel read from SQL Server
+-- 從 SQL Server 平行讀取
 SELECT * FROM remote_query(
   'my_sqlserver',
   database        => 'orders_db',
@@ -1013,7 +1013,7 @@ SELECT * FROM remote_query(
   numPartitions   => '10'
 );
 
--- Join federated data with local Delta tables
+-- 將 federated 資料與本機 Delta tables 進行 join
 SELECT
   o.order_id,
   o.amount,
@@ -1026,7 +1026,7 @@ JOIN remote_query(
   query    => 'SELECT customer_id, name, email FROM customers'
 ) c ON o.customer_id = c.customer_id;
 
--- Access delegation via view
+-- 透過 view 進行存取委派
 CREATE VIEW catalog.schema.federated_customers AS
 SELECT * FROM remote_query(
   'my_postgres',
@@ -1034,17 +1034,17 @@ SELECT * FROM remote_query(
   query    => 'SELECT customer_id, name, region FROM customers'
 );
 
--- Users only need SELECT on the view, not USE CONNECTION
+-- 使用者只需要 view 的 SELECT 權限，不需要 USE CONNECTION
 GRANT SELECT ON VIEW catalog.schema.federated_customers TO `analysts`;
 ```
 
 ---
 
-## read_files Table-Valued Function
+## read_files 資料表值函式
 
-Read files from cloud storage or Unity Catalog volumes directly in SQL, with automatic format detection and schema inference.
+直接在 SQL 中從 cloud storage 或 Unity Catalog volumes 讀取檔案，並自動偵測格式與推斷 schema。
 
-### Syntax
+### 語法
 
 ```sql
 SELECT * FROM read_files(
@@ -1053,126 +1053,126 @@ SELECT * FROM read_files(
 )
 ```
 
-### Core Parameters
+### 核心參數
 
-| Parameter | Type | Required | Description |
+| 參數 | 類型 | 必填 | 說明 |
 |-----------|------|----------|-------------|
-| `path` | STRING | Yes | URI of data location. Supports `s3://`, `abfss://`, `gs://`, `/Volumes/...` paths. Accepts glob patterns |
+| `path` | STRING | 是 | 資料位置的 URI。支援 `s3://`、`abfss://`、`gs://`、`/Volumes/...` 路徑，也接受 glob pattern |
 
-### Common Options
-
-| Option | Type | Default | Description |
-|--------|------|---------|-------------|
-| `format` | STRING | Auto-detected | File format: `'csv'`, `'json'`, `'parquet'`, `'avro'`, `'orc'`, `'text'`, `'binaryFile'`, `'xml'` |
-| `schema` | STRING | Inferred | Explicit schema definition in DDL format |
-| `schemaHints` | STRING | None | Override subset of inferred schema columns |
-| `rescuedDataColumn` | STRING | `'_rescued_data'` | Column name for data that could not be parsed. Set to empty string to disable |
-| `pathGlobFilter` / `fileNamePattern` | STRING | None | Glob pattern to filter files (e.g., `'*.csv'`) |
-| `recursiveFileLookup` | BOOLEAN | `false` | Search nested directories |
-| `modifiedAfter` | TIMESTAMP STRING | None | Only read files modified after this timestamp |
-| `modifiedBefore` | TIMESTAMP STRING | None | Only read files modified before this timestamp |
-| `partitionColumns` | STRING | Auto-detected | Comma-separated Hive-style partition columns. Empty string ignores all partitions |
-| `useStrictGlobber` | BOOLEAN | `true` | Strict glob pattern matching |
-| `inferColumnTypes` | BOOLEAN | `true` | Infer exact column types (vs treating all as STRING) |
-| `schemaEvolutionMode` | STRING | -- | Schema evolution behavior: `'none'` to drop rescued data column |
-
-### CSV-Specific Options
+### 常用選項
 
 | Option | Type | Default | Description |
 |--------|------|---------|-------------|
-| `sep` / `delimiter` | STRING | `','` | Field delimiter |
-| `header` | BOOLEAN | `false` | First row contains column names |
-| `encoding` | STRING | `'UTF-8'` | Character encoding |
-| `quote` | STRING | `'"'` | Quote character |
-| `escape` | STRING | `'\'` | Escape character |
-| `nullValue` | STRING | `''` | String representation of null |
-| `dateFormat` | STRING | `'yyyy-MM-dd'` | Date parsing format |
-| `timestampFormat` | STRING | `'yyyy-MM-dd\'T\'HH:mm:ss...'` | Timestamp parsing format |
-| `mode` | STRING | `'PERMISSIVE'` | Parse mode: `'PERMISSIVE'`, `'DROPMALFORMED'`, `'FAILFAST'` |
-| `multiLine` | BOOLEAN | `false` | Allow records spanning multiple lines |
-| `ignoreLeadingWhiteSpace` | BOOLEAN | `false` | Trim leading whitespace |
-| `ignoreTrailingWhiteSpace` | BOOLEAN | `false` | Trim trailing whitespace |
-| `comment` | STRING | None | Line comment character |
-| `maxCharsPerColumn` | INTEGER | None | Max characters per column |
-| `maxColumns` | INTEGER | None | Max number of columns |
-| `mergeSchema` | BOOLEAN | `false` | Merge schemas across files |
-| `enforceSchema` | BOOLEAN | `true` | Enforce specified schema |
-| `locale` | STRING | `'US'` | Locale for number/date parsing |
-| `charToEscapeQuoteEscaping` | STRING | None | Character to escape the quote escape character |
-| `readerCaseSensitive` | BOOLEAN | `true` | Case-sensitive column name matching |
+| `format` | STRING | 自動偵測 | 檔案格式：`'csv'`、`'json'`、`'parquet'`、`'avro'`、`'orc'`、`'text'`、`'binaryFile'`、`'xml'` |
+| `schema` | STRING | 推斷 | 以 DDL 格式明確定義的 schema |
+| `schemaHints` | STRING | 無 | 覆寫部分推斷出的 schema 欄位 |
+| `rescuedDataColumn` | STRING | `'_rescued_data'` | 無法解析資料的欄位名稱。設為空字串即可停用 |
+| `pathGlobFilter` / `fileNamePattern` | STRING | 無 | 用於篩選檔案的 glob pattern（例如 `'*.csv'`） |
+| `recursiveFileLookup` | BOOLEAN | `false` | 搜尋巢狀目錄 |
+| `modifiedAfter` | TIMESTAMP STRING | 無 | 僅讀取在此時間戳記之後修改的檔案 |
+| `modifiedBefore` | TIMESTAMP STRING | 無 | 僅讀取在此時間戳記之前修改的檔案 |
+| `partitionColumns` | STRING | 自動偵測 | 以逗號分隔的 Hive 風格分割欄位。空字串代表忽略所有分割 |
+| `useStrictGlobber` | BOOLEAN | `true` | 嚴格的 glob pattern 比對 |
+| `inferColumnTypes` | BOOLEAN | `true` | 推斷精確欄位型別（而非全部視為 STRING） |
+| `schemaEvolutionMode` | STRING | -- | Schema 演進行為：`'none'` 代表移除 rescued data 欄位 |
 
-### JSON-Specific Options
+### CSV 專用選項
 
 | Option | Type | Default | Description |
 |--------|------|---------|-------------|
-| `multiLine` | BOOLEAN | `false` | Parse multi-line JSON records |
-| `allowComments` | BOOLEAN | `false` | Allow Java/C++ style comments |
-| `allowSingleQuotes` | BOOLEAN | `true` | Allow single quotes for strings |
-| `allowUnquotedFieldNames` | BOOLEAN | `false` | Allow unquoted field names |
-| `allowBackslashEscapingAnyCharacter` | BOOLEAN | `false` | Allow backslash to escape any character |
-| `allowNonNumericNumbers` | BOOLEAN | `true` | Allow NaN, Infinity, -Infinity |
-| `encoding` | STRING | `'UTF-8'` | Character encoding |
-| `dateFormat` | STRING | `'yyyy-MM-dd'` | Date parsing format |
+| `sep` / `delimiter` | STRING | `','` | 欄位分隔符號 |
+| `header` | BOOLEAN | `false` | 第一列包含欄位名稱 |
+| `encoding` | STRING | `'UTF-8'` | 字元編碼 |
+| `quote` | STRING | `'"'` | 引號字元 |
+| `escape` | STRING | `'\'` | 跳脫字元 |
+| `nullValue` | STRING | `''` | null 的字串表示法 |
+| `dateFormat` | STRING | `'yyyy-MM-dd'` | 日期解析格式 |
+| `timestampFormat` | STRING | `'yyyy-MM-dd\'T\'HH:mm:ss...'` | Timestamp 解析格式 |
+| `mode` | STRING | `'PERMISSIVE'` | 解析模式：`'PERMISSIVE'`、`'DROPMALFORMED'`、`'FAILFAST'` |
+| `multiLine` | BOOLEAN | `false` | 允許紀錄跨越多行 |
+| `ignoreLeadingWhiteSpace` | BOOLEAN | `false` | 去除前導空白 |
+| `ignoreTrailingWhiteSpace` | BOOLEAN | `false` | 去除尾端空白 |
+| `comment` | STRING | 無 | 行註解字元 |
+| `maxCharsPerColumn` | INTEGER | 無 | 每欄最大字元數 |
+| `maxColumns` | INTEGER | 無 | 最大欄位數 |
+| `mergeSchema` | BOOLEAN | `false` | 合併多個檔案的 schema |
+| `enforceSchema` | BOOLEAN | `true` | 強制套用指定 schema |
+| `locale` | STRING | `'US'` | 用於數字／日期解析的 locale |
+| `charToEscapeQuoteEscaping` | STRING | 無 | 用於跳脫引號跳脫字元的字元 |
+| `readerCaseSensitive` | BOOLEAN | `true` | 區分大小寫的欄位名稱比對 |
+
+### JSON 專用選項
+
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `multiLine` | BOOLEAN | `false` | 解析多行 JSON 紀錄 |
+| `allowComments` | BOOLEAN | `false` | 允許 Java/C++ 風格註解 |
+| `allowSingleQuotes` | BOOLEAN | `true` | 允許字串使用單引號 |
+| `allowUnquotedFieldNames` | BOOLEAN | `false` | 允許不加引號的欄位名稱 |
+| `allowBackslashEscapingAnyCharacter` | BOOLEAN | `false` | 允許使用反斜線跳脫任意字元 |
+| `allowNonNumericNumbers` | BOOLEAN | `true` | 允許 NaN、Infinity、-Infinity |
+| `encoding` | STRING | `'UTF-8'` | 字元編碼 |
+| `dateFormat` | STRING | `'yyyy-MM-dd'` | 日期解析格式 |
 | `timestampFormat` | STRING | -- | Timestamp parsing format |
-| `inferTimestamp` | BOOLEAN | `false` | Infer timestamp types |
-| `prefersDecimal` | BOOLEAN | `false` | Prefer DECIMAL over DOUBLE |
-| `primitivesAsString` | BOOLEAN | `false` | Infer all primitives as STRING |
-| `singleVariantColumn` | STRING | None | Read entire JSON as single VARIANT column |
-| `locale` | STRING | `'US'` | Locale for parsing |
-| `mode` | STRING | `'PERMISSIVE'` | Parse mode |
-| `readerCaseSensitive` | BOOLEAN | `true` | Case-sensitive column matching |
-| `timeZone` | STRING | Session timezone | Timezone for timestamp parsing |
+| `inferTimestamp` | BOOLEAN | `false` | 推斷 timestamp 型別 |
+| `prefersDecimal` | BOOLEAN | `false` | 優先使用 DECIMAL 而非 DOUBLE |
+| `primitivesAsString` | BOOLEAN | `false` | 將所有 primitive 值推斷為 STRING |
+| `singleVariantColumn` | STRING | 無 | 將整份 JSON 讀成單一 VARIANT 欄位 |
+| `locale` | STRING | `'US'` | 用於解析的 locale |
+| `mode` | STRING | `'PERMISSIVE'` | 解析模式 |
+| `readerCaseSensitive` | BOOLEAN | `true` | 區分大小寫的欄位比對 |
+| `timeZone` | STRING | Session timezone | 用於 timestamp 解析的時區 |
 
-### XML-Specific Options
+### XML 專用選項
 
 | Option | Type | Default | Description |
 |--------|------|---------|-------------|
-| `rowTag` | STRING | **Required** | XML tag that delimits rows |
-| `attributePrefix` | STRING | `'_'` | Prefix for XML attributes |
-| `valueTag` | STRING | `'_VALUE'` | Tag for element text content |
-| `encoding` | STRING | `'UTF-8'` | Character encoding |
-| `ignoreSurroundingSpaces` | BOOLEAN | `true` | Ignore whitespace around values |
-| `ignoreNamespace` | BOOLEAN | `false` | Ignore XML namespaces |
-| `mode` | STRING | `'PERMISSIVE'` | Parse mode |
-| `dateFormat` | STRING | `'yyyy-MM-dd'` | Date parsing format |
+| `rowTag` | STRING | **必填** | 用來界定資料列的 XML tag |
+| `attributePrefix` | STRING | `'_'` | XML 屬性的前綴 |
+| `valueTag` | STRING | `'_VALUE'` | 元素文字內容的 tag |
+| `encoding` | STRING | `'UTF-8'` | 字元編碼 |
+| `ignoreSurroundingSpaces` | BOOLEAN | `true` | 忽略值周圍的空白 |
+| `ignoreNamespace` | BOOLEAN | `false` | 忽略 XML namespaces |
+| `mode` | STRING | `'PERMISSIVE'` | 解析模式 |
+| `dateFormat` | STRING | `'yyyy-MM-dd'` | 日期解析格式 |
 | `timestampFormat` | STRING | -- | Timestamp parsing format |
-| `locale` | STRING | `'US'` | Locale for parsing |
+| `locale` | STRING | `'US'` | 用於解析的 locale |
 | `readerCaseSensitive` | BOOLEAN | `true` | Case-sensitive matching |
-| `samplingRatio` | DOUBLE | `1.0` | Fraction of rows to sample for schema inference |
+| `samplingRatio` | DOUBLE | `1.0` | 用於 schema 推斷的抽樣資料列比例 |
 
-### Parquet / Avro / ORC Options
-
-| Option | Type | Default | Description |
-|--------|------|---------|-------------|
-| `mergeSchema` | BOOLEAN | `false` | Merge schemas across files |
-| `readerCaseSensitive` | BOOLEAN | `true` | Case-sensitive column matching |
-| `rescuedDataColumn` | STRING | -- | Column for rescued data |
-| `datetimeRebaseMode` | STRING | -- | Rebase mode for datetime values |
-| `int96RebaseMode` | STRING | -- | Rebase mode for INT96 timestamps (Parquet only) |
-
-### Streaming Options
+### Parquet / Avro / ORC 選項
 
 | Option | Type | Default | Description |
 |--------|------|---------|-------------|
-| `includeExistingFiles` | BOOLEAN | `true` | Process existing files on first run |
-| `maxFilesPerTrigger` | INTEGER | None | Max files per micro-batch |
-| `maxBytesPerTrigger` | STRING | None | Max bytes per micro-batch |
-| `allowOverwrites` | BOOLEAN | `false` | Allow processing of overwritten files |
-| `schemaEvolutionMode` | STRING | -- | Schema evolution behavior |
-| `schemaLocation` | STRING | -- | Location to store inferred schema |
+| `mergeSchema` | BOOLEAN | `false` | 合併多個檔案的 schema |
+| `readerCaseSensitive` | BOOLEAN | `true` | 區分大小寫的欄位比對 |
+| `rescuedDataColumn` | STRING | -- | rescued data 欄位 |
+| `datetimeRebaseMode` | STRING | -- | datetime 值的 rebase 模式 |
+| `int96RebaseMode` | STRING | -- | INT96 timestamps 的 rebase 模式（僅 Parquet） |
 
-### Requirements
+### Streaming 選項
 
-- Databricks Runtime 13.3 LTS and above
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `includeExistingFiles` | BOOLEAN | `true` | 第一次執行時處理既有檔案 |
+| `maxFilesPerTrigger` | INTEGER | 無 | 每個 micro-batch 的最大檔案數 |
+| `maxBytesPerTrigger` | STRING | 無 | 每個 micro-batch 的最大位元組數 |
+| `allowOverwrites` | BOOLEAN | `false` | 允許處理被覆寫的檔案 |
+| `schemaEvolutionMode` | STRING | -- | Schema 演進行為 |
+| `schemaLocation` | STRING | -- | 儲存推斷 schema 的位置 |
+
+### 需求
+
+- Databricks Runtime 13.3 LTS 以上版本
 - Databricks SQL
 
-### Examples
+### 範例
 
 ```sql
--- Auto-detect format and schema from cloud storage
+-- 從 cloud storage 自動偵測格式與 schema
 SELECT * FROM read_files('s3://my-bucket/data/');
 
--- Read CSV with explicit schema
+-- 以明確 schema 讀取 CSV
 SELECT * FROM read_files(
   '/Volumes/catalog/schema/volume/sales.csv',
   format => 'csv',
@@ -1180,7 +1180,7 @@ SELECT * FROM read_files(
   schema => 'order_id INT, customer_id INT, amount DOUBLE, order_date DATE'
 );
 
--- Read CSV with schema hints (override specific columns only)
+-- 以 schema hints 讀取 CSV（僅覆寫特定欄位）
 SELECT * FROM read_files(
   '/Volumes/catalog/schema/volume/events/',
   format      => 'csv',
@@ -1188,34 +1188,34 @@ SELECT * FROM read_files(
   schemaHints => 'event_timestamp TIMESTAMP, amount DECIMAL(10,2)'
 );
 
--- Read JSON with multi-line support
+-- 讀取支援多行的 JSON
 SELECT * FROM read_files(
   '/Volumes/catalog/schema/volume/api_responses/',
   format    => 'json',
   multiLine => true
 );
 
--- Read Parquet with merged schema across files
+-- 讀取跨檔案合併 schema 的 Parquet
 SELECT * FROM read_files(
   's3://my-bucket/parquet-data/',
   format      => 'parquet',
   mergeSchema => true
 );
 
--- Read XML with row tag
+-- 讀取含 row tag 的 XML
 SELECT * FROM read_files(
   '/Volumes/catalog/schema/volume/feed.xml',
   format => 'xml',
   rowTag => 'record'
 );
 
--- Read binary files (images, PDFs) for ai_parse_document
+-- 讀取供 ai_parse_document 使用的二進位檔案（影像、PDF）
 SELECT path, content FROM read_files(
   '/Volumes/catalog/schema/volume/documents/',
   format => 'binaryFile'
 );
 
--- Filter files by glob pattern and modification date
+-- 依 glob pattern 與修改日期篩選檔案
 SELECT * FROM read_files(
   's3://my-bucket/logs/',
   format          => 'json',
@@ -1224,18 +1224,18 @@ SELECT * FROM read_files(
   modifiedBefore  => '2025-02-01T00:00:00Z'
 );
 
--- Recursive directory scan with partition discovery
+-- 進行遞迴目錄掃描並探索 partitions
 SELECT * FROM read_files(
   '/Volumes/catalog/schema/volume/partitioned_data/',
   recursiveFileLookup => true,
   partitionColumns    => 'year,month'
 );
 
--- Include file metadata
+-- 包含檔案中繼資料
 SELECT *, _metadata.file_path, _metadata.file_name, _metadata.file_size
 FROM read_files('/Volumes/catalog/schema/volume/data/');
 
--- Create table from files
+-- 從檔案建立資料表
 CREATE TABLE catalog.schema.imported_data AS
 SELECT * FROM read_files(
   '/Volumes/catalog/schema/volume/export.csv',
@@ -1243,7 +1243,7 @@ SELECT * FROM read_files(
   header => true
 );
 
--- Streaming table from cloud storage
+-- 從 cloud storage 建立 streaming table
 CREATE STREAMING TABLE catalog.schema.streaming_events AS
 SELECT * FROM STREAM read_files(
   's3://my-bucket/events/',
@@ -1252,7 +1252,7 @@ SELECT * FROM STREAM read_files(
   maxFilesPerTrigger   => 100
 );
 
--- Read single VARIANT column for semi-structured JSON
+-- 為半結構化 JSON 讀取單一 VARIANT 欄位
 SELECT * FROM read_files(
   '/Volumes/catalog/schema/volume/complex.json',
   format              => 'json',
@@ -1262,28 +1262,28 @@ SELECT * FROM read_files(
 
 ---
 
-## Combining Functions -- Production Patterns
+## 組合函式 -- 生產環境模式
 
-### AI-Enhanced ETL Pipeline
+### AI 強化 ETL 管線
 
 ```sql
--- Process customer feedback with multiple AI functions
+-- 使用多個 AI functions 處理客戶回饋
 CREATE OR REPLACE TABLE catalog.schema.enriched_feedback AS
 SELECT
   feedback_id,
   feedback_text,
   ai_analyze_sentiment(feedback_text) AS sentiment,
-  ai_classify(feedback_text, ARRAY('product', 'service', 'billing', 'other')) AS category,
+  ai_classify(feedback_text, ARRAY('產品', '服務', '帳務', '其他')) AS category,
   ai_extract(feedback_text, ARRAY('product', 'issue')) AS entities,
   ai_summarize(feedback_text, 20) AS summary,
   ai_mask(feedback_text, ARRAY('person', 'email', 'phone')) AS anonymized_text
 FROM catalog.schema.raw_feedback;
 ```
 
-### Document Processing Pipeline
+### 文件處理管線
 
 ```sql
--- Ingest, parse, and query documents
+-- 擷取、解析並查詢文件
 WITH raw_docs AS (
   SELECT path, content
   FROM read_files('/Volumes/catalog/schema/volume/contracts/', format => 'binaryFile')
@@ -1296,17 +1296,17 @@ SELECT
   path,
   ai_query(
     'databricks-meta-llama-3-3-70b-instruct',
-    CONCAT('Extract the contract parties, effective date, and termination clause from: ',
+    CONCAT('請從以下內容擷取合約當事方、生效日期與終止條款：',
            doc:document:elements[0]:content::STRING),
     responseFormat => 'STRUCT<party_a: STRING, party_b: STRING, effective_date: STRING, termination_clause: STRING>'
   ) AS contract_info
 FROM parsed;
 ```
 
-### External API Integration with http_request
+### 透過 http_request 整合外部 API
 
 ```sql
--- Enrich data by calling an external API and joining results
+-- 透過呼叫外部 API 並 join 結果來豐富資料
 SELECT
   o.order_id,
   o.tracking_number,
@@ -1328,15 +1328,15 @@ WHERE tracking.response.status_code = 200;
 ### Federated Analytics
 
 ```sql
--- Combine remote database data with local lakehouse data and AI
+-- 結合遠端資料庫資料、本機 lakehouse 資料與 AI
 SELECT
   remote_orders.customer_id,
   remote_orders.total_spend,
   local_profiles.segment,
   ai_classify(
-    CONCAT('Customer spent $', CAST(remote_orders.total_spend AS STRING),
-           ' in segment ', local_profiles.segment),
-    ARRAY('high_value', 'medium_value', 'low_value', 'at_risk')
+    CONCAT('客戶消費金額為 $', CAST(remote_orders.total_spend AS STRING),
+           '，所在區隔為 ', local_profiles.segment),
+    ARRAY('高價值', '中價值', '低價值', '有流失風險')
   ) AS value_tier
 FROM remote_query(
   'my_postgres',

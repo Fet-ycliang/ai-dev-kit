@@ -1,4 +1,4 @@
-"""PDF document generation with LLM and parallelization."""
+"""使用 LLM 與平行化的 PDF 文件產生。"""
 
 import json
 import logging
@@ -22,150 +22,150 @@ logger = logging.getLogger(__name__)
 
 
 # =============================================================================
-# PROMPTS
+# 提示詞
 # =============================================================================
 
-# Size configurations for document generation
+# 文件產生的大小設定
 _SIZE_CONFIG = {
     DocSize.SMALL: {
-        "pages": "1 page",
+        "pages": "1 頁",
         "max_tokens": 4000,
-        "content_guidance": "Keep it concise and focused. Include only the most essential information.",
+        "content_guidance": "請保持精簡且聚焦，只包含最必要的資訊。",
         "structure": (
-            "Use a simple structure: title, brief introduction, main content (2-3 short sections), and conclusion."
+            "使用簡單結構：標題、簡短引言、主要內容（2-3 個短章節）與結論。"
         ),
     },
     DocSize.MEDIUM: {
-        "pages": "4-6 pages",
+        "pages": "4-6 頁",
         "max_tokens": 12000,
-        "content_guidance": ("Provide comprehensive coverage with good detail. Include examples and explanations."),
+        "content_guidance": "提供完整且細節適度的內容，並納入範例與說明。",
         "structure": (
-            "Use a standard structure: title, table of contents, introduction, "
-            "multiple detailed sections, examples, and conclusion."
+            "使用標準結構：標題、目錄、引言、"
+            "多個詳細章節、範例與結論。"
         ),
     },
     DocSize.LARGE: {
-        "pages": "10+ pages",
+        "pages": "10 頁以上",
         "max_tokens": 20000,
         "content_guidance": (
-            "Be exhaustive and thorough. Include extensive examples, edge cases, troubleshooting, and appendices."
+            "內容需完整且詳盡，包含大量範例、邊界情況、疑難排解與附錄。"
         ),
         "structure": (
-            "Use a comprehensive structure: title page, table of contents, executive summary, "
-            "multiple chapters with subsections, detailed examples, appendices, and glossary."
+            "使用完整結構：封面頁、目錄、執行摘要、"
+            "含子章節的多個章節、詳細範例、附錄與詞彙表。"
         ),
     },
 }
 
 
 def _get_document_list_prompt(description: str, count: int) -> str:
-    """Generate prompt for document list generation."""
-    return f"""Generate exactly {count} document specifications based on this description:
+    """產生文件清單生成用的 prompt。"""
+    return f"""請根據以下描述，產生剛好 {count} 份文件規格：
 
-DESCRIPTION: {description}
+描述：{description}
 
-Each document must have:
-- title: Professional, descriptive title
-- category: One of Technical, Procedures, Guides, Templates, or Reference
-- model: Unique ID (e.g., "DOC-001", "PROC-AUTH-01")
-- description: What the document contains, with specific details from the description above
-- question: A specific question answerable by reading this document
-- guideline: How to evaluate if an answer is correct (without giving the exact answer)
+每份文件都必須包含：
+- title: 專業且具描述性的標題
+- category: Technical、Procedures、Guides、Templates、Reference 其中之一
+- model: 唯一 ID（例如："DOC-001"、"PROC-AUTH-01"）
+- description: 文件包含的內容，需帶出上述描述中的具體細節
+- question: 可透過閱讀此文件回答的具體問題
+- guideline: 如何評估答案是否正確（不要直接給出精確答案）
 
-Make documents diverse, covering different aspects of the description. Generate exactly {count} documents."""
+請讓文件具多樣性，涵蓋描述中的不同面向。請剛好產生 {count} 份文件。"""
 
 
 def _get_html_generation_prompt(doc_spec: DocumentSpecification, description: str, doc_size: DocSize) -> str:
-    """Generate prompt for HTML content generation."""
+    """產生 HTML 內容生成用的 prompt。"""
     config = _SIZE_CONFIG[doc_size]
 
-    return f"""Generate professional HTML5 documentation for RAG applications.
+    return f"""請為 RAG 應用產生專業的 HTML5 文件。
 
-DOCUMENT:
-- Title: {doc_spec.title}
-- Category: {doc_spec.category}
-- ID: {doc_spec.model}
-- Description: {doc_spec.description}
+文件：
+- 標題：{doc_spec.title}
+- 類別：{doc_spec.category}
+- ID：{doc_spec.model}
+- 描述：{doc_spec.description}
 
-CONTEXT: {description}
+情境：{description}
 
-TARGET LENGTH: {config["pages"]}
+目標長度：{config["pages"]}
 
-CONTENT GUIDANCE: {config["content_guidance"]}
+內容指引：{config["content_guidance"]}
 
-STRUCTURE: {config["structure"]}
+結構：{config["structure"]}
 
-Generate complete, valid HTML5 (<!DOCTYPE html>, <html>, <head>, <style>, <body>). No markdown wrapping."""
+請產生完整且有效的 HTML5（<!DOCTYPE html>, <html>, <head>, <style>, <body>）。不要加入 markdown 包裝。"""
 
 
 def _get_html_system_prompt(doc_size: DocSize) -> str:
-    """Get system prompt for HTML generation based on document size."""
-    base_prompt = """You are a technical documentation specialist creating HTML documents for PDF conversion.
+    """依據文件大小取得 HTML 生成用的 system prompt。"""
+    base_prompt = """你是技術文件專家，負責建立可轉換為 PDF 的 HTML 文件。
 
-DOCUMENT TYPE ADAPTATION:
-- Technical: Precise language, code examples, procedures
-- HR/Policy: Friendly language, policy explanations, FAQs
-- Training: Educational tone, objectives, exercises
-- User Guides: Clear language, scenarios, tips
+文件類型調整：
+- Technical: 精準語言、程式碼範例、程序
+- HR/Policy: 親切語氣、政策說明、常見問題
+- Training: 教學語氣、目標、練習
+- User Guides: 清楚語言、情境、提示
 
-HTML REQUIREMENTS:
-- Complete HTML5: <!DOCTYPE html>, <html>, <head>, <style>, <body>
-- Output ONLY valid HTML - no markdown wrapping
-- Professional formatting: headings (h1-h4), paragraphs, lists, tables
+HTML 要求：
+- 完整 HTML5：<!DOCTYPE html>, <html>, <head>, <style>, <body>
+- 僅輸出有效的 HTML，不要加入 markdown 包裝
+- 專業格式：標題（h1-h4）、段落、清單、表格
 
-CSS REQUIREMENTS (CRITICAL - PyMuPDF compatibility):
-- Use ONLY CSS 2.1 syntax
-- NO CSS variables (--var-name)
-- NO complex selectors (:has, :is, :where)
-- Simple selectors only: .class, element
-- Safe properties: color, background-color, font-family, font-size, margin, padding, border, text-align"""
+CSS 要求（關鍵 - PyMuPDF 相容性）：
+- 只使用 CSS 2.1 語法
+- 不可使用 CSS variables (--var-name)
+- 不可使用複雜選擇器（:has、:is、:where）
+- 只能使用簡單選擇器：.class、element
+- 安全屬性：color、background-color、font-family、font-size、margin、padding、border、text-align"""
 
     size_specific = {
         DocSize.SMALL: """
 
-SMALL DOCUMENT (~1 page):
-- Brief, focused content
-- 2-3 short sections maximum
-- No table of contents needed
-- Essential information only
-- Minimal styling""",
+小型文件（約 1 頁）：
+- 內容簡短且聚焦
+- 最多 2-3 個短章節
+- 不需要目錄
+- 僅包含必要資訊
+- 最少樣式""",
         DocSize.MEDIUM: """
 
-MEDIUM DOCUMENT (~4-6 pages):
-- Comprehensive coverage
-- Table of contents with anchor links
-- Multiple sections with examples
-- Balanced detail level
-- Professional styling""",
+中型文件（約 4-6 頁）：
+- 內容涵蓋完整
+- 含錨點連結的目錄
+- 多個含範例的章節
+- 細節程度均衡
+- 專業樣式""",
         DocSize.LARGE: """
 
-LARGE DOCUMENT (~10+ pages):
-- Exhaustive, thorough coverage
-- Detailed table of contents
-- Multiple chapters with subsections
-- Extensive examples and code snippets
-- Troubleshooting sections
-- Appendices and references
-- Full professional styling""",
+大型文件（約 10 頁以上）：
+- 內容完整且詳盡
+- 詳細目錄
+- 多個含子章節的章節
+- 大量範例與程式碼片段
+- 疑難排解章節
+- 附錄與參考資料
+- 完整專業樣式""",
     }
 
     return base_prompt + size_specific[doc_size]
 
 
 # =============================================================================
-# HTML TO PDF CONVERSION
+# HTML 轉 PDF
 # =============================================================================
 
 
 def _convert_html_to_pdf(html_content: str, output_path: str) -> bool:
-    """Convert HTML content to PDF using PyMuPDF.
+    """使用 PyMuPDF 將 HTML 內容轉換為 PDF。
 
-    Args:
-        html_content: HTML string to convert
-        output_path: Path where PDF should be saved
+    參數：
+        html_content: 要轉換的 HTML 字串
+        output_path: PDF 應儲存的位置
 
-    Returns:
-        True if successful, False otherwise
+    回傳：
+        成功時為 True，否則為 False
     """
     output_dir = Path(output_path).parent
     output_dir.mkdir(parents=True, exist_ok=True)
@@ -173,59 +173,59 @@ def _convert_html_to_pdf(html_content: str, output_path: str) -> bool:
     try:
         import fitz  # PyMuPDF
 
-        logger.debug(f"Converting HTML to PDF using PyMuPDF: {output_path}")
+        logger.debug(f"正在使用 PyMuPDF 將 HTML 轉換為 PDF：{output_path}")
 
-        # Create a Story from the HTML
+        # 從 HTML 建立 Story
         story = fitz.Story(html=html_content)
 
-        # Create DocumentWriter
+        # 建立 DocumentWriter
         writer = fitz.DocumentWriter(output_path)
 
-        # Define page layout function
+        # 定義頁面版面配置函式
         def rect_fn(page_num, filled_rect):
-            page_rect = fitz.Rect(0, 0, 595, 842)  # A4 page size (in points)
-            content_rect = fitz.Rect(50, 50, 545, 792)  # Margins (50pt = ~0.7 inches)
-            footer_rect = fitz.Rect(0, 0, 0, 0)  # No footer area
+            page_rect = fitz.Rect(0, 0, 595, 842)  # A4 頁面大小（單位：點）
+            content_rect = fitz.Rect(50, 50, 545, 792)  # 邊界（50pt = 約 0.7 吋）
+            footer_rect = fitz.Rect(0, 0, 0, 0)  # 不使用頁尾區域
             return page_rect, content_rect, footer_rect
 
-        # Write the story to PDF with proper pagination and formatting
+        # 以適當的分頁與格式將 story 寫入 PDF
         story.write(writer, rect_fn)
         writer.close()
 
-        # Check if file was created successfully
+        # 檢查檔案是否成功建立
         if Path(output_path).exists():
             file_size = Path(output_path).stat().st_size
-            logger.info(f"PDF saved: {output_path} (size: {file_size:,} bytes)")
+            logger.info(f"PDF 已儲存：{output_path}（大小：{file_size:,} bytes）")
             return True
         else:
-            logger.error("PyMuPDF conversion failed - file not created")
+            logger.error("PyMuPDF 轉換失敗 - 未建立檔案")
             return False
 
     except ImportError:
-        logger.error("PyMuPDF is not installed. Install with: pip install pymupdf")
+        logger.error("尚未安裝 PyMuPDF。請使用以下指令安裝：pip install pymupdf")
         return False
     except Exception as e:
-        logger.error(f"Failed to convert HTML to PDF: {str(e)}", exc_info=True)
+        logger.error(f"HTML 轉 PDF 失敗：{str(e)}", exc_info=True)
         return False
 
 
 # =============================================================================
-# VOLUME OPERATIONS
+# VOLUME 操作
 # =============================================================================
 
 
 def _delete_folder_contents(catalog: str, schema: str, volume: str, folder: str, max_workers: int = 5) -> None:
-    """Delete all files in a volume folder in parallel."""
+    """平行刪除 volume 資料夾中的所有檔案。"""
     w = get_workspace_client()
     volume_path = f"/Volumes/{catalog}/{schema}/{volume}/{folder}"
 
     def delete_file(file_path: str) -> bool:
         try:
             w.files.delete(file_path)
-            logger.debug(f"Deleted: {file_path}")
+            logger.debug(f"已刪除：{file_path}")
             return True
         except Exception as e:
-            logger.warning(f"Could not delete {file_path}: {e}")
+            logger.warning(f"無法刪除 {file_path}：{e}")
             return False
 
     try:
@@ -236,38 +236,38 @@ def _delete_folder_contents(catalog: str, schema: str, volume: str, folder: str,
         with ThreadPoolExecutor(max_workers=max_workers) as executor:
             futures = {executor.submit(delete_file, f.path): f.path for f in files}
             for future in as_completed(futures):
-                future.result()  # Raise any exceptions
+                future.result()  # 若有例外則拋出
 
-        logger.info(f"Cleared folder contents: {volume_path} ({len(files)} files)")
+        logger.info(f"已清空資料夾內容：{volume_path}（{len(files)} 個檔案）")
     except Exception as e:
-        # Folder might not exist yet, which is fine
-        logger.debug(f"Folder does not exist or could not be listed: {volume_path} - {e}")
+        # 資料夾可能尚不存在，這是可接受的
+        logger.debug(f"資料夾不存在或無法列出：{volume_path} - {e}")
 
 
 def _upload_to_volume(local_path: str, catalog: str, schema: str, volume: str, folder: str, filename: str) -> bool:
-    """Upload a file to a volume, creating the folder if needed."""
+    """將檔案上傳到 volume，必要時建立資料夾。"""
     from ..unity_catalog.volume_files import create_volume_directory
 
     folder_path = f"/Volumes/{catalog}/{schema}/{volume}/{folder}"
     volume_path = f"{folder_path}/{filename}"
 
-    # Ensure folder exists
+    # 確保資料夾存在
     try:
         create_volume_directory(folder_path)
     except Exception as e:
-        logger.debug(f"Folder may already exist: {folder_path} - {e}")
+        logger.debug(f"資料夾可能已存在：{folder_path} - {e}")
 
     result = upload_to_volume(local_path, volume_path, overwrite=True)
     if result.success:
-        logger.debug(f"Uploaded: {volume_path}")
+        logger.debug(f"已上傳：{volume_path}")
         return True
     else:
-        logger.error(f"Failed to upload {local_path} to {volume_path}: {result.error}")
+        logger.error(f"無法將 {local_path} 上傳至 {volume_path}：{result.error}")
         return False
 
 
 # =============================================================================
-# SINGLE PDF GENERATION
+# 單一 PDF 產生
 # =============================================================================
 
 
@@ -281,28 +281,28 @@ def generate_single_pdf(
     temp_dir: str,
     doc_size: DocSize = DocSize.MEDIUM,
 ) -> PDFGenerationResult:
-    """Generate a single PDF from a document specification.
+    """根據文件規格產生單一 PDF。
 
-    Args:
-        doc_spec: Document specification with title, description, etc.
-        description: Overall context description
-        catalog: Unity Catalog name
-        schema: Schema name
-        volume: Volume name
-        folder: Folder within volume
-        temp_dir: Temporary directory for local file creation
-        doc_size: Size of document to generate (SMALL, MEDIUM, LARGE). Default: MEDIUM
+    參數：
+        doc_spec: 包含標題、描述等資訊的文件規格
+        description: 整體情境描述
+        catalog: Unity Catalog 名稱
+        schema: Schema 名稱
+        volume: Volume 名稱
+        folder: Volume 內的資料夾
+        temp_dir: 用於建立本機檔案的暫存目錄
+        doc_size: 要產生的文件大小（SMALL、MEDIUM、LARGE）。預設：MEDIUM
 
-    Returns:
-        PDFGenerationResult with paths and success status
+    回傳：
+        包含路徑與成功狀態的 PDFGenerationResult
     """
     try:
-        # Generate safe filename from model identifier
+        # 依據 model 識別碼產生安全的檔名
         safe_name = doc_spec.model.replace(" ", "_").replace("-", "_").lower()
 
-        logger.info(f"Generating PDF: {doc_spec.title} ({safe_name}) - size: {doc_size.value}")
+        logger.info(f"正在產生 PDF：{doc_spec.title}（{safe_name}）- 大小：{doc_size.value}")
 
-        # Step 1: Generate HTML content
+        # 步驟 1：產生 HTML 內容
         html_prompt = _get_html_generation_prompt(doc_spec, description, doc_size)
         system_prompt = _get_html_system_prompt(doc_size)
         max_tokens = _SIZE_CONFIG[doc_size]["max_tokens"]
@@ -314,7 +314,7 @@ def generate_single_pdf(
             max_tokens=max_tokens,
         )
 
-        # Step 2: Convert HTML to PDF
+        # 步驟 2：將 HTML 轉換為 PDF
         pdf_filename = f"{safe_name}.pdf"
         local_pdf_path = str(Path(temp_dir) / pdf_filename)
 
@@ -322,20 +322,20 @@ def generate_single_pdf(
             return PDFGenerationResult(
                 pdf_path="",
                 success=False,
-                error=f"Failed to convert HTML to PDF for {doc_spec.title}",
+                error=f"無法將 {doc_spec.title} 的 HTML 轉換為 PDF",
             )
 
-        # Step 3: Upload PDF to volume
+        # 步驟 3：將 PDF 上傳至 volume
         if not _upload_to_volume(local_pdf_path, catalog, schema, volume, folder, pdf_filename):
             return PDFGenerationResult(
                 pdf_path="",
                 success=False,
-                error=f"Failed to upload PDF for {doc_spec.title}",
+                error=f"無法上傳 {doc_spec.title} 的 PDF",
             )
 
         volume_pdf_path = f"/Volumes/{catalog}/{schema}/{volume}/{folder}/{pdf_filename}"
 
-        # Step 4: Save question/guideline JSON
+        # 步驟 4：儲存 question/guideline JSON
         question_data = {
             "title": doc_spec.title,
             "category": doc_spec.category,
@@ -354,7 +354,7 @@ def generate_single_pdf(
         if _upload_to_volume(local_json_path, catalog, schema, volume, folder, json_filename):
             volume_json_path = f"/Volumes/{catalog}/{schema}/{volume}/{folder}/{json_filename}"
 
-        logger.info(f"Successfully generated: {doc_spec.title}")
+        logger.info(f"已成功產生：{doc_spec.title}")
 
         return PDFGenerationResult(
             pdf_path=volume_pdf_path,
@@ -363,7 +363,7 @@ def generate_single_pdf(
         )
 
     except Exception as e:
-        error_msg = f"Error generating PDF for {doc_spec.title}: {str(e)}"
+        error_msg = f"產生 {doc_spec.title} 的 PDF 時發生錯誤：{str(e)}"
         logger.error(error_msg, exc_info=True)
         return PDFGenerationResult(
             pdf_path="",
@@ -373,7 +373,7 @@ def generate_single_pdf(
 
 
 # =============================================================================
-# MAIN ENTRY POINT
+# 主要進入點
 # =============================================================================
 
 
@@ -389,51 +389,51 @@ def generate_pdf_documents(
     max_workers: int = 4,
     temp_dir: Optional[str] = None,
 ) -> PDFBatchResult:
-    """Generate multiple PDF documents based on a description.
+    """根據描述產生多份 PDF 文件。
 
-    This is the main entry point for PDF generation. It follows a 2-step process:
-    1. Generate a list of document specifications using LLM
-    2. Generate PDFs in parallel from those specifications
+    這是 PDF 產生的主要進入點，流程分為 2 個步驟：
+    1. 使用 LLM 產生文件規格清單
+    2. 根據這些規格平行產生 PDF
 
-    Args:
-        catalog: Unity Catalog name
-        schema: Schema name
-        description: Detailed description of what PDFs should contain
-        count: Number of PDFs to generate
-        volume: Volume name (must already exist). Default: "raw_data"
-        folder: Folder within volume for PDFs. Default: "pdf_documents"
-        doc_size: Size of documents (SMALL=~1 page, MEDIUM=~5 pages, LARGE=~10+ pages). Default: MEDIUM
-        overwrite_folder: If True, delete existing folder content first (default: False)
-        max_workers: Maximum concurrent PDF generations (default: 4)
-        temp_dir: Optional directory for local PDF files (kept after generation).
-                  If None, uses a temporary directory that is cleaned up.
+    參數：
+        catalog: Unity Catalog 名稱
+        schema: Schema 名稱
+        description: PDF 應包含內容的詳細描述
+        count: 要產生的 PDF 數量
+        volume: Volume 名稱（必須已存在）。預設："raw_data"
+        folder: Volume 中存放 PDF 的資料夾。預設："pdf_documents"
+        doc_size: 文件大小（SMALL=約 1 頁、MEDIUM=約 5 頁、LARGE=約 10 頁以上）。預設：MEDIUM
+        overwrite_folder: 若為 True，先刪除既有資料夾內容（預設：False）
+        max_workers: 同時進行的 PDF 產生上限（預設：4）
+        temp_dir: 本機 PDF 檔案的可選目錄（產生後會保留）。
+                  若為 None，則使用會自動清理的暫存目錄。
 
-    Returns:
-        PDFBatchResult with success status and statistics
+    回傳：
+        含成功狀態與統計資訊的 PDFBatchResult
     """
     volume_path = f"/Volumes/{catalog}/{schema}/{volume}/{folder}"
     errors: list[str] = []
 
-    logger.info(f"Starting PDF generation: {count} documents to {volume_path}")
+    logger.info(f"開始產生 PDF：{count} 份文件，輸出至 {volume_path}")
 
     try:
-        # Clear folder if requested
+        # 若有要求則清空資料夾
         if overwrite_folder:
-            logger.info(f"Clearing existing folder contents: {volume_path}")
+            logger.info(f"正在清空既有資料夾內容：{volume_path}")
             _delete_folder_contents(catalog, schema, volume, folder)
 
-        # Step 1: Generate document specifications
-        logger.info(f"Step 1: Generating {count} document specifications...")
+        # 步驟 1：產生文件規格
+        logger.info(f"步驟 1：正在產生 {count} 份文件規格...")
 
         doc_list_prompt = _get_document_list_prompt(description, count)
-        system_prompt = """You are an expert technical documentation specialist. \
-Generate document specifications based on the given description.
+        system_prompt = """你是技術文件領域的專家。\
+請根據提供的描述產生文件規格。
 
-Return a JSON object with a "documents" array containing exactly the requested number \
-of document specifications. Each document should have:
+請回傳一個 JSON 物件，其中包含 "documents" 陣列，且數量必須與要求完全一致。\
+每份文件都應包含：
 - title: string
-- category: string (Technical, Procedures, Guides, Templates, or Reference)
-- model: string (unique identifier like DOC-001)
+- category: string（Technical、Procedures、Guides、Templates、Reference 其中之一）
+- model: string（唯一識別碼，例如 DOC-001）
 - description: string
 - question: string
 - guideline: string"""
@@ -451,7 +451,7 @@ of document specifications. Each document should have:
             doc_specs_model = DocumentSpecifications(**response_data)
             document_specs = doc_specs_model.documents
         except (json.JSONDecodeError, ValueError) as e:
-            error_msg = f"Failed to parse document specifications: {e}. Response: {doc_list_response[:500]}"
+            error_msg = f"無法解析文件規格：{e}。回應內容：{doc_list_response[:500]}"
             logger.error(error_msg)
             return PDFBatchResult(
                 success=False,
@@ -467,16 +467,16 @@ of document specifications. Each document should have:
                 volume_path=volume_path,
                 pdfs_generated=0,
                 pdfs_failed=count,
-                errors=["No documents generated in response"],
+                errors=["回應中未產生任何文件"],
             )
 
-        logger.info(f"Generated {len(document_specs)} document specifications")
+        logger.info(f"已產生 {len(document_specs)} 份文件規格")
 
-        # Step 2: Generate PDFs in parallel
-        logger.info(f"Step 2: Generating PDFs ({max_workers} concurrent)...")
+        # 步驟 2：平行產生 PDF
+        logger.info(f"步驟 2：正在產生 PDF（並行數：{max_workers}）...")
 
         def run_pdf_generation(working_dir: str) -> list:
-            """Run PDF generation tasks in the given directory."""
+            """在指定目錄中執行 PDF 產生工作。"""
             results = []
 
             with ThreadPoolExecutor(max_workers=max_workers) as executor:
@@ -504,7 +504,7 @@ of document specifications. Each document should have:
 
             return results
 
-        # Use provided temp_dir or create a temporary one
+        # 使用提供的 temp_dir，或建立暫存目錄
         if temp_dir:
             Path(temp_dir).mkdir(parents=True, exist_ok=True)
             results = run_pdf_generation(temp_dir)
@@ -512,7 +512,7 @@ of document specifications. Each document should have:
             with tempfile.TemporaryDirectory() as auto_temp_dir:
                 results = run_pdf_generation(auto_temp_dir)
 
-        # Process results
+        # 處理結果
         pdfs_generated = 0
         pdfs_failed = 0
 
@@ -530,7 +530,7 @@ of document specifications. Each document should have:
 
         success = pdfs_generated > 0 and pdfs_failed == 0
 
-        logger.info(f"PDF generation complete: {pdfs_generated}/{len(document_specs)} successful")
+        logger.info(f"PDF 產生完成：{pdfs_generated}/{len(document_specs)} 成功")
 
         return PDFBatchResult(
             success=success,
@@ -541,7 +541,7 @@ of document specifications. Each document should have:
         )
 
     except Exception as e:
-        error_msg = f"PDF generation failed: {str(e)}"
+        error_msg = f"PDF 產生失敗：{str(e)}"
         logger.error(error_msg, exc_info=True)
         return PDFBatchResult(
             success=False,

@@ -1,6 +1,6 @@
-# Implementation Template
+# 實作範本
 
-Full skeleton for a Python data source covering all four modes: batch read, batch write, stream read, stream write. Adapt to your needs — most connectors only implement a subset.
+涵蓋四種模式（批次讀取、批次寫入、串流讀取、串流寫入）的完整 Python 資料來源骨架。請依需求調整——大多數 connector 只會實作其中一部分。
 
 ```python
 from pyspark.sql.datasource import (
@@ -8,7 +8,7 @@ from pyspark.sql.datasource import (
     DataSourceStreamReader, DataSourceStreamWriter
 )
 
-# 1. DataSource class — entry point that returns readers/writers
+# 1. DataSource class — 回傳 readers/writers 的進入點
 class YourDataSource(DataSource):
     @classmethod
     def name(cls):
@@ -32,19 +32,19 @@ class YourDataSource(DataSource):
     def streamWriter(self, schema, overwrite):
         return YourStreamWriter(self.options, schema)
 
-# 2. Base Writer — shared logic for batch and stream writing
-#    Plain class (not a DataSourceWriter yet) so batch/stream
-#    subclasses can mix it in with the right PySpark base.
+# 2. Base Writer — 批次與串流寫入共用邏輯
+#    這裡使用一般 class（暫時不是 DataSourceWriter），
+#    讓批次/串流子類別可以混入正確的 PySpark base class。
 class YourWriter:
     def __init__(self, options, schema=None):
         self.url = options.get("url")
-        assert self.url, "url is required"
+        assert self.url, "必須提供 url"
         self.batch_size = int(options.get("batch_size", "50"))
         self.schema = schema
 
     def write(self, iterator):
-        # Import here — this runs on executors, not the driver.
-        # Executor processes don't share the driver's module state.
+        # 在這裡匯入——此方法會在 executors 上執行，而不是 driver。
+        # executor 程序不會共享 driver 的模組狀態。
         import requests
         from pyspark import TaskContext
 
@@ -68,14 +68,14 @@ class YourWriter:
         return SimpleCommitMessage(partition_id=partition_id, count=cnt)
 
     def _send_batch(self, msgs):
-        # Implement send logic
+        # 在此實作傳送邏輯
         pass
 
-# 3. Batch Writer — inherits shared logic + PySpark interface
+# 3. Batch Writer — 繼承共用邏輯與 PySpark 介面
 class YourBatchWriter(YourWriter, DataSourceWriter):
     pass
 
-# 4. Stream Writer — adds commit/abort for micro-batch semantics
+# 4. Stream Writer — 為 micro-batch 語意加入 commit/abort
 class YourStreamWriter(YourWriter, DataSourceStreamWriter):
     def commit(self, messages, batchId):
         pass
@@ -83,18 +83,18 @@ class YourStreamWriter(YourWriter, DataSourceStreamWriter):
     def abort(self, messages, batchId):
         pass
 
-# 5. Base Reader — shared logic for batch and stream reading
+# 5. Base Reader — 批次與串流讀取共用邏輯
 class YourReader:
     def __init__(self, options, schema):
         self.url = options.get("url")
-        assert self.url, "url is required"
+        assert self.url, "必須提供 url"
         self.schema = schema
 
     def partitions(self):
         return [YourPartition(0, start, end)]
 
     def read(self, partition):
-        # Import here — runs on executors
+        # 在這裡匯入——此方法會在 executors 上執行
         import requests
 
         response = requests.get(f"{self.url}?start={partition.start}")
@@ -105,7 +105,7 @@ class YourReader:
 class YourBatchReader(YourReader, DataSourceReader):
     pass
 
-# 7. Stream Reader — adds offset tracking for incremental reads
+# 7. Stream Reader — 為增量讀取加入 offset 追蹤
 class YourStreamReader(YourReader, DataSourceStreamReader):
     def initialOffset(self):
         return {"offset": "0"}
@@ -120,22 +120,22 @@ class YourStreamReader(YourReader, DataSourceStreamReader):
         pass
 ```
 
-## Registration and Usage
+## 註冊與使用方式
 
 ```python
-# Register
+# 註冊
 from your_package import YourDataSource
 spark.dataSource.register(YourDataSource)
 
-# Batch read
+# 批次讀取
 df = spark.read.format("your-format").option("url", "...").load()
 
-# Batch write
+# 批次寫入
 df.write.format("your-format").option("url", "...").save()
 
-# Streaming read
+# 串流讀取
 df = spark.readStream.format("your-format").option("url", "...").load()
 
-# Streaming write
+# 串流寫入
 df.writeStream.format("your-format").option("url", "...").start()
 ```

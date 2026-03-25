@@ -1,61 +1,61 @@
 #!/bin/bash
 #
-# Databricks Skills Installer
+# Databricks Skills 安裝程式
 #
-# Installs Databricks skills for Claude Code into your project.
-# These skills teach Claude how to work with Databricks using MCP tools.
+# 將 Databricks Skills 安裝至您的專案，供 Claude Code 使用。
+# 這些 Skills 教導 Claude 如何使用 MCP 工具操作 Databricks。
 #
-# Usage:
-#   # Install all skills (Databricks + MLflow + APX)
+# 用法：
+#   # 安裝所有 Skills（Databricks + MLflow + APX）
 #   curl -sSL https://raw.githubusercontent.com/databricks-solutions/ai-dev-kit/main/databricks-skills/install_skills.sh | bash
 #
-#   # Install specific skills (can mix Databricks and MLflow skills)
+#   # 安裝特定 Skills（可混合 Databricks 與 MLflow Skills）
 #   curl -sSL https://raw.githubusercontent.com/databricks-solutions/ai-dev-kit/main/databricks-skills/install_skills.sh | bash -s -- databricks-bundles agent-evaluation
 #
-#   # Or run locally
-#   ./install_skills.sh                              # Install all skills
-#   ./install_skills.sh databricks-bundles agent-evaluation  # Install specific skills
-#   ./install_skills.sh --mlflow-version v1.0.0      # Pin MLflow skills version
-#   ./install_skills.sh --local                      # Install Databricks skills from local directory
-#   ./install_skills.sh --list                       # List available skills
-#   ./install_skills.sh --help                       # Show help
+#   # 或在本地執行
+#   ./install_skills.sh                              # 安裝所有 Skills
+#   ./install_skills.sh databricks-bundles agent-evaluation  # 安裝特定 Skills
+#   ./install_skills.sh --mlflow-version v1.0.0      # 固定 MLflow Skills 版本
+#   ./install_skills.sh --local                      # 從本地目錄安裝 Databricks Skills
+#   ./install_skills.sh --list                       # 列出可用 Skills
+#   ./install_skills.sh --help                       # 顯示說明
 #
 
 set -e
 
-# Colors for output
+# 輸出顏色設定
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
-NC='\033[0m' # No Color
+NC='\033[0m' # 無顏色
 
-# Configuration
+# 設定
 REPO_URL="https://github.com/databricks-solutions/ai-dev-kit"
 REPO_RAW_URL="https://raw.githubusercontent.com/databricks-solutions/ai-dev-kit/main"
 SKILLS_DIR=".claude/skills"
 INSTALL_FROM_LOCAL=false
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
-# MLflow skills configuration
+# MLflow Skills 設定
 MLFLOW_REPO_RAW_URL="https://raw.githubusercontent.com/mlflow/skills"
 MLFLOW_REPO_REF="main"
 
-# Databricks skills (hosted in this repo)
+# Databricks Skills（存放於本儲存庫）
 DATABRICKS_SKILLS="databricks-agent-bricks databricks-ai-functions databricks-aibi-dashboards databricks-bundles databricks-app-python databricks-config databricks-dbsql databricks-docs databricks-genie databricks-iceberg databricks-jobs databricks-lakebase-autoscale databricks-lakebase-provisioned databricks-metric-views databricks-mlflow-evaluation databricks-model-serving databricks-python-sdk databricks-spark-declarative-pipelines databricks-spark-structured-streaming databricks-synthetic-data-gen databricks-unity-catalog databricks-unstructured-pdf-generation databricks-vector-search databricks-zerobus-ingest spark-python-data-source"
 
-# MLflow skills (fetched from mlflow/skills repo)
+# MLflow Skills（從 mlflow/skills 儲存庫取得）
 MLFLOW_SKILLS="agent-evaluation analyze-mlflow-chat-session analyze-mlflow-trace instrumenting-with-mlflow-tracing mlflow-onboarding querying-mlflow-metrics retrieving-mlflow-traces searching-mlflow-docs"
 
-# APX skills configuration (fetched from databricks-solutions/apx repo)
+# APX Skills 設定（從 databricks-solutions/apx 儲存庫取得）
 APX_REPO_RAW_URL="https://raw.githubusercontent.com/databricks-solutions/apx"
 APX_REPO_REF="main"
 APX_REPO_SKILL_PATH="skills/apx"
 
-# APX skills
+# APX Skills
 APX_SKILLS="databricks-app-apx"
 
-# All available skills
+# 所有可用 Skills
 ALL_SKILLS="$DATABRICKS_SKILLS $MLFLOW_SKILLS $APX_SKILLS"
 
 # Get skill description

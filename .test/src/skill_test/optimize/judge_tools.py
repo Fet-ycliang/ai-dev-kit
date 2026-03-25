@@ -1,13 +1,13 @@
-"""Judge tools for MLflow's JudgeToolRegistry (matches PR #21725 naming).
+"""供 MLflow JudgeToolRegistry 使用的評判器工具（對應 PR #21725 命名）。
 
-Implements ``ReadSkillTool`` and ``ReadSkillFileTool``, registered in MLflow's
-global ``JudgeToolRegistry`` so they are available to any trace-based judge.
+實作 ``ReadSkillTool`` 與 ``ReadSkillFileTool``，並註冊到 MLflow
+全域 ``JudgeToolRegistry``，讓任何以 trace 為基礎的評判器都能使用。
 
-These won't activate in current field-based judges (no agentic loop), but are
-ready for future trace-based judges.
+這些工具在目前以欄位為基礎的評判器中不會啟用（沒有 agentic loop），但已
+為未來的 trace-based 評判器做好準備。
 
-When the native ``make_judge(skills=[...])`` API lands in MLflow, replace this
-module with MLflow's built-in skill tools.
+當原生 ``make_judge(skills=[...])`` API 進入 MLflow 後，請以 MLflow 內建的技能工具取代此
+模組。
 """
 
 from __future__ import annotations
@@ -32,10 +32,10 @@ logger = logging.getLogger(__name__)
 
 
 class ReadSkillTool(JudgeTool):
-    """Read the full body of an evaluation-criteria skill.
+    """讀取某個評估準則技能的完整本文。
 
-    The judge calls this tool when a criteria's description matches the
-    trace it is evaluating.
+    當某個準則的描述與它正在評估的 trace 相符時，
+    評判器會呼叫此工具。
     """
 
     def __init__(self, skill_set: SkillSet):
@@ -76,10 +76,10 @@ class ReadSkillTool(JudgeTool):
 
 
 class ReadSkillFileTool(JudgeTool):
-    """Read a reference document from a criteria's ``references/`` directory.
+    """從某個準則的 ``references/`` 目錄讀取參考文件。
 
-    Used for detailed rubrics, edge cases, and scoring examples.
-    Path traversal protected: rejects absolute paths and ``..`` components.
+    用於詳細 rubric、邊界案例與評分範例。
+    已防範 path traversal：會拒絕絕對路徑與 ``..`` 元件。
     """
 
     def __init__(self, skill_set: SkillSet):
@@ -129,9 +129,9 @@ _registered = False
 
 
 def register_skill_tools(skill_set: SkillSet) -> None:
-    """Register skill tools in MLflow's global ``JudgeToolRegistry``.
+    """在 MLflow 全域 ``JudgeToolRegistry`` 中註冊技能工具。
 
-    Safe to call multiple times -- tools are registered only once per process.
+    可安全多次呼叫——每個 process 只會註冊一次工具。
     """
     global _registered
     if _registered:

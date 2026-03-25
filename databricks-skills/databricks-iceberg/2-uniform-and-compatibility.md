@@ -1,16 +1,16 @@
-# UniForm and Compatibility Mode
+# UniForm 與相容性模式
 
-UniForm and Compatibility Mode make Delta tables readable as Iceberg by external engines — without converting to a native Iceberg table. Data is written as Delta, but Iceberg metadata is generated automatically so external tools (Snowflake, PyIceberg, Spark, Trino) can read via UC IRC endpoint.
+UniForm 與相容性模式可讓外部引擎將 Delta 資料表當作 Iceberg 讀取 —— 無須轉換成原生 Iceberg 資料表。資料仍以 Delta 寫入，但系統會自動產生 Iceberg metadata，讓外部工具（Snowflake、PyIceberg、Spark、Trino）可透過 UC IRC 端點讀取。
 
 ---
 
-## External Iceberg Reads (fka UniForm) (GA)
+## 外部 Iceberg 讀取（先前稱為 UniForm）（GA）
 
-**Requirements**: Unity Catalog, DBR 14.3+, column mapping enabled, deletion vectors disabled, the Delta table must have a minReaderVersion >= 2 and minWriterVersion >= 7, both managed and external tables supported.
+**需求**：Unity Catalog、DBR 14.3+、已啟用 column mapping、已停用 deletion vectors、Delta 資料表必須具備 minReaderVersion >= 2 與 minWriterVersion >= 7，且同時支援 managed 與 external tables。
 
-UniForm adds automatic Iceberg metadata generation to regular Delta tables. The table remains Delta internally but is readable as Iceberg externally.
+UniForm 會為一般 Delta 資料表自動產生 Iceberg metadata。資料表在內部仍維持 Delta，但對外可被當作 Iceberg 讀取。
 
-### Enabling UniForm on a New Table
+### 在新資料表上啟用 UniForm
 
 ```sql
 CREATE TABLE my_catalog.my_schema.customers (
@@ -26,7 +26,7 @@ TBLPROPERTIES (
 );
 ```
 
-### Enabling UniForm on an Existing Table
+### 在現有資料表上啟用 UniForm
 
 ```sql
 ALTER TABLE my_catalog.my_schema.customers
@@ -37,29 +37,29 @@ SET TBLPROPERTIES (
 );
 ```
 
-### Requirements and Prerequisites
+### 需求與前置條件
 
-UniForm requires the following properties to be set explicitly:
+UniForm 需要明確設定下列屬性：
 
-| Requirement | Details |
+| 需求 | 詳細說明 |
 |-------------|---------|
-| **Unity Catalog** | Table must be registered in UC |
-| **DBR 14.3+** | Minimum runtime version |
-| **Deletion vectors disabled** | Set `delta.enableDeletionVectors = false` before enabling UniForm |
-| **No column mapping conflicts** | If table uses `id` mode, migrate to `name` mode first |
+| **Unity Catalog** | 資料表必須註冊在 UC 中 |
+| **DBR 14.3+** | 最低 runtime 版本 |
+| **必須停用 deletion vectors** | 啟用 UniForm 前，請先設定 `delta.enableDeletionVectors = false` |
+| **不可有 column mapping 衝突** | 若資料表使用 `id` mode，請先移轉為 `name` mode |
 
-If deletion vectors are currently enabled:
+若目前已啟用 deletion vectors：
 
 ```sql
--- Disable deletion vectors first
+-- 先停用 deletion vectors
 ALTER TABLE my_catalog.my_schema.customers
 SET TBLPROPERTIES ('delta.enableDeletionVectors' = 'false');
 
--- Rewrite to remove existing deletion vectors
+-- 重寫資料以移除既有的 deletion vectors
 REORG TABLE my_catalog.my_schema.customers
 APPLY (PURGE);
 
--- Then enable UniForm
+-- 接著啟用 UniForm
 ALTER TABLE my_catalog.my_schema.customers
 SET TBLPROPERTIES (
   'delta.columnMapping.mode' = 'name',
@@ -68,16 +68,16 @@ SET TBLPROPERTIES (
 );
 ```
 
-### Async Metadata Generation
+### 非同步 metadata 產生
 
-Iceberg metadata is generated **asynchronously** after each Delta transaction. There is a brief delay (typically seconds, occasionally minutes for large transactions) before external engines see the latest data.
+每次 Delta transaction 之後，Iceberg metadata 都會**以非同步方式**產生。外部引擎看到最新資料之前，會有一段短暫延遲（通常是幾秒，大型 transaction 偶爾可能到幾分鐘）。
 
-### Checking UniForm Status
+### 檢查 UniForm 狀態
 
-> See [Check Iceberg metadata generation status](https://docs.databricks.com/aws/en/delta/uniform#check-iceberg-metadata-generation-status) for full details.
+> 完整細節請參閱 [檢查 Iceberg metadata 產生狀態](https://docs.databricks.com/aws/en/delta/uniform#check-iceberg-metadata-generation-status)。
 
 
-### Disabling UniForm
+### 停用 UniForm
 
 ```sql
 ALTER TABLE my_catalog.my_schema.customers
@@ -86,21 +86,21 @@ UNSET TBLPROPERTIES ('delta.universalFormat.enabledFormats');
 
 ---
 
-## Compatibility Mode
+## 相容性模式
 
-**Requirements**: Unity Catalog, DBR 16.1+, SDP pipeline
+**需求**：Unity Catalog、DBR 16.1+、SDP pipeline
 
-Compatibility Mode extends UniForm to **streaming tables (STs)** and **materialized views (MVs)** created by Spark Declarative Pipelines (SDP) or DBSQL. Regular UniForm does not work on STs/MVs — Compatibility Mode is the only option.
+相容性模式將 UniForm 延伸到由 Spark Declarative Pipelines（SDP）或 DBSQL 建立的 **串流資料表（STs）** 與 **具體化視圖（MVs）**。一般 UniForm 不適用於 STs/MVs —— 相容性模式是唯一選項。
 
-**How it works**: When you enable Compatibility Mode, Databricks creates a separate, read-only **"compatibility version"** of the object at the external location you specify (`delta.universalFormat.compatibility.location`). This is a full copy of the data in Iceberg-compatible format — not a pointer to the original Delta data. After the initial full copy, subsequent metadata and data generation is **incremental** (only new/changed data is synced to the external location).
+**運作方式**：啟用相容性模式後，Databricks 會在你指定的 external location（`delta.universalFormat.compatibility.location`）中，為該物件建立一份獨立、唯讀的 **「compatibility version」**。這是一份以 Iceberg 相容格式儲存的完整資料副本 —— 不是指向原始 Delta 資料的指標。完成初始完整複製後，後續的 metadata 與資料產生會採用**增量式**方式（僅同步新資料或變更資料到 external location）。
 
-> **Storage cost consideration**: Because Compatibility Mode writes a separate copy of the data to the external location, you incur additional cloud storage costs proportional to the size of the table. Factor this in when enabling Compatibility Mode on large tables.
+> **儲存成本考量**：由於相容性模式會將資料另外複製一份到 external location，因此你會依資料表大小承擔額外的雲端儲存成本。對大型資料表啟用相容性模式前，請先將這點納入評估。
 
-### Enabling Compatibility Mode
+### 啟用相容性模式
 
-Compatibility Mode is configured via table properties:
+相容性模式透過 table properties 設定：
 
-**SQL Example (streaming table)**:
+**SQL 範例（串流資料表）**：
 
 ```sql
 CREATE OR REFRESH STREAMING TABLE my_events
@@ -111,7 +111,7 @@ TBLPROPERTIES (
 AS SELECT * FROM STREAM read_files('/Volumes/catalog/schema/raw/events/');
 ```
 
-**SQL Example (materialized view)**:
+**SQL 範例（具體化視圖）**：
 
 ```sql
 CREATE OR REFRESH MATERIALIZED VIEW daily_summary
@@ -124,7 +124,7 @@ FROM my_events
 GROUP BY event_date;
 ```
 
-**Python Example**:
+**Python 範例**：
 
 ```python
 from pyspark import pipelines as dp
@@ -144,19 +144,19 @@ def my_events():
     )
 ```
 
-### Considerations for Compatibility Mode
+### 相容性模式的考量事項
 
-| Consideration | Details |
+| 考量事項 | 詳細說明 |
 |---------------|---------|
-| **External location** | `delta.universalFormat.compatibility.location` must point to a configured external location for the Iceberg metadata output path |
-| **SDP pipeline only** | Only works with streaming tables and MVs defined in SDP pipelines |
-| **Initial generation time** | First metadata generation can take up to 1 hour for large tables |
-| **Unity Catalog** | Required |
-| **DBR 16.1+** | Minimum runtime for the SDP pipeline |
+| **External location** | `delta.universalFormat.compatibility.location` 必須指向已設定好的 external location，作為 Iceberg metadata 輸出路徑 |
+| **僅限 SDP pipeline** | 只適用於在 SDP pipeline 中定義的串流資料表與 MV |
+| **初次產生時間** | 大型資料表第一次產生 metadata 可能需要長達 1 小時 |
+| **Unity Catalog** | 必要條件 |
+| **DBR 16.1+** | SDP pipeline 的最低 runtime 版本 |
 
-### Refresh Mechanics
+### 重新整理機制
 
-Compatibility Mode metadata can be refreshed manually or controlled via the `delta.universalFormat.compatibility.targetRefreshInterval` property:
+相容性模式的 metadata 可手動重新整理，也可透過 `delta.universalFormat.compatibility.targetRefreshInterval` 屬性控制：
 
 ```sql
 CREATE OR REFRESH STREAMING TABLE my_events
@@ -168,40 +168,40 @@ TBLPROPERTIES (
 AS SELECT * FROM STREAM read_files('/Volumes/catalog/schema/raw/events/');
 ```
 
-| Interval value | Behavior |
+| 間隔值 | 行為 |
 |----------------|----------|
-| `0 MINUTES` | Checks for changes after every commit and triggers a refresh if needed — default for streaming tables and MVs |
-| `1 HOUR` | Default for non-SDP tables; refreshes at most once per hour |
-| Values below `1 HOUR` (e.g. `30 MINUTES`) | Not recommended — won't make refreshes more frequent than once per hour |
+| `0 MINUTES` | 每次 commit 後都會檢查是否有變更，必要時觸發重新整理 —— 這是串流資料表與 MV 的預設值 |
+| `1 HOUR` | 非 SDP 資料表的預設值；最多每小時重新整理一次 |
+| 低於 `1 HOUR` 的值（例如 `30 MINUTES`） | 不建議 —— 實際上不會讓重新整理頻率高於每小時一次 |
 
-Metadata can also be triggered manually:
+也可手動觸發 metadata 產生：
 
 ```sql
 REFRESH TABLE my_catalog.my_schema.my_events;
 ```
 
-### Future Modes
+### 未來模式
 
-A more efficient mode for streaming tables and materialized views is expected in a future release.
+未來版本預期會為串流資料表與具體化視圖提供更有效率的模式。
 
 ---
 
-## Decision Table: Which Approach?
+## 決策表：該選哪一種方式？
 
-| Criteria | Managed Iceberg | UniForm | Compatibility Mode |
+| 條件 | 受管 Iceberg | UniForm | 相容性模式 |
 |----------|:-:|:-:|:-:|
-| **Full Iceberg read/write** | Yes | Read-only (as Iceberg) | Read-only (as Iceberg) |
-| **Works with Delta features (CDF)** | No | Partial* | Partial*  |
-| **Streaming tables / MVs** | No | No | Yes |
-| **External engine write via IRC** | Yes | No | No |
-| **Existing Delta investment** | Requires migration | No migration | No migration |
-| **Predictive Optimization** | Auto-enabled | Auto-enabled (Delta) | Auto-enabled (Delta) |
-| **DBR requirement** | 16.1+ | 14.3+ | 16.1+ |
+| **完整 Iceberg 讀寫** | 是 | 唯讀（以 Iceberg） | 唯讀（以 Iceberg） |
+| **可搭配 Delta 功能（CDF）** | 否 | 部分支援* | 部分支援*  |
+| **串流資料表 / MVs** | 否 | 否 | 是 |
+| **外部引擎可透過 IRC 寫入** | 是 | 否 | 否 |
+| **既有 Delta 投資** | 需要移轉 | 不需移轉 | 不需移轉 |
+| **Predictive Optimization** | 自動啟用 | 自動啟用（Delta） | 自動啟用（Delta） |
+| **DBR 需求** | 16.1+ | 14.3+ | 16.1+ |
 
-*given that Iceberg doesn't have CDF so the features dependent on it are not supported e.g., 
-streaming tables, materialized views, data classification, vector search, data profiling. For Synced tables to Lakebase, only snapshot mode is supported.
-### When to Choose Each
+*由於 Iceberg 沒有 CDF，因此依賴該功能的特性不受支援，例如
+串流資料表、具體化視圖、資料分類、向量搜尋、資料剖析。對於 Synced tables to Lakebase，僅支援 snapshot mode。
+### 何時該選擇各方案
 
-- **Managed Iceberg**: You want a native Iceberg table with full read/write from both Databricks and external engines. You don't need Delta-specific features (e.g., CDF).
-- **UniForm**: You have existing Delta tables and want to make them readable as Iceberg by external engines without migrating. You want to keep Delta features internally.
-- **Compatibility Mode**: You have streaming tables or materialized views that need to be readable as Iceberg by external engines.
+- **受管 Iceberg**：你希望使用原生 Iceberg 資料表，並同時讓 Databricks 與外部引擎都能完整讀寫。你不需要 Delta 專屬功能（例如 CDF）。
+- **UniForm**：你已有現成的 Delta 資料表，希望在不移轉的情況下讓外部引擎能以 Iceberg 讀取，同時保留內部的 Delta 功能。
+- **相容性模式**：你有需要讓外部引擎以 Iceberg 讀取的串流資料表或具體化視圖。

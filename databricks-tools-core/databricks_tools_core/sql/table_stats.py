@@ -1,8 +1,8 @@
 """
-Table Statistics
+資料表統計資訊
 
-High-level functions for getting table details and statistics.
-Supports both Unity Catalog tables and Volume folder data.
+用於取得資料表詳細資料與統計資訊的高階函式。
+同時支援 Unity Catalog 資料表與 Volume 資料夾資料。
 """
 
 import logging
@@ -23,7 +23,7 @@ logger = logging.getLogger(__name__)
 
 
 def _has_glob_pattern(name: str) -> bool:
-    """Check if a name contains glob pattern characters."""
+    """檢查名稱是否包含 glob 萬用字元。"""
     return any(c in name for c in ["*", "?", "[", "]"])
 
 
@@ -35,96 +35,96 @@ def get_table_details(
     warehouse_id: Optional[str] = None,
 ) -> TableSchemaResult:
     """
-    Get detailed information about tables in a schema.
+    取得 schema 中資料表的詳細資訊。
 
-    Supports three modes based on table_names:
-    1. Empty list or None: List all tables in the schema
-    2. Names with glob patterns (*, ?, []): List tables and filter by pattern
-    3. Exact names: Get tables directly without listing (faster)
+    依據 table_names 支援三種模式：
+    1. 空清單或 None：列出 schema 中的所有資料表
+    2. 含有 glob 模式的名稱（*、?、[]）：先列出資料表，再依模式篩選
+    3. 精確名稱：不列出資料表，直接取得指定資料表（較快）
 
-    Args:
-        catalog: Catalog name
-        schema: Schema name
-        table_names: Optional list of table names or glob patterns.
-            Examples:
-            - None or []: Get all tables
-            - ["customers", "orders"]: Get specific tables
-            - ["raw_*"]: Get all tables starting with "raw_"
-            - ["*_customers", "orders"]: Mix of patterns and exact names
-        table_stat_level: Level of statistics to collect:
-            - NONE: Just DDL, no stats (fast, no cache)
-            - SIMPLE: Basic stats with caching (default)
-            - DETAILED: Full stats including histograms, percentiles
-        warehouse_id: Optional warehouse ID. If not provided, auto-selects one.
+    參數:
+        catalog: Catalog 名稱
+        schema: Schema 名稱
+        table_names: 可選的資料表名稱或 glob 模式清單。
+            範例:
+            - None 或 []：取得所有資料表
+            - ["customers", "orders"]：取得特定資料表
+            - ["raw_*"]：取得所有以 "raw_" 開頭的資料表
+            - ["*_customers", "orders"]：混合使用模式與精確名稱
+        table_stat_level: 要收集的統計資訊層級：
+            - NONE: 僅取得 DDL，不收集統計資訊（快速、不使用快取）
+            - SIMPLE: 基本統計資訊，並使用快取（預設）
+            - DETAILED: 完整統計資訊，包含 histograms 與 percentiles
+        warehouse_id: 可選的 warehouse ID。若未提供，會自動選擇。
 
-    Returns:
-        TableSchemaResult containing table information with requested stat level
+    回傳:
+        包含所要求統計資訊層級之資料表資訊的 TableSchemaResult
 
-    Raises:
-        Exception: If warehouse not available or catalog/schema doesn't exist
+    引發:
+        Exception: 當 warehouse 不可用或 catalog/schema 不存在時
 
-    Examples:
-        >>> # Get all tables with basic stats
+    範例:
+        >>> # 取得所有資料表及基本統計資訊
         >>> result = get_table_details("my_catalog", "my_schema")
 
-        >>> # Get specific tables
+        >>> # 取得特定資料表
         >>> result = get_table_details("my_catalog", "my_schema", ["customers", "orders"])
 
-        >>> # Get tables matching pattern with full stats
+        >>> # 取得符合模式的資料表與完整統計資訊
         >>> result = get_table_details(
         ...     "my_catalog", "my_schema",
         ...     ["gold_*"],
         ...     table_stat_level=TableStatLevel.DETAILED
         ... )
 
-        >>> # Quick DDL-only lookup (no stats)
+        >>> # 僅快速查詢 DDL（不含統計資訊）
         >>> result = get_table_details(
         ...     "my_catalog", "my_schema",
         ...     ["my_table"],
         ...     table_stat_level=TableStatLevel.NONE
         ... )
     """
-    # Auto-select warehouse if not provided
+    # 若未提供，則自動選擇 warehouse
     if not warehouse_id:
-        logger.debug("No warehouse_id provided, selecting best available warehouse")
+        logger.debug("未提供 warehouse_id，正在選擇最佳可用的 warehouse")
         warehouse_id = get_best_warehouse()
         if not warehouse_id:
             raise Exception(
-                "No SQL warehouse available in the workspace. "
-                "Please create a SQL warehouse or start an existing one, "
-                "or provide a specific warehouse_id."
+                "workspace 中沒有可用的 SQL warehouse。"
+                "請建立 SQL warehouse 或啟動現有的 warehouse，"
+                "或提供特定的 warehouse_id。"
             )
-        logger.debug(f"Auto-selected warehouse: {warehouse_id}")
+        logger.debug(f"已自動選擇 warehouse：{warehouse_id}")
 
     collector = TableStatsCollector(warehouse_id=warehouse_id)
 
-    # Determine if we need to list tables
+    # 判斷是否需要先列出資料表
     table_names = table_names or []
     has_patterns = any(_has_glob_pattern(name) for name in table_names)
     needs_listing = len(table_names) == 0 or has_patterns
     failed_tables: List[DataSourceInfo] = []
 
     if needs_listing:
-        # List all tables first
-        logger.debug(f"Listing tables in {catalog}.{schema}")
+        # 先列出所有資料表
+        logger.debug(f"正在列出 {catalog}.{schema} 中的資料表")
         all_tables = collector.list_tables(catalog, schema)
 
         if table_names:
-            # Filter by patterns
+            # 依模式篩選
             tables_to_fetch = collector.filter_tables_by_patterns(all_tables, table_names)
             logger.debug(
-                f"Filtered {len(all_tables)} tables to {len(tables_to_fetch)} matching patterns: {table_names}"
+                f"已將 {len(all_tables)} 個資料表篩選為 {len(tables_to_fetch)} 個符合模式的資料表：{table_names}"
             )
         else:
             tables_to_fetch = all_tables
-            logger.debug(f"Found {len(tables_to_fetch)} tables")
+            logger.debug(f"找到 {len(tables_to_fetch)} 個資料表")
     else:
-        # Direct lookup - build table info without listing
-        logger.debug(f"Direct lookup for tables: {table_names}")
+        # 直接查詢，不先列出資料表
+        logger.debug(f"直接查詢資料表：{table_names}")
         tables_to_fetch = []
         for name in table_names:
             try:
-                # Fetch metadata via SDK to get the comment and updated_at
+                # 透過 SDK 取得中繼資料，以取得 comment 與 updated_at
                 t = collector.client.tables.get(f"{catalog}.{schema}.{name}")
                 tables_to_fetch.append(
                     {
@@ -134,22 +134,22 @@ def get_table_details(
                     }
                 )
             except Exception as e:
-                logger.warning(f"Failed to fetch metadata for {catalog}.{schema}.{name}: {e}")
+                logger.warning(f"取得 {catalog}.{schema}.{name} 的中繼資料失敗：{e}")
                 failed_tables.append(
                     DataSourceInfo(
                         name=f"{catalog}.{schema}.{name}",
-                        error=f"Failed to fetch table metadata: {e}",
+                        error=f"取得資料表中繼資料失敗：{e}",
                     )
                 )
 
     if not tables_to_fetch and not failed_tables:
         return TableSchemaResult(catalog=catalog, schema_name=schema, tables=[])
 
-    # Determine whether to collect stats
+    # 判斷是否要收集統計資訊
     collect_stats = table_stat_level != TableStatLevel.NONE
 
-    # Fetch table info (with or without stats)
-    logger.info(f"Fetching {len(tables_to_fetch)} tables with stat_level={table_stat_level.value}")
+    # 取得資料表資訊（有或沒有統計資訊）
+    logger.info(f"正在取得 {len(tables_to_fetch)} 個資料表，stat_level={table_stat_level.value}")
     table_infos = collector.get_tables_info_parallel(
         catalog=catalog,
         schema=schema,
@@ -157,37 +157,38 @@ def get_table_details(
         collect_stats=collect_stats,
     )
 
-    # Append any tables that failed metadata lookup with their error info
+    # 將中繼資料查詢失敗的資料表及其錯誤資訊附加到結果中
     if failed_tables:
         table_infos.extend(failed_tables)
 
-    # Build result
+    # 建立結果
     result = TableSchemaResult(
         catalog=catalog,
         schema_name=schema,
         tables=table_infos,
     )
 
-    # Apply stat level transformation
+    # 套用統計資訊層級轉換
     if table_stat_level == TableStatLevel.SIMPLE:
         return result.keep_basic_stats()
     elif table_stat_level == TableStatLevel.NONE:
         return result.remove_stats()
     else:
-        # DETAILED - return everything
+        # DETAILED：回傳所有資訊
         return result
 
 
 def _parse_volume_path(volume_path: str) -> str:
     """
-    Parse volume path and return the full /Volumes/... path.
+    解析 volume 路徑並回傳完整的 /Volumes/... 路徑。
 
-    Accepts:
+    注意:
+        可接受以下格式：
     - catalog/schema/volume/path
     - /Volumes/catalog/schema/volume/path
 
-    Returns:
-        Full path in /Volumes/catalog/schema/volume/path format
+    回傳:
+        /Volumes/catalog/schema/volume/path 格式的完整路徑
     """
     path = volume_path.strip("/")
     if path.lower().startswith("volumes/"):
@@ -197,10 +198,10 @@ def _parse_volume_path(volume_path: str) -> str:
 
 def _list_volume_files(volume_path: str) -> tuple[List[VolumeFileInfo], int, Optional[str]]:
     """
-    List files in a volume folder using the Files API.
+    使用 Files API 列出 volume 資料夾中的檔案。
 
-    Returns:
-        Tuple of (files_list, total_size_bytes, error_message)
+    回傳:
+        (files_list, total_size_bytes, error_message) 的 tuple
     """
     w = get_workspace_client()
     files = []
@@ -229,13 +230,13 @@ def _list_volume_files(volume_path: str) -> tuple[List[VolumeFileInfo], int, Opt
             return (
                 [],
                 0,
-                f"Volume path not found: {volume_path}. Check that the catalog, schema, volume, and path exist.",
+                f"找不到 volume 路徑：{volume_path}。請確認 catalog、schema、volume 與路徑存在。",
             )
-        return [], 0, f"Failed to list volume path: {volume_path}. Error: {error_msg}"
+        return [], 0, f"列出 volume 路徑失敗：{volume_path}。錯誤：{error_msg}"
 
 
 def _extract_catalog_schema_from_volume_path(volume_path: str) -> tuple[str, str]:
-    """Extract catalog and schema from a volume path like /Volumes/catalog/schema/volume/..."""
+    """從 /Volumes/catalog/schema/volume/... 這類 volume 路徑中擷取 catalog 與 schema。"""
     parts = volume_path.strip("/").split("/")
     if parts[0].lower() == "volumes" and len(parts) >= 3:
         return parts[1], parts[2]
@@ -251,29 +252,29 @@ def get_volume_folder_details(
     warehouse_id: Optional[str] = None,
 ) -> TableSchemaResult:
     """
-    Get detailed information about data files in a Databricks Volume folder.
+    取得 Databricks Volume 資料夾中資料檔案的詳細資訊。
 
-    Similar to get_table_details but for raw files stored in Volumes.
-    Uses SQL warehouse to read volume data via read_files() function.
+    與 get_table_details 類似，但用於儲存在 Volumes 中的原始檔案。
+    會使用 SQL warehouse 透過 read_files() 函式讀取 volume 資料。
 
-    Args:
-        volume_path: Path to the volume folder. Can be:
-            - "catalog/schema/volume/path" (e.g., "ai_dev_kit/demo/raw_data/customers")
+    參數:
+        volume_path: Volume 資料夾路徑。可為：
+            - "catalog/schema/volume/path"（例如："ai_dev_kit/demo/raw_data/customers"）
             - "/Volumes/catalog/schema/volume/path"
-        format: Data format:
-            - "parquet", "csv", "json", "delta": Read data and compute stats
-            - "file": Just list files without reading data (fast)
-        table_stat_level: Level of statistics to collect:
-            - NONE: Just schema, no stats
-            - SIMPLE: Basic stats (default)
-            - DETAILED: Full stats including samples
-        warehouse_id: Optional warehouse ID. If not provided, auto-selects one.
+        format: 資料格式：
+            - "parquet"、"csv"、"json"、"delta"：讀取資料並計算統計資訊
+            - "file"：僅列出檔案，不讀取資料（快速）
+        table_stat_level: 要收集的統計資訊層級：
+            - NONE: 僅取得 schema，不收集統計資訊
+            - SIMPLE: 基本統計資訊（預設）
+            - DETAILED: 完整統計資訊，包含 samples
+        warehouse_id: 可選的 warehouse ID。若未提供，會自動選擇。
 
-    Returns:
-        TableSchemaResult with a single DataSourceInfo containing file info, column stats, and sample data
+    回傳:
+        TableSchemaResult，內含單一 DataSourceInfo，其中包含檔案資訊、欄位統計資訊與 sample data
 
-    Examples:
-        >>> # Get stats for parquet files
+    範例:
+        >>> # 取得 parquet 檔案的統計資訊
         >>> result = get_volume_folder_details(
         ...     "ai_dev_kit/demo/raw_data/customers",
         ...     format="parquet"
@@ -281,7 +282,7 @@ def get_volume_folder_details(
         >>> info = result.tables[0]
         >>> print(f"Rows: {info.total_rows}, Columns: {len(info.column_details)}")
 
-        >>> # Just list files (fast, no data reading)
+        >>> # 僅列出檔案（快速，不讀取資料）
         >>> result = get_volume_folder_details(
         ...     "ai_dev_kit/demo/raw_data/customers",
         ...     format="file"
@@ -290,16 +291,16 @@ def get_volume_folder_details(
         >>> print(f"Files: {info.total_files}, Size: {info.total_size_bytes}")
     """
     full_path = _parse_volume_path(volume_path)
-    logger.debug(f"Getting volume folder details for: {full_path}, format={format}")
+    logger.debug(f"正在取得 volume 資料夾詳細資訊：{full_path}，format={format}")
 
-    # Extract catalog/schema for the result
+    # 為結果擷取 catalog/schema
     catalog, schema = _extract_catalog_schema_from_volume_path(full_path)
 
     def _make_result(info: DataSourceInfo) -> TableSchemaResult:
-        """Helper to wrap DataSourceInfo in TableSchemaResult."""
+        """將 DataSourceInfo 包裝為 TableSchemaResult 的輔助函式。"""
         return TableSchemaResult(catalog=catalog, schema_name=schema, tables=[info])
 
-    # Step 1: List files to verify folder exists and get file info
+    # 步驟 1：列出檔案以確認資料夾存在，並取得檔案資訊
     files, total_size, error = _list_volume_files(full_path)
 
     if error:
@@ -317,16 +318,16 @@ def get_volume_folder_details(
                 name=full_path,
                 format=format,
                 total_files=0,
-                error=f"Volume path exists but is empty: {full_path}",
+                error=f"Volume 路徑存在但內容為空：{full_path}",
             )
         )
 
-    # Count data files (not directories)
+    # 計算資料檔案數量（不含目錄）
     data_files = [f for f in files if not f.is_directory]
     directories = [f for f in files if f.is_directory]
     total_files = len(data_files) if data_files else len(directories)
 
-    # Step 2: For format="file", just return file listing
+    # 步驟 2：若 format="file"，僅回傳檔案清單
     if format == "file":
         return _make_result(
             DataSourceInfo(
@@ -338,31 +339,31 @@ def get_volume_folder_details(
             )
         )
 
-    # Step 3: For data formats, use TableStatsCollector to read and compute stats
-    # Auto-select warehouse if not provided
+    # 步驟 3：若為資料格式，使用 TableStatsCollector 讀取並計算統計資訊
+    # 若未提供，則自動選擇 warehouse
     if not warehouse_id:
-        logger.debug("No warehouse_id provided, selecting best available warehouse")
+        logger.debug("未提供 warehouse_id，正在選擇最佳可用的 warehouse")
         warehouse_id = get_best_warehouse()
         if not warehouse_id:
             raise Exception(
-                "No SQL warehouse available in the workspace. "
-                "Please create a SQL warehouse or start an existing one, "
-                "or provide a specific warehouse_id."
+                "workspace 中沒有可用的 SQL warehouse。"
+                "請建立 SQL warehouse 或啟動現有的 warehouse，"
+                "或提供特定的 warehouse_id。"
             )
-        logger.debug(f"Auto-selected warehouse: {warehouse_id}")
+        logger.debug(f"已自動選擇 warehouse：{warehouse_id}")
 
-    # Determine whether to collect stats
+    # 判斷是否要收集統計資訊
     collect_stats = table_stat_level != TableStatLevel.NONE
 
     if not collect_stats:
-        # Just get schema without stats - use a simple query
+        # 僅取得 schema，不收集統計資訊：使用簡單查詢
         from .sql_utils.executor import SQLExecutor
 
         executor = SQLExecutor(warehouse_id=warehouse_id)
         volume_ref = f"read_files('{full_path}', format => '{format}')"
 
         try:
-            # Get schema from first row
+            # 從第一列取得 schema
             sample_query = f"SELECT * FROM {volume_ref} LIMIT 1"
             sample_result = executor.execute(sql_query=sample_query, timeout=60)
 
@@ -373,18 +374,18 @@ def get_volume_folder_details(
                         format=format,
                         total_files=total_files,
                         total_size_bytes=total_size,
-                        error="Failed to read volume data - no data returned",
+                        error="讀取 volume 資料失敗：未回傳任何資料",
                     )
                 )
 
-            # Get row count
+            # 取得資料列數
             count_result = executor.execute(
                 sql_query=f"SELECT COUNT(*) as total_rows FROM {volume_ref}",
                 timeout=60,
             )
             total_rows = count_result[0]["total_rows"] if count_result else 0
 
-            # Build column details from first row
+            # 根據第一列建立欄位詳細資訊
             column_details = {}
             for col_name, value in sample_result[0].items():
                 if col_name == "_rescued_data":
@@ -416,11 +417,11 @@ def get_volume_folder_details(
                     format=format,
                     total_files=total_files,
                     total_size_bytes=total_size,
-                    error=f"Failed to read volume data: {str(e)}",
+                    error=f"讀取 volume 資料失敗：{str(e)}",
                 )
             )
 
-    # Use TableStatsCollector for full stats
+    # 使用 TableStatsCollector 取得完整統計資訊
     collector = TableStatsCollector(warehouse_id=warehouse_id)
 
     try:
@@ -436,7 +437,7 @@ def get_volume_folder_details(
                     format=format,
                     total_files=total_files,
                     total_size_bytes=total_size,
-                    error="Failed to collect volume stats - no columns found",
+                    error="收集 volume 統計資訊失敗：找不到任何欄位",
                 )
             )
 
@@ -452,7 +453,7 @@ def get_volume_folder_details(
 
         result = _make_result(volume_info)
 
-        # Apply stat level transformation
+        # 套用統計資訊層級轉換
         if table_stat_level == TableStatLevel.SIMPLE:
             return result.keep_basic_stats()
         else:
@@ -465,6 +466,6 @@ def get_volume_folder_details(
                 format=format,
                 total_files=total_files,
                 total_size_bytes=total_size,
-                error=f"Failed to read volume data: {str(e)}",
+                error=f"讀取 volume 資料失敗：{str(e)}",
             )
         )

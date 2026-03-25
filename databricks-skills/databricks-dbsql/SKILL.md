@@ -1,46 +1,46 @@
 ---
 name: databricks-dbsql
 description: >-
-  Databricks SQL (DBSQL) advanced features and SQL warehouse capabilities.
-  This skill MUST be invoked when the user mentions: "DBSQL", "Databricks SQL",
+  Databricks SQL (DBSQL) 的進階功能與 SQL Warehouse 能力。
+  當使用者提到以下內容時，這個 skill 必須被呼叫: "DBSQL", "Databricks SQL",
   "SQL warehouse", "SQL scripting", "stored procedure", "CALL procedure",
   "materialized view", "CREATE MATERIALIZED VIEW", "pipe syntax", "|>",
   "geospatial", "H3", "ST_", "spatial SQL", "collation", "COLLATE",
   "ai_query", "ai_classify", "ai_extract", "ai_gen", "AI function",
   "http_request", "remote_query", "read_files", "Lakehouse Federation",
   "recursive CTE", "WITH RECURSIVE", "multi-statement transaction",
-  "temp table", "temporary view", "pipe operator".
-  SHOULD also invoke when the user asks about SQL best practices, data modeling
-  patterns, or advanced SQL features on Databricks.
+  "temp table", "temporary view", "pipe operator"。
+  當使用者詢問 Databricks 上的 SQL 最佳實務、資料建模
+  模式，或進階 SQL 功能時，也應呼叫此 skill。
 ---
 
-# Databricks SQL (DBSQL) - Advanced Features
+# Databricks SQL (DBSQL) - 進階功能
 
-## Quick Reference
+## 快速參考
 
-| Feature | Key Syntax | Since | Reference |
+| 功能 | 關鍵語法 | 自版本 | 參考 |
 |---------|-----------|-------|-----------|
-| SQL Scripting | `BEGIN...END`, `DECLARE`, `IF/WHILE/FOR` | DBR 16.3+ | [sql-scripting.md](sql-scripting.md) |
-| Stored Procedures | `CREATE PROCEDURE`, `CALL` | DBR 17.0+ | [sql-scripting.md](sql-scripting.md) |
-| Recursive CTEs | `WITH RECURSIVE` | DBR 17.0+ | [sql-scripting.md](sql-scripting.md) |
-| Transactions | `BEGIN ATOMIC...END` | Preview | [sql-scripting.md](sql-scripting.md) |
-| Materialized Views | `CREATE MATERIALIZED VIEW` | Pro/Serverless | [materialized-views-pipes.md](materialized-views-pipes.md) |
-| Temp Tables | `CREATE TEMPORARY TABLE` | All | [materialized-views-pipes.md](materialized-views-pipes.md) |
-| Pipe Syntax | `\|>` operator | DBR 16.1+ | [materialized-views-pipes.md](materialized-views-pipes.md) |
-| Geospatial (H3) | `h3_longlatash3()`, `h3_polyfillash3()` | DBR 11.2+ | [geospatial-collations.md](geospatial-collations.md) |
-| Geospatial (ST) | `ST_Point()`, `ST_Contains()`, 80+ funcs | DBR 16.0+ | [geospatial-collations.md](geospatial-collations.md) |
-| Collations | `COLLATE`, `UTF8_LCASE`, locale-aware | DBR 16.1+ | [geospatial-collations.md](geospatial-collations.md) |
-| AI Functions | `ai_query()`, `ai_classify()`, 11+ funcs | DBR 15.1+ | [ai-functions.md](ai-functions.md) |
+| SQL 腳本 | `BEGIN...END`, `DECLARE`, `IF/WHILE/FOR` | DBR 16.3+ | [sql-scripting.md](sql-scripting.md) |
+| 預存程序 | `CREATE PROCEDURE`, `CALL` | DBR 17.0+ | [sql-scripting.md](sql-scripting.md) |
+| 遞迴 CTE | `WITH RECURSIVE` | DBR 17.0+ | [sql-scripting.md](sql-scripting.md) |
+| 交易 | `BEGIN ATOMIC...END` | 預覽 | [sql-scripting.md](sql-scripting.md) |
+| 具體化視圖 | `CREATE MATERIALIZED VIEW` | Pro/Serverless | [materialized-views-pipes.md](materialized-views-pipes.md) |
+| 暫存資料表 | `CREATE TEMPORARY TABLE` | 全部 | [materialized-views-pipes.md](materialized-views-pipes.md) |
+| 管線語法 | `\|>` 運算子 | DBR 16.1+ | [materialized-views-pipes.md](materialized-views-pipes.md) |
+| 地理空間 (H3) | `h3_longlatash3()`, `h3_polyfillash3()` | DBR 11.2+ | [geospatial-collations.md](geospatial-collations.md) |
+| 地理空間 (ST) | `ST_Point()`, `ST_Contains()`, 80+ 函式 | DBR 16.0+ | [geospatial-collations.md](geospatial-collations.md) |
+| 定序 | `COLLATE`, `UTF8_LCASE`, 語地區感知 | DBR 16.1+ | [geospatial-collations.md](geospatial-collations.md) |
+| AI Functions | `ai_query()`, `ai_classify()`, 11+ 函式 | DBR 15.1+ | [ai-functions.md](ai-functions.md) |
 | http_request | `http_request(conn, ...)` | Pro/Serverless | [ai-functions.md](ai-functions.md) |
 | remote_query | `SELECT * FROM remote_query(...)` | Pro/Serverless | [ai-functions.md](ai-functions.md) |
-| read_files | `SELECT * FROM read_files(...)` | All | [ai-functions.md](ai-functions.md) |
-| Data Modeling | Star schema, Liquid Clustering | All | [best-practices.md](best-practices.md) |
+| read_files | `SELECT * FROM read_files(...)` | 全部 | [ai-functions.md](ai-functions.md) |
+| 資料建模 | 星型綱要、Liquid Clustering | 全部 | [best-practices.md](best-practices.md) |
 
 ---
 
-## Common Patterns
+## 常見模式
 
-### SQL Scripting - Procedural ETL
+### SQL 腳本 - 程序式 ETL
 
 ```sql
 BEGIN
@@ -64,7 +64,7 @@ BEGIN
 END
 ```
 
-### Stored Procedure with Error Handling
+### 含錯誤處理的預存程序
 
 ```sql
 CREATE OR REPLACE PROCEDURE catalog.schema.upsert_customers(
@@ -90,17 +90,17 @@ BEGIN
   SET p_rows_affected = (SELECT COUNT(*) FROM identifier(p_source));
 END;
 
--- Invoke:
+-- 呼叫：
 CALL catalog.schema.upsert_customers('catalog.schema.staging_customers', ?);
 ```
 
-### Materialized View with Scheduled Refresh
+### 具備排程重新整理的具體化視圖
 
 ```sql
 CREATE OR REPLACE MATERIALIZED VIEW catalog.schema.daily_revenue
   CLUSTER BY (order_date)
   SCHEDULE EVERY 1 HOUR
-  COMMENT 'Hourly-refreshed daily revenue by region'
+  COMMENT '依區域彙總、每小時重新整理的每日營收'
 AS SELECT
     order_date,
     region,
@@ -111,10 +111,10 @@ JOIN catalog.schema.dim_store USING (store_id)
 GROUP BY order_date, region;
 ```
 
-### Pipe Syntax - Readable Transformations
+### 管線語法 - 可讀性高的轉換流程
 
 ```sql
--- Traditional SQL rewritten with pipe syntax
+-- 使用管線語法改寫的傳統 SQL
 FROM catalog.schema.fact_orders
   |> WHERE order_date >= current_date() - INTERVAL 30 DAYS
   |> AGGREGATE SUM(amount) AS total, COUNT(*) AS cnt GROUP BY region, product_category
@@ -123,10 +123,10 @@ FROM catalog.schema.fact_orders
   |> LIMIT 20;
 ```
 
-### AI Functions - Enrich Data with LLMs
+### AI Functions - 使用 LLM 豐富化資料
 
 ```sql
--- Classify support tickets
+-- 分類支援票證
 SELECT
   ticket_id,
   description,
@@ -135,13 +135,13 @@ SELECT
 FROM catalog.schema.support_tickets
 LIMIT 100;
 
--- Extract entities from text
+-- 從文字中擷取實體
 SELECT
   doc_id,
   ai_extract(content, ARRAY('person_name', 'company', 'dollar_amount')) AS entities
 FROM catalog.schema.contracts;
 
--- General-purpose AI query with structured output
+-- 具備結構化輸出的通用 AI 查詢
 SELECT ai_query(
   'databricks-meta-llama-3-3-70b-instruct',
   concat('Summarize this customer feedback in JSON with keys: topic, sentiment, action_items. Feedback: ', feedback),
@@ -151,10 +151,10 @@ FROM catalog.schema.customer_feedback
 LIMIT 50;
 ```
 
-### Geospatial - Proximity Search with H3
+### 地理空間 - 使用 H3 的鄰近搜尋
 
 ```sql
--- Find stores within 5km of each customer using H3 indexing
+-- 使用 H3 索引找出距離每位客戶 5km 內的門市
 WITH customer_h3 AS (
   SELECT *, h3_longlatash3(longitude, latitude, 7) AS h3_cell
   FROM catalog.schema.customers
@@ -178,10 +178,10 @@ WHERE ST_Distance(
 ) < 5000;
 ```
 
-### Collation - Case-Insensitive Search
+### 定序 - 不區分大小寫的搜尋
 
 ```sql
--- Create table with case-insensitive collation
+-- 建立使用不區分大小寫定序的資料表
 CREATE TABLE catalog.schema.products (
   product_id BIGINT GENERATED ALWAYS AS IDENTITY,
   name STRING COLLATE UTF8_LCASE,
@@ -189,20 +189,20 @@ CREATE TABLE catalog.schema.products (
   price DECIMAL(10, 2)
 );
 
--- Queries automatically case-insensitive (no LOWER() needed)
+-- 查詢會自動不區分大小寫（不需要 LOWER()）
 SELECT * FROM catalog.schema.products
-WHERE name = 'MacBook Pro';  -- matches 'macbook pro', 'MACBOOK PRO', etc.
+WHERE name = 'MacBook Pro';  -- 符合 'macbook pro'、'MACBOOK PRO' 等
 ```
 
-### http_request - Call External APIs
+### http_request - 呼叫外部 API
 
 ```sql
--- Set up connection first (one-time)
+-- 先建立連線（一次性）
 CREATE CONNECTION my_api_conn
   TYPE HTTP
   OPTIONS (host 'https://api.example.com', bearer_token secret('scope', 'token'));
 
--- Call API from SQL
+-- 從 SQL 呼叫 API
 SELECT
   order_id,
   http_request(
@@ -215,10 +215,10 @@ FROM catalog.schema.orders
 WHERE needs_validation = true;
 ```
 
-### read_files - Ingest Raw Files
+### read_files - 擷取原始檔案
 
 ```sql
--- Read JSON files from a Volume with schema hints
+-- 從 Volume 讀取帶有 schema 提示的 JSON 檔案
 SELECT *
 FROM read_files(
   '/Volumes/catalog/schema/raw/events/',
@@ -228,7 +228,7 @@ FROM read_files(
   recursiveFileLookup => true
 );
 
--- Read CSV with options
+-- 讀取含選項的 CSV
 SELECT *
 FROM read_files(
   '/Volumes/catalog/schema/raw/sales/',
@@ -240,30 +240,30 @@ FROM read_files(
 );
 ```
 
-### Recursive CTE - Hierarchy Traversal
+### 遞迴 CTE - 階層走訪
 
 ```sql
 WITH RECURSIVE org_chart AS (
-  -- Anchor: top-level managers
+  -- 錨點：最上層主管
   SELECT employee_id, name, manager_id, 0 AS depth, ARRAY(name) AS path
   FROM catalog.schema.employees
   WHERE manager_id IS NULL
 
   UNION ALL
 
-  -- Recursive: direct reports
+  -- 遞迴：直接下屬
   SELECT e.employee_id, e.name, e.manager_id, o.depth + 1, array_append(o.path, e.name)
   FROM catalog.schema.employees e
   JOIN org_chart o ON e.manager_id = o.employee_id
-  WHERE o.depth < 10  -- safety limit
+  WHERE o.depth < 10  -- 安全上限
 )
 SELECT * FROM org_chart ORDER BY depth, name;
 ```
 
-### remote_query - Federated Queries
+### remote_query - 聯合查詢
 
 ```sql
--- Query PostgreSQL via Lakehouse Federation
+-- 透過 Lakehouse Federation 查詢 PostgreSQL
 SELECT *
 FROM remote_query(
   'my_postgres_connection',
@@ -274,27 +274,27 @@ FROM remote_query(
 
 ---
 
-## Reference Files
+## 參考檔案
 
-Load these for detailed syntax, full parameter lists, and advanced patterns:
+請載入以下檔案，以取得詳細語法、完整參數清單與進階模式：
 
-| File | Contents | When to Read |
+| 檔案 | 內容 | 何時閱讀 |
 |------|----------|--------------|
-| [sql-scripting.md](sql-scripting.md) | SQL Scripting, Stored Procedures, Recursive CTEs, Transactions | User needs procedural SQL, error handling, loops, dynamic SQL |
-| [materialized-views-pipes.md](materialized-views-pipes.md) | Materialized Views, Temp Tables/Views, Pipe Syntax | User needs MVs, refresh scheduling, temp objects, pipe operator |
-| [geospatial-collations.md](geospatial-collations.md) | 39 H3 functions, 80+ ST functions, Collation types and hierarchy | User needs spatial analysis, H3 indexing, case/accent handling |
-| [ai-functions.md](ai-functions.md) | 13 AI functions, http_request, remote_query, read_files (all options) | User needs AI enrichment, API calls, federation, file ingestion |
-| [best-practices.md](best-practices.md) | Data modeling, performance, Liquid Clustering, anti-patterns | User needs architecture guidance, optimization, or modeling advice |
+| [sql-scripting.md](sql-scripting.md) | SQL 腳本、預存程序、遞迴 CTE、交易 | 使用者需要程序式 SQL、錯誤處理、迴圈或動態 SQL |
+| [materialized-views-pipes.md](materialized-views-pipes.md) | 具體化視圖、暫存資料表/視圖、管線語法 | 使用者需要 MV、重新整理排程、暫存物件或管線運算子 |
+| [geospatial-collations.md](geospatial-collations.md) | 39 個 H3 函式、80+ 個 ST 函式、定序類型與階層 | 使用者需要空間分析、H3 索引或大小寫/重音處理 |
+| [ai-functions.md](ai-functions.md) | 13 個 AI 函式、http_request、remote_query、read_files（全部選項） | 使用者需要 AI 豐富化、API 呼叫、聯合查詢或檔案擷取 |
+| [best-practices.md](best-practices.md) | 資料建模、效能、Liquid Clustering、反模式 | 使用者需要架構指引、最佳化或建模建議 |
 
 ---
 
-## Key Guidelines
+## 核心準則
 
-- **Always use Serverless SQL warehouses** for AI functions, MVs, and http_request
-- **Use `LIMIT` during development** with AI functions to control costs
-- **Prefer Liquid Clustering over partitioning** for new tables (1-4 keys max)
-- **Use `CLUSTER BY AUTO`** when unsure about clustering keys
-- **Star schema in Gold layer** for BI; OBT acceptable in Silver
-- **Define PK/FK constraints** on dimensional models for query optimization
-- **Use `COLLATE UTF8_LCASE`** for user-facing string columns that need case-insensitive search
-- **Use MCP tools** (`execute_sql`, `execute_sql_multi`) to test and validate all SQL before deploying
+- **一律使用 Serverless SQL Warehouse** 來執行 AI functions、MVs 與 http_request
+- **在開發期間使用 `LIMIT`** 搭配 AI functions 以控制成本
+- **新資料表優先使用 Liquid Clustering 而非 partitioning**（最多 1-4 個鍵）
+- **不確定 clustering 鍵時使用 `CLUSTER BY AUTO`**
+- **Gold 層使用星型綱要** 供 BI 使用；Silver 可接受 OBT
+- **在維度模型上定義 PK/FK constraints** 以利查詢最佳化
+- **對需要不區分大小寫搜尋的使用者面向字串欄位使用 `COLLATE UTF8_LCASE`**
+- **使用 MCP tools**（`execute_sql`, `execute_sql_multi`）在部署前測試並驗證所有 SQL

@@ -1,4 +1,4 @@
-"""PDF tools - Generate synthetic PDF documents for RAG/unstructured data use cases."""
+"""PDF 工具 - 為 RAG/非結構化資料使用案例產生合成 PDF 文件。"""
 
 import tempfile
 from typing import Any, Dict, Literal
@@ -23,40 +23,40 @@ def generate_and_upload_pdfs(
     overwrite_folder: bool = False,
 ) -> Dict[str, Any]:
     """
-    Generate synthetic PDF documents and upload to a Unity Catalog volume.
+    產生合成 PDF 文件並上傳到 Unity Catalog volume。
 
-    This tool generates realistic PDF documents using a 2-step process:
-    1. Uses LLM to generate diverse document specifications
-    2. Generates HTML content and converts to PDF in parallel
+    此工具使用 2 步驟流程產生逼真的 PDF 文件：
+    1. 使用 LLM 產生多樣化的文件規格
+    2. 平行產生 HTML 內容並轉換為 PDF
 
-    Each PDF also gets a companion JSON file with a question/guideline pair
-    for RAG evaluation purposes.
+    每個 PDF 也會附帶一個 companion JSON 檔案，內含 question/guideline 配對，
+    用於 RAG 評估。
 
-    Args:
-        catalog: Unity Catalog name
-        schema: Schema name
-        description: Detailed description of what PDFs should contain.
-            Be specific about the domain, document types, and content.
-            Example: "Technical documentation for a cloud infrastructure platform
+    參數:
+        catalog: Unity Catalog 名稱
+        schema: Schema 名稱
+        description: PDF 應包含內容的詳細描述。
+            請具體說明要涵蓋的領域、文件類型與內容。
+            範例："Technical documentation for a cloud infrastructure platform
             including API guides, troubleshooting manuals, and security policies."
-        count: Number of PDFs to generate (recommended: 5-20)
-        volume: Volume name (must already exist). Default: "raw_data"
-        folder: Folder within volume (e.g., "technical_docs"). Default: "pdf_documents"
-        doc_size: Size of documents to generate. Default: "MEDIUM"
-            - "SMALL": ~1 page, concise content
-            - "MEDIUM": ~4-6 pages, comprehensive coverage (default)
-            - "LARGE": ~10+ pages, exhaustive documentation
-        overwrite_folder: If True, delete existing folder content first (default: False)
+        count: 要產生的 PDF 數量（建議：5-20）
+        volume: Volume 名稱（必須已存在）。預設："raw_data"
+        folder: Volume 內的資料夾（例如 "technical_docs"）。預設："pdf_documents"
+        doc_size: 要產生的文件大小。預設："MEDIUM"
+            - "SMALL": 約 1 頁，內容精簡
+            - "MEDIUM": 約 4-6 頁，涵蓋完整（預設）
+            - "LARGE": 約 10 頁以上，內容詳盡
+        overwrite_folder: 若為 True，則先刪除既有資料夾內容（預設：False）
 
-    Returns:
-        Dictionary with:
-        - success: True if all PDFs generated successfully
-        - volume_path: Path to the volume folder containing PDFs
-        - pdfs_generated: Number of PDFs successfully created
-        - pdfs_failed: Number of PDFs that failed
-        - errors: List of error messages if any
+    回傳:
+        包含以下內容的字典：
+        - success: 若所有 PDF 都成功產生則為 True
+        - volume_path: 包含 PDF 的 volume 資料夾路徑
+        - pdfs_generated: 成功建立的 PDF 數量
+        - pdfs_failed: 失敗的 PDF 數量
+        - errors: 錯誤訊息清單（若有）
 
-    Example:
+    範例:
         >>> generate_and_upload_pdfs(
         ...     catalog="my_catalog",
         ...     schema="my_schema",
@@ -73,11 +73,11 @@ def generate_and_upload_pdfs(
             "errors": []
         }
 
-    Environment Variables:
-        - DATABRICKS_MODEL: Model serving endpoint name (auto-discovered if not set)
-        - DATABRICKS_MODEL_NANO: Smaller model for faster generation (auto-discovered if not set)
+    環境變數:
+        - DATABRICKS_MODEL: Model serving endpoint 名稱（若未設定則自動探索）
+        - DATABRICKS_MODEL_NANO: 較小的 model，可加快產生速度（若未設定則自動探索）
     """
-    # Convert string to DocSize enum
+    # 將字串轉換為 DocSize enum
     size_enum = DocSize(doc_size)
 
     result = _generate_pdf_documents(
@@ -114,36 +114,36 @@ def generate_and_upload_pdf(
     doc_size: Literal["SMALL", "MEDIUM", "LARGE"] = "MEDIUM",
 ) -> Dict[str, Any]:
     """
-    Generate a single PDF document and upload to a Unity Catalog volume.
+    產生單一 PDF 文件並上傳到 Unity Catalog volume。
 
-    Use this when you need to create one PDF with precise control over its
-    content, title, and associated question/guideline for RAG evaluation.
+    當你需要建立單一 PDF，並精準控制其內容、標題，
+    以及用於 RAG 評估的 question/guideline 時，可使用此工具。
 
-    Args:
-        title: Document title (e.g., "API Authentication Guide")
-        description: What this document should contain. Be detailed about
-            the content, sections, topics, and domain context to cover.
-        question: A question that can be answered by reading this document.
-            Used for RAG evaluation.
-        guideline: How to evaluate if an answer to the question is correct.
-            Should describe what a good answer includes without giving the exact answer.
-        catalog: Unity Catalog name
-        schema: Schema name
-        volume: Volume name (must already exist). Default: "raw_data"
-        folder: Folder within volume. Default: "pdf_documents"
-        doc_size: Size of document to generate. Default: "MEDIUM"
-            - "SMALL": ~1 page, concise content
-            - "MEDIUM": ~4-6 pages, comprehensive coverage
-            - "LARGE": ~10+ pages, exhaustive documentation
+    參數:
+        title: 文件標題（例如 "API Authentication Guide"）
+        description: 此文件應包含的內容。請詳細描述
+            要涵蓋的內容、章節、主題與領域脈絡。
+        question: 可透過閱讀此文件回答的問題。
+            用於 RAG 評估。
+        guideline: 如何評估問題答案是否正確。
+            應描述良好答案應包含哪些內容，但不要直接給出確切答案。
+        catalog: Unity Catalog 名稱
+        schema: Schema 名稱
+        volume: Volume 名稱（必須已存在）。預設："raw_data"
+        folder: Volume 內的資料夾。預設："pdf_documents"
+        doc_size: 要產生的文件大小。預設："MEDIUM"
+            - "SMALL": 約 1 頁，內容精簡
+            - "MEDIUM": 約 4-6 頁，涵蓋完整
+            - "LARGE": 約 10 頁以上，內容詳盡
 
-    Returns:
-        Dictionary with:
-        - success: True if PDF generated successfully
-        - pdf_path: Volume path to the generated PDF
-        - question_path: Volume path to the companion JSON file (question/guideline)
-        - error: Error message if generation failed
+    回傳:
+        包含以下內容的字典：
+        - success: 若 PDF 成功產生則為 True
+        - pdf_path: 產生的 PDF 在 volume 中的路徑
+        - question_path: companion JSON 檔案（question/guideline）的 volume 路徑
+        - error: 若產生失敗則為錯誤訊息
 
-    Example:
+    範例:
         >>> generate_and_upload_pdf(
         ...     title="REST API Authentication Guide",
         ...     description="Complete guide to API authentication for a cloud platform "
@@ -161,29 +161,29 @@ def generate_and_upload_pdf(
             "error": None
         }
     """
-    # Generate model_id from title (used for filename)
+    # 從 title 產生 model_id（用於檔名）
     import re
 
     model_id = re.sub(r"[^a-zA-Z0-9]+", "_", title).strip("_").upper()
 
-    # Create document specification
+    # 建立文件規格
     doc_spec = DocumentSpecification(
         title=title,
-        category="Document",  # Simplified - category info can be in description
+        category="Document",  # 簡化處理 - category 資訊可放在 description 中
         model=model_id,
         description=description,
         question=question,
         guideline=guideline,
     )
 
-    # Convert string to DocSize enum
+    # 將字串轉換為 DocSize enum
     size_enum = DocSize(doc_size)
 
-    # Use a temporary directory for local file creation
+    # 使用暫存目錄建立本機檔案
     with tempfile.TemporaryDirectory() as temp_dir:
         result = _generate_single_pdf(
             doc_spec=doc_spec,
-            description=description,  # Same description used for context
+            description=description,  # 使用相同的 description 作為內容脈絡
             catalog=catalog,
             schema=schema,
             volume=volume,

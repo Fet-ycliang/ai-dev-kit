@@ -1,32 +1,32 @@
-# Data Generation Approaches
+# 資料產生方法
 
-Choose your approach based on scale and requirements. **Spark + Faker + Pandas UDFs is strongly preferred** for all cases.
+根據規模和需求選擇您的方法。**強烈偏好使用 Spark + Faker + Pandas UDF** 用於所有情況。
 
-## Decision Table
+## 決策表
 
-| Scenario | Recommended Approach |
-|----------|---------------------|
-| **Default - any data generation** | **Spark + Faker + Pandas UDFs** |
-| Large datasets (100K+ rows) | **Spark + Faker + Pandas UDFs** |
-| Medium datasets (10K-100K rows) | **Spark + Faker + Pandas UDFs** |
-| Small datasets (<10K rows) | **Spark + Faker + Pandas UDFs** (or Polars if user prefers local) |
+| 案例 | 建議方法 |
+|------|---------|
+| **預設 - 任何資料產生** | **Spark + Faker + Pandas UDF** |
+| 大型資料集（100K+ 列） | **Spark + Faker + Pandas UDF** |
+| 中型資料集（10K-100K 列） | **Spark + Faker + Pandas UDF** |
+| 小型資料集（<10K 列） | **Spark + Faker + Pandas UDF**（或若使用者偏好本地則使用 Polars） |
 
-**Rule:** Always use Spark + Faker + Pandas UDFs unless user explicitly requests local generation for <10K rows.
+**規則：** 除非使用者明確要求本地產生 <10K 列，否則始終使用 Spark + Faker + Pandas UDF。
 
 ---
 
-## Approach 1: Spark + Faker + Pandas UDFs (Strongly Preferred)
+## 方法 1：Spark + Faker + Pandas UDF（強烈推薦）
 
-**Best for:** All dataset sizes, direct write to Unity Catalog
+**適用於：** 所有資料集大小、直接寫入統一目錄
 
-**Why this approach:**
-- Scales from thousands to millions of rows
-- Parallel execution via Spark
-- Direct integration with Unity Catalog
-- No intermediate files or uploads needed
-- Works with serverless and classic compute
+**為什麼使用此方法：**
+- 從數千到數百萬列進行擴展
+- 透過 Spark 進行平行執行
+- 與統一目錄直接整合
+- 無需中間檔案或上傳
+- 適用於無伺服器和經典計算
 
-### Basic Pattern
+### 基本模式
 
 ```python
 from pyspark.sql import functions as F
@@ -35,7 +35,7 @@ from faker import Faker
 import pandas as pd
 import numpy as np
 
-# Define Pandas UDFs for Faker data (batch processing for parallelism)
+# 定義用於 Faker 資料的 Pandas UDF（批次處理以實現平行性）
 @F.pandas_udf(StringType())
 def fake_name(ids: pd.Series) -> pd.Series:
     fake = Faker()
@@ -53,7 +53,7 @@ def fake_email(ids: pd.Series) -> pd.Series:
 
 @F.pandas_udf(DoubleType())
 def generate_lognormal_amount(tiers: pd.Series) -> pd.Series:
-    """Generate amount based on tier using log-normal distribution."""
+    """根據層級使用對數常態分佈產生金額。"""
     amounts = []
     for tier in tiers:
         if tier == "Enterprise":
@@ -65,15 +65,15 @@ def generate_lognormal_amount(tiers: pd.Series) -> pd.Series:
     return pd.Series(amounts)
 ```
 
-### Generate Data with Spark + Pandas UDFs
+### 使用 Spark + Pandas UDF 產生資料
 
 ```python
-# Configuration
+# 設定
 N_CUSTOMERS = 100_000
-PARTITIONS = 16  # Adjust based on data size: 8 for <100K, 32 for 1M+
+PARTITIONS = 16  # 根據資料大小調整：<100K 為 8，1M+ 為 32
 VOLUME_PATH = f"/Volumes/{CATALOG}/{SCHEMA}/raw_data"
 
-# Generate customers with Spark + Pandas UDFs
+# 使用 Spark + Pandas UDF 產生顧客
 customers_df = (
     spark.range(0, N_CUSTOMERS, numPartitions=PARTITIONS)
     .select(
@@ -91,49 +91,49 @@ customers_df = (
     )
 )
 
-# Add tier-based amount
+# 新增基於層級的金額
 customers_df = customers_df.withColumn("arr", generate_lognormal_amount(F.col("tier")))
 
-# Write directly to Unity Catalog volume
+# 直接寫入統一目錄磁區
 customers_df.write.mode("overwrite").parquet(f"{VOLUME_PATH}/customers")
 ```
 
-### Partitioning Strategy
+### 分區策略
 
-| Data Size | Recommended Partitions |
-|-----------|----------------------|
-| < 100K rows | 8 partitions |
-| 100K - 500K rows | 16 partitions |
-| 500K - 1M rows | 32 partitions |
-| 1M+ rows | 64+ partitions |
+| 資料大小 | 建議分區數 |
+|---------|----------|
+| < 100K 列 | 8 個分區 |
+| 100K - 500K 列 | 16 個分區 |
+| 500K - 1M 列 | 32 個分區 |
+| 1M+ 列 | 64+ 個分區 |
 
 ---
 
-## Approach 2: Polars + Local Generation + Upload (Secondary Option)
+## 方法 2：Polars + 本地產生 + 上傳（次要選項）
 
-**Use only when:** Dataset <10K rows AND user explicitly prefers local generation
+**使用時機：** 資料集 <10K 列**且**使用者明確偏好本地產生
 
-**Why this approach exists:**
-- No Spark overhead for tiny datasets
-- Quick prototyping in local environment
-- When Databricks Connect not available
+**此方法存在的原因：**
+- 小型資料集沒有 Spark 開銷
+- 本地環境中快速原型製作
+- Databricks Connect 無法使用時
 
-**Limitations:**
-- Doesn't scale past ~100K rows
-- Requires manual upload step
-- No direct Unity Catalog integration
+**限制：**
+- 無法擴展超過 ~100K 列
+- 需要手動上傳步驟
+- 無直接統一目錄整合
 
-### Install Local Dependencies
+### 安裝本地相依性
 
 ```bash
-# Preferred: use uv for fast, reliable installs
+# 首選：使用 uv 進行快速、可靠安裝
 uv pip install polars faker numpy
 
-# Alternative if uv not available
+# 若 uv 不可用則使用備用方案
 pip install polars faker numpy
 ```
 
-### Generate Locally with Polars
+### 使用 Polars 本地產生
 
 ```python
 import polars as pl
@@ -143,7 +143,7 @@ import numpy as np
 fake = Faker()
 N_CUSTOMERS = 5000
 
-# Generate with Polars
+# 使用 Polars 產生
 customers = pl.DataFrame({
     "customer_id": [f"CUST-{i:05d}" for i in range(N_CUSTOMERS)],
     "name": [fake.name() for _ in range(N_CUSTOMERS)],
@@ -152,54 +152,54 @@ customers = pl.DataFrame({
     "region": np.random.choice(["North", "South", "East", "West"], N_CUSTOMERS, p=[0.4, 0.25, 0.2, 0.15]).tolist(),
 })
 
-# Save locally
+# 本地儲存
 customers.write_parquet("./output/customers.parquet")
 ```
 
-### Upload to Databricks Volume
+### 上傳到 Databricks 磁區
 
-After generating data locally, upload to a Databricks volume:
+本地產生資料後，上傳到 Databricks 磁區：
 
 ```bash
-# Create directory in volume if needed
+# 如需要，在磁區中建立目錄
 databricks fs mkdirs dbfs:/Volumes/<catalog>/<schema>/<volume>/source_data/
 
-# Upload local data to volume
+# 上傳本地資料到磁區
 databricks fs cp -r ./output/customers.parquet dbfs:/Volumes/<catalog>/<schema>/<volume>/source_data/
 databricks fs cp -r ./output/orders.parquet dbfs:/Volumes/<catalog>/<schema>/<volume>/source_data/
 ```
 
-### When to Actually Use Polars
+### 何時實際使用 Polars
 
-Only recommend Polars when ALL conditions are met:
-1. Dataset is < 10K rows
-2. User explicitly requests local generation
-3. Quick prototyping without Databricks connection
+僅在滿足**所有**條件時才建議使用 Polars：
+1. 資料集 < 10K 列
+2. 使用者明確要求本地產生
+3. 無需 Databricks 連接的快速原型製作
 
-Otherwise, **always use Spark + Faker + Pandas UDFs**.
+否則，**始終使用 Spark + Faker + Pandas UDF**。
 
 ---
 
-## Storage Destinations
+## 儲存目標
 
-### Ask for Catalog and Schema
+### 詢問目錄和結構描述
 
-Ask the user which catalog and schema to use:
+詢問使用者要使用哪個目錄和結構描述：
 
-> "What catalog and schema name would you like to use?"
+> "您想使用哪個目錄和結構描述名稱？"
 
-### Create Infrastructure in Script
+### 在指令碼中建立基礎結構
 
-Always create the schema and volume **inside the Python script** using `spark.sql()`:
+始終在 Python 指令碼內使用 `spark.sql()` 建立結構描述和磁區：
 
 ```python
-CATALOG = "<user-provided-catalog>"  # MUST ask user - never default
+CATALOG = "<user-provided-catalog>"  # 必須詢問使用者 - 永不預設
 SCHEMA = "<user-provided-schema>"
 VOLUME_PATH = f"/Volumes/{CATALOG}/{SCHEMA}/raw_data"
 
-# Note: Assume catalog exists - do NOT create it
+# 注意：假設目錄已存在 - 不要建立它
 spark.sql(f"CREATE SCHEMA IF NOT EXISTS {CATALOG}.{SCHEMA}")
 spark.sql(f"CREATE VOLUME IF NOT EXISTS {CATALOG}.{SCHEMA}.raw_data")
 ```
 
-**Important:** Do NOT create catalogs - assume they already exist. Only create schema and volume.
+**重要：** 不要建立目錄 - 假設它們已經存在。僅建立結構描述和磁區。

@@ -1,13 +1,13 @@
-"""Lakebase tools - Manage Lakebase databases (Provisioned and Autoscaling).
+"""Lakebase 工具 - 管理 Lakebase 資料庫（Provisioned 與 Autoscaling）。
 
-Provides 8 high-level workflow tools that wrap the granular databricks-tools-core
-functions, following the create_or_update pattern from pipelines.
+提供 8 個高階工作流程工具，封裝細粒度的 databricks-tools-core
+函式，並遵循 pipelines 的 create_or_update 模式。
 """
 
 import logging
 from typing import Any, Dict, List, Optional
 
-# Provisioned core functions
+# Provisioned 核心函式
 from databricks_tools_core.lakebase import (
     create_lakebase_instance as _create_instance,
     get_lakebase_instance as _get_instance,
@@ -23,7 +23,7 @@ from databricks_tools_core.lakebase import (
     delete_synced_table as _delete_synced_table,
 )
 
-# Autoscale core functions
+# Autoscale 核心函式
 from databricks_tools_core.lakebase_autoscale import (
     create_project as _create_project,
     get_project as _get_project,
@@ -46,12 +46,12 @@ logger = logging.getLogger(__name__)
 
 
 # ============================================================================
-# Helpers
+# 輔助函式
 # ============================================================================
 
 
 def _find_instance_by_name(name: str) -> Optional[Dict[str, Any]]:
-    """Find a provisioned instance by name, returns None if not found."""
+    """依名稱尋找 provisioned instance，若找不到則回傳 None。"""
     try:
         return _get_instance(name=name)
     except Exception:
@@ -59,7 +59,7 @@ def _find_instance_by_name(name: str) -> Optional[Dict[str, Any]]:
 
 
 def _find_project_by_name(name: str) -> Optional[Dict[str, Any]]:
-    """Find an autoscale project by name, returns None if not found."""
+    """依名稱尋找 autoscale project，若找不到則回傳 None。"""
     try:
         return _get_project(name=name)
     except Exception:
@@ -67,7 +67,7 @@ def _find_project_by_name(name: str) -> Optional[Dict[str, Any]]:
 
 
 def _find_branch(project_name: str, branch_id: str) -> Optional[Dict[str, Any]]:
-    """Find a branch in a project, returns None if not found."""
+    """在 project 中尋找 branch，若找不到則回傳 None。"""
     try:
         branches = _list_branches(project_name=project_name)
         for branch in branches:
@@ -80,7 +80,7 @@ def _find_branch(project_name: str, branch_id: str) -> Optional[Dict[str, Any]]:
 
 
 # ============================================================================
-# Tool 1: create_or_update_lakebase_database
+# 工具 1: create_or_update_lakebase_database
 # ============================================================================
 
 
@@ -94,22 +94,22 @@ def create_or_update_lakebase_database(
     pg_version: str = "17",
 ) -> Dict[str, Any]:
     """
-    Create or update a Lakebase managed PostgreSQL database.
+    建立或更新 Lakebase 受管 PostgreSQL 資料庫。
 
-    Finds an existing database by name and updates it, or creates a new one.
-    For autoscale, a new project includes a production branch, default compute,
-    and a databricks_postgres database automatically.
+    依名稱尋找現有資料庫並更新，或建立新的資料庫。
+    對於 autoscale，新的 project 會自動包含 production branch、預設 compute，
+    以及 databricks_postgres 資料庫。
 
-    Args:
-        name: Database name (1-63 chars, lowercase letters, digits, hyphens)
-        type: "provisioned" (fixed capacity) or "autoscale" (auto-scaling compute)
-        capacity: Provisioned compute: "CU_1", "CU_2", "CU_4", or "CU_8"
-        stopped: If True, create provisioned instance in stopped state
-        display_name: Autoscale display name (defaults to name)
-        pg_version: Autoscale Postgres version: "16" or "17"
+    參數:
+        name: 資料庫名稱（1-63 個字元，小寫字母、數字、連字號）
+        type: "provisioned"（固定容量）或 "autoscale"（自動擴縮 compute）
+        capacity: Provisioned compute："CU_1"、"CU_2"、"CU_4" 或 "CU_8"
+        stopped: 若為 True，則以 stopped 狀態建立 provisioned instance
+        display_name: Autoscale 顯示名稱（預設為 name）
+        pg_version: Autoscale Postgres 版本："16" 或 "17"
 
-    Returns:
-        Dictionary with database details, status, and connection info.
+    回傳:
+        包含資料庫詳細資訊、狀態與連線資訊的字典。
     """
     db_type = type.lower()
 
@@ -152,7 +152,7 @@ def create_or_update_lakebase_database(
 
 
 # ============================================================================
-# Tool 2: get_lakebase_database
+# 工具 2: get_lakebase_database
 # ============================================================================
 
 
@@ -162,17 +162,17 @@ def get_lakebase_database(
     type: Optional[str] = None,
 ) -> Dict[str, Any]:
     """
-    Get details of a Lakebase database, or list all databases.
+    取得 Lakebase 資料庫詳細資訊，或列出所有資料庫。
 
-    Pass a name to get one database's details (including branches, endpoints
-    for autoscale). Omit name to list all databases.
+    傳入 name 可取得單一資料庫的詳細資訊（對 autoscale 也包含 branches、
+    endpoints）。省略 name 則列出所有資料庫。
 
-    Args:
-        name: Database name. If omitted, lists all databases.
-        type: Filter by "provisioned" or "autoscale". If omitted, checks both.
+    參數:
+        name: 資料庫名稱。若省略則列出所有資料庫。
+        type: 依 "provisioned" 或 "autoscale" 篩選。若省略則兩者都會檢查。
 
-    Returns:
-        Single database dict (if name provided) or {"databases": [...]}.
+    回傳:
+        若提供 name，則回傳單一資料庫 dict；否則回傳 {"databases": [...]}。
     """
     if name:
         result = None
@@ -200,7 +200,7 @@ def get_lakebase_database(
             return {"error": f"Database '{name}' not found."}
         return result
 
-    # List all databases
+    # 列出所有資料庫
     databases = []
 
     if type is None or type.lower() == "provisioned":
@@ -223,7 +223,7 @@ def get_lakebase_database(
 
 
 # ============================================================================
-# Tool 3: delete_lakebase_database
+# 工具 3: delete_lakebase_database
 # ============================================================================
 
 
@@ -234,18 +234,18 @@ def delete_lakebase_database(
     force: bool = False,
 ) -> Dict[str, Any]:
     """
-    Delete a Lakebase database and its resources.
+    刪除 Lakebase 資料庫及其資源。
 
-    For provisioned: deletes the instance (use force=True to cascade to children).
-    For autoscale: deletes the project and all branches, computes, and data.
+    對於 provisioned：刪除 instance（使用 force=True 以級聯刪除子資源）。
+    對於 autoscale：刪除 project 及所有 branches、computes 與資料。
 
-    Args:
-        name: Database name to delete
-        type: "provisioned" or "autoscale"
-        force: If True, force-delete child resources (provisioned only)
+    參數:
+        name: 要刪除的資料庫名稱
+        type: "provisioned" 或 "autoscale"
+        force: 若為 True，則強制刪除子資源（僅 provisioned）
 
-    Returns:
-        Dictionary with name and deletion status.
+    回傳:
+        包含名稱與刪除狀態的字典。
     """
     db_type = type.lower()
 
@@ -258,7 +258,7 @@ def delete_lakebase_database(
 
 
 # ============================================================================
-# Tool 4: create_or_update_lakebase_branch
+# 工具 4: create_or_update_lakebase_branch
 # ============================================================================
 
 
@@ -276,26 +276,26 @@ def create_or_update_lakebase_branch(
     scale_to_zero_seconds: Optional[int] = None,
 ) -> Dict[str, Any]:
     """
-    Create or update a Lakebase Autoscale branch with its compute endpoint.
+    建立或更新 Lakebase Autoscale branch 及其 compute 端點。
 
-    Branches are isolated database environments using copy-on-write storage.
-    If the branch exists, updates its settings. Otherwise creates a new branch
-    and a compute endpoint on it.
+    Branch 是使用 copy-on-write 儲存的隔離資料庫環境。
+    若 branch 已存在，則更新其設定；否則建立新的 branch，
+    並在其上建立 compute 端點。
 
-    Args:
-        project_name: Project name (e.g., "my-app" or "projects/my-app")
-        branch_id: Branch identifier (1-63 chars, lowercase letters, digits, hyphens)
-        source_branch: Source branch to fork from (default: production)
-        ttl_seconds: Time-to-live in seconds (max 30 days = 2592000s)
-        no_expiry: If True, branch never expires
-        is_protected: If True, branch cannot be deleted
-        endpoint_type: "ENDPOINT_TYPE_READ_WRITE" or "ENDPOINT_TYPE_READ_ONLY"
-        autoscaling_limit_min_cu: Minimum compute units (0.5-32)
-        autoscaling_limit_max_cu: Maximum compute units (0.5-112)
-        scale_to_zero_seconds: Inactivity timeout before suspending (0 to disable)
+    參數:
+        project_name: Project 名稱（例如 "my-app" 或 "projects/my-app"）
+        branch_id: Branch 識別碼（1-63 個字元，小寫字母、數字、連字號）
+        source_branch: 要 fork 的來源 branch（預設：production）
+        ttl_seconds: 存活時間（秒）（上限 30 天 = 2592000 秒）
+        no_expiry: 若為 True，則 branch 永不過期
+        is_protected: 若為 True，則 branch 不可刪除
+        endpoint_type: "ENDPOINT_TYPE_READ_WRITE" 或 "ENDPOINT_TYPE_READ_ONLY"
+        autoscaling_limit_min_cu: 最小 compute units（0.5-32）
+        autoscaling_limit_max_cu: 最大 compute units（0.5-112）
+        scale_to_zero_seconds: 因閒置而暫停前的逾時秒數（0 表示停用）
 
-    Returns:
-        Dictionary with branch details and endpoint connection info.
+    回傳:
+        包含 branch 詳細資訊與端點連線資訊的字典。
     """
     existing = _find_branch(project_name, branch_id)
 
@@ -308,7 +308,7 @@ def create_or_update_lakebase_branch(
             no_expiry=no_expiry if no_expiry else None,
         )
 
-        # Update endpoint if scaling params provided
+        # 若提供縮放參數則更新端點
         endpoint_result = None
         if any(v is not None for v in [autoscaling_limit_min_cu, autoscaling_limit_max_cu, scale_to_zero_seconds]):
             try:
@@ -338,7 +338,7 @@ def create_or_update_lakebase_branch(
             no_expiry=no_expiry,
         )
 
-        # Create compute endpoint on the new branch
+        # 在新 branch 上建立 compute 端點
         branch_name = branch_result.get("name", f"{project_name}/branches/{branch_id}")
         endpoint_result = None
         try:
@@ -360,30 +360,30 @@ def create_or_update_lakebase_branch(
 
 
 # ============================================================================
-# Tool 5: delete_lakebase_branch
+# 工具 5: delete_lakebase_branch
 # ============================================================================
 
 
 @mcp.tool
 def delete_lakebase_branch(name: str) -> Dict[str, Any]:
     """
-    Delete a Lakebase Autoscale branch and its compute endpoints.
+    刪除 Lakebase Autoscale branch 及其 compute 端點。
 
-    The branch's data, databases, roles, and computes are permanently deleted.
-    Cannot delete protected branches or branches with children.
+    該 branch 的資料、資料庫、roles 與 computes 會被永久刪除。
+    無法刪除受保護的 branches 或具有子項的 branches。
 
-    Args:
-        name: Branch resource name
-            (e.g., "projects/my-app/branches/development")
+    參數:
+        name: Branch 資源名稱
+            （例如 "projects/my-app/branches/development"）
 
-    Returns:
-        Dictionary with name and deletion status.
+    回傳:
+        包含名稱與刪除狀態的字典。
     """
     return _delete_branch(name=name)
 
 
 # ============================================================================
-# Tool 6: create_or_update_lakebase_sync
+# 工具 6: create_or_update_lakebase_sync
 # ============================================================================
 
 
@@ -398,25 +398,25 @@ def create_or_update_lakebase_sync(
     scheduling_policy: str = "TRIGGERED",
 ) -> Dict[str, Any]:
     """
-    Set up reverse ETL from a Delta table to Lakebase.
+    設定從 Delta table 到 Lakebase 的 reverse ETL。
 
-    Ensures the UC catalog registration exists, then creates a synced table
-    to replicate data from the Lakehouse into PostgreSQL.
+    確保 UC catalog 註冊存在後，再建立 synced table，
+    將資料從 Lakehouse 複寫到 PostgreSQL。
 
-    Args:
-        instance_name: Lakebase instance name
-        source_table_name: Source Delta table (catalog.schema.table)
-        target_table_name: Target table in Lakebase (catalog.schema.table)
-        catalog_name: UC catalog name for the Lakebase instance.
-            If omitted, derives from target_table_name.
-        database_name: PostgreSQL database name (default: "databricks_postgres")
-        primary_key_columns: Primary key columns (defaults to source table's PK)
-        scheduling_policy: "TRIGGERED", "SNAPSHOT", or "CONTINUOUS"
+    參數:
+        instance_name: Lakebase instance 名稱
+        source_table_name: 來源 Delta table（catalog.schema.table）
+        target_table_name: Lakebase 中的目標資料表（catalog.schema.table）
+        catalog_name: 此 Lakebase instance 的 UC catalog 名稱。
+            若省略，則從 target_table_name 推導。
+        database_name: PostgreSQL 資料庫名稱（預設："databricks_postgres"）
+        primary_key_columns: 主鍵欄位（預設使用來源資料表的 PK）
+        scheduling_policy: "TRIGGERED"、"SNAPSHOT" 或 "CONTINUOUS"
 
-    Returns:
-        Dictionary with catalog and synced table details.
+    回傳:
+        包含 catalog 與 synced table 詳細資訊的字典。
     """
-    # Derive catalog name from target table if not provided
+    # 若未提供，則從 target_table_name 推導 catalog 名稱
     if not catalog_name:
         parts = target_table_name.split(".")
         if len(parts) >= 1:
@@ -424,7 +424,7 @@ def create_or_update_lakebase_sync(
         else:
             return {"error": "Cannot derive catalog_name from target_table_name. Provide catalog_name explicitly."}
 
-    # Ensure catalog registration exists
+    # 確保 catalog 註冊存在
     catalog_result = None
     try:
         catalog_result = _get_catalog(name=catalog_name)
@@ -438,7 +438,7 @@ def create_or_update_lakebase_sync(
         except Exception as e:
             return {"error": f"Failed to create catalog '{catalog_name}': {e}"}
 
-    # Check if synced table already exists
+    # 檢查 synced table 是否已存在
     try:
         existing = _get_synced_table(table_name=target_table_name)
         return {
@@ -449,7 +449,7 @@ def create_or_update_lakebase_sync(
     except Exception:
         pass
 
-    # Create synced table
+    # 建立 synced table
     sync_result = _create_synced_table(
         instance_name=instance_name,
         source_table_name=source_table_name,
@@ -466,7 +466,7 @@ def create_or_update_lakebase_sync(
 
 
 # ============================================================================
-# Tool 7: delete_lakebase_sync
+# 工具 7: delete_lakebase_sync
 # ============================================================================
 
 
@@ -476,17 +476,17 @@ def delete_lakebase_sync(
     catalog_name: Optional[str] = None,
 ) -> Dict[str, Any]:
     """
-    Remove a Lakebase synced table and optionally its UC catalog registration.
+    移除 Lakebase synced table，並可選擇移除其 UC catalog 註冊。
 
-    The source Delta table is not affected.
+    來源 Delta table 不受影響。
 
-    Args:
-        table_name: Fully qualified synced table name (catalog.schema.table)
-        catalog_name: UC catalog to also remove. If omitted, only the
-            synced table is deleted.
+    參數:
+        table_name: 完整限定的 synced table 名稱（catalog.schema.table）
+        catalog_name: 要一併移除的 UC catalog。若省略，則只刪除
+            synced table。
 
-    Returns:
-        Dictionary with deletion status for synced table and catalog.
+    回傳:
+        包含 synced table 與 catalog 刪除狀態的字典。
     """
     result = {}
 
@@ -504,7 +504,7 @@ def delete_lakebase_sync(
 
 
 # ============================================================================
-# Tool 8: generate_lakebase_credential
+# 工具 8: generate_lakebase_credential
 # ============================================================================
 
 
@@ -514,19 +514,19 @@ def generate_lakebase_credential(
     endpoint: Optional[str] = None,
 ) -> Dict[str, Any]:
     """
-    Generate an OAuth token for connecting to a Lakebase database.
+    產生用於連線 Lakebase 資料庫的 OAuth token。
 
-    Provide instance_names for provisioned databases, or endpoint for autoscale.
-    The token is valid for ~1 hour. Use as the password in PostgreSQL
-    connection strings with sslmode=require.
+    Provisioned 資料庫請提供 instance_names，autoscale 請提供 endpoint。
+    權杖約可使用 1 小時。請在 PostgreSQL connection strings 中搭配
+    sslmode=require 作為 password 使用。
 
-    Args:
-        instance_names: Provisioned instance names to generate credentials for
-        endpoint: Autoscale endpoint resource name
-            (e.g., "projects/my-app/branches/production/endpoints/ep-primary")
+    參數:
+        instance_names: 要產生憑證的 Provisioned instance 名稱
+        endpoint: Autoscale 端點資源名稱
+            （例如 "projects/my-app/branches/production/endpoints/ep-primary"）
 
-    Returns:
-        Dictionary with OAuth token and usage instructions.
+    回傳:
+        包含 OAuth token 與使用說明的字典。
     """
     if instance_names:
         return _generate_provisioned_credential(instance_names=instance_names)

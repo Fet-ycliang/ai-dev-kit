@@ -1,39 +1,39 @@
-# External Engine Interoperability
+# 外部引擎互通性
 
-This file covers connecting external engines to Databricks via the Iceberg REST Catalog (IRC). Each engine section includes the minimum configuration needed to read (and where supported, write) Databricks-managed Iceberg tables.
+本檔案說明如何透過 Iceberg REST Catalog（IRC）將外部引擎連線至 Databricks。每個引擎章節都包含讀取 Databricks 管理之 Iceberg 資料表所需的最小設定（若支援，也涵蓋寫入）。
 
-**Prerequisites for all engines**:
-- Databricks workspace with external data access enabled
-- `EXTERNAL USE SCHEMA` granted on target schemas
-- PAT or OAuth (service principal) credentials for authentication with the required permissions.
-- **Network access**: The client must reach the Databricks workspace on HTTPS (port 443). If workspace **IP access lists** are enabled, add the client's egress CIDR to the allowlist — this is a common setup issue that blocks connectivity even when credentials and grants are correct.
+**所有引擎的前置條件**：
+- 已啟用 external data access 的 Databricks 工作區
+- 已在目標 schema 上授與 `EXTERNAL USE SCHEMA`
+- 用於驗證且具備必要權限的 PAT 或 OAuth（service principal）憑證。
+- **網路存取**：client 必須能透過 HTTPS（port 443）連到 Databricks 工作區。若工作區已啟用 **IP access lists**，請將 client 的 egress CIDR 加入 allowlist —— 這是很常見的設定問題，即使憑證與授權正確也會因此無法連線。
 
-See [3-iceberg-rest-catalog.md](3-iceberg-rest-catalog.md) for IRC endpoint details.
+IRC 端點細節請參閱 [3-iceberg-rest-catalog.md](3-iceberg-rest-catalog.md)。
 
 ---
 
 ## PyIceberg
 
-PyIceberg is a Python library for reading and writing Iceberg tables without Spark.
+PyIceberg 是一個 Python library，可在不依賴 Spark 的情況下讀寫 Iceberg 資料表。
 
-### Installation
+### 安裝
 
-Upgrade both packages explicitly — if `pyarrow` (v15) is too old, it causes write errors. Also install `adlfs` for Azure storage access:
+請明確升級這兩個套件 —— 若 `pyarrow`（v15）太舊，會造成寫入錯誤。另外也要安裝 `adlfs` 以支援 Azure storage access：
 
 ```bash
 pip install --upgrade "pyiceberg>=0.9,<0.10" "pyarrow>=17,<20"
 pip install adlfs
 ```
 
-For non-Databricks environments:
+對於非 Databricks 環境：
 
 ```bash
 pip install "pyiceberg[pyarrow]>=0.9"
 ```
 
-### Connect to Catalog
+### 連線到 Catalog
 
-The `warehouse` parameter pins the catalog, so all subsequent table identifiers use `<schema>.<table>` (not `<catalog>.<schema>.<table>`):
+`warehouse` 參數會固定 catalog，因此後續所有資料表識別子都使用 `<schema>.<table>`（而不是 `<catalog>.<schema>.<table>`）：
 
 ```python
 from pyiceberg.catalog import load_catalog
@@ -41,36 +41,36 @@ from pyiceberg.catalog import load_catalog
 catalog = load_catalog(
     "uc",
     uri="https://<workspace-url>/api/2.1/unity-catalog/iceberg-rest",
-    warehouse="<uc-catalog-name>",  # Unity Catalog catalog name
+    warehouse="<uc-catalog-name>",  # Unity Catalog catalog 名稱
     token="<pat-token>",
 )
 ```
 
-### Read Table
+### 讀取資料表
 
 ```python
-# Load table — identifier is <schema>.<table> because 'warehouse' pins the UC catalog
+# 載入資料表 —— 因為 'warehouse' 已固定 UC catalog，所以識別子為 <schema>.<table>
 tbl = catalog.load_table("<schema>.<table>")
 
-# Inspect schema and current snapshot
-print(tbl)                    # schema, partitioning, snapshot summary
+# 檢視 schema 與目前 snapshot
+print(tbl)                    # schema、partitioning、snapshot 摘要
 print(tbl.current_snapshot()) # snapshot metadata
 
-# Read sample rows
+# 讀取範例列
 df = tbl.scan(limit=10).to_pandas()
 print(df.head())
 
-# Pushdown filter (SQL-style filter strings are supported)
+# Pushdown filter（支援 SQL 風格的 filter 字串）
 df = tbl.scan(
     row_filter="event_date >= '2025-01-01'",
     limit=1000,
 ).to_pandas()
 
-# Read as Arrow
+# 以 Arrow 讀取
 arrow_table = tbl.scan().to_arrow()
 ```
 
-### Append Data
+### 附加資料
 
 ```python
 import pyarrow as pa
@@ -85,8 +85,8 @@ catalog = load_catalog(
 
 tbl = catalog.load_table("<schema>.<table>")
 
-# Schema must match the Iceberg table schema exactly — use explicit Arrow types
-# PyArrow defaults to int64; if the Iceberg table uses int (32-bit), cast explicitly
+# Schema 必須與 Iceberg 資料表 schema 完全一致 —— 請使用明確的 Arrow types
+# PyArrow 預設為 int64；若 Iceberg 資料表使用 int（32-bit），請明確轉型
 arrow_schema = pa.schema([
     pa.field("id",   pa.int32()),
     pa.field("name", pa.string()),
@@ -101,7 +101,7 @@ arrow_tbl = pa.Table.from_pylist(rows, schema=arrow_schema)
 
 tbl.append(arrow_tbl)
 
-# Verify
+# 驗證
 print("Current snapshot:", tbl.current_snapshot())
 ```
 
@@ -109,21 +109,21 @@ print("Current snapshot:", tbl.current_snapshot())
 
 ## OSS Apache Spark
 
-> **CRITICAL**: Only configure this **outside** Databricks Runtime. Inside DBR, use the built-in Iceberg support — do NOT install the Iceberg library.
+> **重要**：僅能在 **Databricks Runtime 外部** 這樣設定。在 DBR 內請使用內建的 Iceberg 支援 —— **不要**安裝 Iceberg library。
 
-### Dependencies
+### 依賴
 
-Two JARs are required: the Spark runtime and a cloud-specific bundle for object storage access. Choose the bundle matching your Databricks metastore's cloud:
+需要兩個 JAR：Spark runtime，以及用於 object storage access 的雲端專屬 bundle。請選擇與 Databricks metastore 所在雲端相對應的 bundle：
 
-| Cloud | Bundle |
+| 雲端 | Bundle |
 |-------|--------|
 | AWS | `org.apache.iceberg:iceberg-aws-bundle:<version>` |
 | Azure | `org.apache.iceberg:iceberg-azure-bundle:<version>` |
 | GCP | `org.apache.iceberg:iceberg-gcp-bundle:<version>` |
 
-### Spark Session Configuration
+### Spark Session 設定
 
-The Databricks docs recommend OAuth2 (service principal) for external Spark connections. Set `rest.auth.type=oauth2` and provide the OAuth2 server URI, credential, and scope:
+Databricks 文件建議外部 Spark 連線使用 OAuth2（service principal）。請設定 `rest.auth.type=oauth2`，並提供 OAuth2 server URI、credential 與 scope：
 
 ```python
 from pyspark.sql import SparkSession
@@ -132,11 +132,11 @@ WORKSPACE_URL       = "https://<workspace-url>"
 UC_CATALOG_NAME     = "<uc-catalog-name>"
 OAUTH_CLIENT_ID     = "<oauth-client-id>"
 OAUTH_CLIENT_SECRET = "<oauth-client-secret>"
-CATALOG_ALIAS       = "uc"    # arbitrary name used to reference this catalog in Spark SQL
+CATALOG_ALIAS       = "uc"    # 在 Spark SQL 中用來參照此 catalog 的任意名稱
 ICEBERG_VER         = "1.7.1"
 
 RUNTIME      = f"org.apache.iceberg:iceberg-spark-runtime-3.5_2.12:{ICEBERG_VER}"
-CLOUD_BUNDLE = f"org.apache.iceberg:iceberg-aws-bundle:{ICEBERG_VER}"   # or azure/gcp-bundle
+CLOUD_BUNDLE = f"org.apache.iceberg:iceberg-aws-bundle:{ICEBERG_VER}"   # 或 azure/gcp-bundle
 
 spark = (
     SparkSession.builder
@@ -159,48 +159,48 @@ spark = (
     .getOrCreate()
 )
 
-# List schemas
+# 列出 schemas
 spark.sql(f"SHOW NAMESPACES IN {CATALOG_ALIAS}").show(truncate=False)
 
-# Query
+# 查詢
 spark.sql(f"SELECT * FROM {CATALOG_ALIAS}.<schema>.<table>").show()
 
-# Write (managed Iceberg tables only)
+# 寫入（僅限受管 Iceberg 資料表）
 df.writeTo(f"{CATALOG_ALIAS}.<schema>.<table>").append()
 ```
 
 ### Spark SQL
 
 ```sql
--- List schemas
+-- 列出 schemas
 SHOW NAMESPACES IN uc;
 
--- Query
+-- 查詢
 SELECT * FROM uc.<schema>.<table>;
 
--- Insert
+-- INSERT
 INSERT INTO uc.<schema>.<table> VALUES (1, 'foo', 10);
 ```
 
 ---
 
-## Troubleshooting
+## 疑難排解
 
-| Issue | Solution |
+| 問題 | 解法 |
 |-------|----------|
-| **Connection timeout or `403 Forbidden` with valid credentials** | Workspace IP access list is blocking the client — add the client's egress CIDR to the allowlist (admin console: **Settings → Security → IP access list**) |
-| **`403 Forbidden`** | Check `EXTERNAL USE SCHEMA` grant and token validity |
-| **`Table not found`** | Verify the `warehouse` config matches the UC catalog name; check schema and table names |
-| **Class conflict in DBR** | You installed an Iceberg library in Databricks Runtime — remove it; DBR has built-in support |
-| **Credential vending failure** | Ensure external data access is enabled on the workspace |
-| **Slow reads** | Check if table needs compaction (`OPTIMIZE`); large numbers of small files degrade performance |
-| **v3 table incompatibility** | Upgrade to Iceberg library 1.9.0+ for v3 support; older versions cannot read v3 tables |
-| **PyArrow schema mismatch** | Cast to explicit types (e.g., `pa.int32()`) when the Iceberg table schema uses 32-bit integers |
-| **PyIceberg write error on serverless** | Upgrade pyarrow (`>=17`) and install `adlfs` — the bundled pyarrow v15 is incompatible |
+| **使用有效憑證仍連線逾時或出現 `403 Forbidden`** | 工作區 IP access list 擋住了 client —— 請將 client 的 egress CIDR 加入 allowlist（管理主控台：**Settings → Security → IP access list**） |
+| **`403 Forbidden`** | 檢查 `EXTERNAL USE SCHEMA` 授權與 token 是否有效 |
+| **`Table not found`** | 確認 `warehouse` 設定與 UC catalog 名稱一致；並檢查 schema 與 table 名稱 |
+| **DBR 中的 class conflict** | 你在 Databricks Runtime 中安裝了 Iceberg library —— 請移除；DBR 已內建支援 |
+| **憑證授予失敗** | 請確認工作區已啟用 external data access |
+| **讀取速度慢** | 檢查資料表是否需要 compaction（`OPTIMIZE`）；大量小檔案會降低效能 |
+| **v3 資料表不相容** | 升級至 Iceberg library 1.9.0+ 以支援 v3；較舊版本無法讀取 v3 資料表 |
+| **PyArrow schema 不符** | 當 Iceberg 資料表 schema 使用 32-bit integers 時，請轉型為明確型別（例如 `pa.int32()`） |
+| **serverless 上的 PyIceberg 寫入錯誤** | 升級 pyarrow（`>=17`）並安裝 `adlfs` —— 內建的 pyarrow v15 不相容 |
 
 ---
 
-## Related
+## 相關內容
 
-- [3-iceberg-rest-catalog.md](3-iceberg-rest-catalog.md) — IRC endpoint details, auth, credential vending
-- [4-snowflake-interop.md](4-snowflake-interop.md) — Snowflake-specific integration
+- [3-iceberg-rest-catalog.md](3-iceberg-rest-catalog.md) —— IRC 端點細節、auth、憑證授予
+- [4-snowflake-interop.md](4-snowflake-interop.md) —— Snowflake 專屬整合

@@ -202,23 +202,23 @@ Use `mlflow.start_span()` for fine-grained control over spans. Manually set inpu
 import mlflow
 
 def process_query(query: str) -> str:
-    # Create a span with manual control
+    # 建立可手動控制的 span
     with mlflow.start_span(name="process_query") as span:
         span.set_inputs({"query": query})
 
-        # Nested span for retrieval
+        # 建立用於檢索的巢狀 span
         with mlflow.start_span(name="retrieve", span_type="RETRIEVER") as retriever_span:
             retriever_span.set_inputs({"query": query})
             docs = vector_store.search(query)
             retriever_span.set_outputs(docs)
 
-        # Nested span for generation
+        # 建立用於生成的巢狀 span
         with mlflow.start_span(name="generate", span_type="CHAIN") as gen_span:
             gen_span.set_inputs({"query": query, "doc_count": len(docs)})
             response = llm.generate(query, docs)
             gen_span.set_outputs({"response": response})
 
-        # Set attributes for analysis
+        # 設定供分析使用的屬性
         span.set_attribute("doc_count", len(docs))
         span.set_attribute("model", "gpt-4o")
         span.set_outputs({"response": response})
@@ -228,71 +228,71 @@ def process_query(query: str) -> str:
 
 ---
 
-## Pattern 7: Automatic Tracing with Autolog
+## 模式 7：使用 Autolog 自動追蹤
 
-Enable automatic tracing for supported frameworks. MLflow captures LLM calls, tool executions, and chain operations without code changes.
+為支援的 framework 啟用自動追蹤。MLflow 會在不需修改程式碼的情況下擷取 LLM 呼叫、工具執行與 chain 操作。
 
 ```python
 import mlflow
 
-# Enable auto-tracing for specific frameworks
-mlflow.openai.autolog()        # OpenAI SDK calls
-mlflow.langchain.autolog()     # LangChain chains and agents
-# Also available: mlflow.anthropic.autolog(), mlflow.litellm.autolog(), etc.
+# 為特定 framework 啟用自動追蹤
+mlflow.openai.autolog()        # OpenAI SDK 呼叫
+mlflow.langchain.autolog()     # LangChain chains 與 agents
+# 也支援：mlflow.anthropic.autolog()、mlflow.litellm.autolog() 等
 
-# Set tracking and destination
+# 設定 tracking 與目的地
 mlflow.set_tracking_uri("databricks")
 mlflow.set_experiment("/Shared/my-agent-traces")
 
-# Traces are captured automatically
+# Traces 會自動被擷取
 from openai import OpenAI
 client = OpenAI()
 
 response = client.chat.completions.create(
     model="gpt-4o",
     messages=[
-        {"role": "system", "content": "You are a helpful assistant."},
-        {"role": "user", "content": "What is MLflow?"}
+        {"role": "system", "content": "你是一個樂於助人的助理。"},
+        {"role": "user", "content": "什麼是 MLflow？"}
     ]
 )
-# ^ This call is automatically traced
+# ^ 這個呼叫會自動被追蹤
 ```
 
-**20+ supported frameworks** including:
-- OpenAI, Anthropic, Google GenAI
-- LangChain, LlamaIndex, DSPy
-- LiteLLM, Ollama, Bedrock
-- CrewAI, AutoGen, Haystack
+**支援 20+ 個 framework**，包括：
+- OpenAI、Anthropic、Google GenAI
+- LangChain、LlamaIndex、DSPy
+- LiteLLM、Ollama、Bedrock
+- CrewAI、AutoGen、Haystack
 
 ---
 
-## Pattern 8: Combined Auto and Manual Tracing
+## 模式 8：結合自動與手動追蹤
 
-Combine automatic framework tracing with manual decorators for complete coverage.
+將 framework 的自動追蹤與手動 decorators 結合，以取得完整覆蓋。
 
 ```python
 import mlflow
 from mlflow.entities import SpanType
 from openai import OpenAI
 
-# Enable automatic OpenAI tracing
+# 啟用 OpenAI 自動追蹤
 mlflow.openai.autolog()
 
 client = OpenAI()
 
 @mlflow.trace(span_type=SpanType.CHAIN)
 def my_rag_pipeline(query: str) -> str:
-    """Manual decorator wraps the whole pipeline.
-    Auto-tracing captures individual OpenAI calls inside."""
+    """手動 decorator 包住整個 pipeline。
+    Auto-tracing 會擷取其中個別的 OpenAI 呼叫。"""
 
-    # This retrieval is manually traced
+    # 這段檢索會以手動方式追蹤
     docs = retrieve_documents(query)
 
-    # This LLM call is auto-traced by mlflow.openai.autolog()
+    # 這個 LLM 呼叫會由 mlflow.openai.autolog() 自動追蹤
     response = client.chat.completions.create(
         model="gpt-4o",
         messages=[
-            {"role": "system", "content": f"Answer using context: {docs}"},
+            {"role": "system", "content": f"請根據以下脈絡回答：{docs}"},
             {"role": "user", "content": query}
         ]
     )
@@ -300,27 +300,27 @@ def my_rag_pipeline(query: str) -> str:
 
 @mlflow.trace(span_type=SpanType.RETRIEVER)
 def retrieve_documents(query: str) -> list[dict]:
-    """Manually traced retrieval function."""
+    """以手動方式追蹤的檢索函式。"""
     return vector_store.search(query, top_k=5)
 ```
 
 ---
 
-## Pattern 9: Log Traces from Databricks Apps
+## 模式 9：從 Databricks Apps 記錄 Traces
 
-Configure a Databricks App to send traces to Unity Catalog.
+設定 Databricks App，將 traces 傳送至 Unity Catalog。
 
-**Prerequisites:**
-- App uses `mlflow[databricks]>=3.5.0`
-- App's service principal has MODIFY and SELECT on the trace tables (see Pattern 2)
+**先決條件：**
+- App 使用 `mlflow[databricks]>=3.5.0`
+- App 的 service principal 已在 trace 資料表上具備 MODIFY 與 SELECT 權限（請參閱模式 2）
 
-**In your app code:**
+**在你的 app 程式碼中：**
 ```python
 import os
 import mlflow
 from mlflow.entities import UCSchemaLocation
 
-# Option A: Python API
+# 選項 A：Python API
 mlflow.tracing.set_destination(
     destination=UCSchemaLocation(
         catalog_name="my_catalog",
@@ -328,28 +328,28 @@ mlflow.tracing.set_destination(
     )
 )
 
-# Option B: Environment variable (set in app config)
+# 選項 B：環境變數（於 app config 中設定）
 os.environ["MLFLOW_TRACING_DESTINATION"] = "my_catalog.my_schema"
 
-# Your app code — traces are sent to UC
+# 你的 app 程式碼 — traces 會送往 UC
 @mlflow.trace
 def handle_request(query: str) -> str:
     return my_agent.invoke(query)
 ```
 
-**Deployment steps:**
-1. Locate the app's service principal under the **Authorization** tab
-2. Grant MODIFY and SELECT on the three `mlflow_experiment_trace_*` tables
-3. Configure the trace destination in your app code
-4. Deploy the app
+**部署步驟：**
+1. 在 **Authorization** 分頁中找到 app 的 service principal
+2. 對三張 `mlflow_experiment_trace_*` 資料表授與 MODIFY 與 SELECT
+3. 在 app 程式碼中設定 trace 目的地
+4. 部署 app
 
 ---
 
-## Pattern 10: Log Traces from Model Serving Endpoints
+## 模式 10：從 Model Serving Endpoints 記錄 Traces
 
-Configure a model serving endpoint to send traces to Unity Catalog.
+設定 model serving endpoint，將 traces 傳送至 Unity Catalog。
 
-**Step 1: Grant permissions to user/service principal**
+**步驟 1：授與 user／service principal 權限**
 ```sql
 GRANT MODIFY, SELECT ON TABLE my_catalog.my_schema.mlflow_experiment_trace_otel_logs
   TO `serving-principal-id`;
@@ -357,19 +357,19 @@ GRANT MODIFY, SELECT ON TABLE my_catalog.my_schema.mlflow_experiment_trace_otel_
   TO `serving-principal-id`;
 ```
 
-**Step 2: Generate a Personal Access Token (PAT)**
+**步驟 2：產生 Personal Access Token（PAT）**
 
-Create a PAT for the identity that has the permissions above.
+為具備上述權限的身分建立 PAT。
 
-**Step 3: Add environment variables to the endpoint**
+**步驟 3：將環境變數加入 endpoint**
 
-Add these to the serving endpoint configuration:
+把以下內容加入 serving endpoint 設定：
 ```
 DATABRICKS_TOKEN=<your-personal-access-token>
 MLFLOW_TRACING_DESTINATION=my_catalog.my_schema
 ```
 
-**Step 4: In your served model code, configure the destination**
+**步驟 4：在部署模型的程式碼中設定目的地**
 ```python
 import os
 import mlflow
@@ -382,7 +382,7 @@ mlflow.tracing.set_destination(
     )
 )
 
-# Your model's predict function — traces go to UC
+# 模型的 predict 函式 — traces 會送往 UC
 @mlflow.trace
 def predict(model_input):
     return my_model.invoke(model_input)
@@ -390,16 +390,16 @@ def predict(model_input):
 
 ---
 
-## Pattern 11: Log Traces from Third-Party OTEL Clients
+## 模式 11：從第三方 OTEL Clients 記錄 Traces
 
-Send traces from any OpenTelemetry-compatible client to Unity Catalog via the OTLP HTTP endpoint.
+透過 OTLP HTTP endpoint，將任何與 OpenTelemetry 相容的 client traces 傳送至 Unity Catalog。
 
 ```python
 from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter
 from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export import BatchSpanProcessor
 
-# Configure OTLP exporter pointing to Databricks
+# 設定指向 Databricks 的 OTLP exporter
 otlp_trace_exporter = OTLPSpanExporter(
     endpoint="https://<workspace-url>/api/2.0/otel/v1/traces",
     headers={
@@ -409,119 +409,119 @@ otlp_trace_exporter = OTLPSpanExporter(
     },
 )
 
-# Set up the tracer provider
+# 設定 tracer provider
 provider = TracerProvider()
 provider.add_span_processor(BatchSpanProcessor(otlp_trace_exporter))
 
-# Use standard OpenTelemetry APIs to create spans
+# 使用標準 OpenTelemetry APIs 建立 spans
 tracer = provider.get_tracer("my-application")
 with tracer.start_as_current_span("my-operation") as span:
-    span.set_attribute("query", "What is MLflow?")
-    result = process_query("What is MLflow?")
+    span.set_attribute("query", "什麼是 MLflow？")
+    result = process_query("什麼是 MLflow？")
     span.set_attribute("result_length", len(result))
 ```
 
-**Notes:**
-- Traces ingested via OTEL appear in linked experiments if they contain a root span
-- Use the `X-Databricks-UC-Table-Name` header to specify the target spans table
-- Standard OTEL instrumentation libraries work with this endpoint
+**注意事項：**
+- 透過 OTEL 匯入的 traces 若包含 root span，就會顯示在已連結的 experiments 中
+- 使用 `X-Databricks-UC-Table-Name` header 指定目標 spans 資料表
+- 標準 OTEL instrumentation libraries 可搭配此 endpoint 使用
 
 ---
 
-## Pattern 12: Enable Production Monitoring
+## 模式 12：啟用正式環境監控
 
-Register scorers to continuously evaluate traces in production. Scorers run asynchronously on sampled traces.
+註冊 scorers，持續評估正式環境中的 traces。Scorers 會針對取樣的 traces 非同步執行。
 
 ```python
 import mlflow
 from mlflow.genai.scorers import Safety, Guidelines, ScorerSamplingConfig
 from mlflow.tracing import set_databricks_monitoring_sql_warehouse_id
 
-# Step 1: Configure the SQL warehouse for monitoring
+# 步驟 1：設定監控用的 SQL warehouse
 set_databricks_monitoring_sql_warehouse_id(
     warehouse_id="<SQL_WAREHOUSE_ID>",
-    experiment_id="<EXPERIMENT_ID>"  # Optional — uses active experiment if omitted
+    experiment_id="<EXPERIMENT_ID>"  # 選用 — 若省略則使用目前的 active experiment
 )
 
-# Step 2: Set the active experiment
+# 步驟 2：設定 active experiment
 mlflow.set_experiment("/Shared/my-agent-traces")
 
-# Step 3: Register and start scorers
+# 步驟 3：註冊並啟動 scorers
 
-# Safety scorer — evaluate 100% of traces
+# Safety scorer — 評估 100% 的 traces
 safety = Safety().register(name="production_safety")
 safety = safety.start(
     sampling_config=ScorerSamplingConfig(sample_rate=1.0)
 )
 
-# Custom guidelines — evaluate 50% of traces
+# 自訂 guidelines — 評估 50% 的 traces
 tone_check = Guidelines(
     name="professional_tone",
-    guidelines="The response must be professional and helpful"
+    guidelines="回應必須專業且有幫助"
 ).register(name="production_tone")
 tone_check = tone_check.start(
     sampling_config=ScorerSamplingConfig(sample_rate=0.5)
 )
 ```
 
-**CRITICAL**: You must both `.register()` AND `.start()` — registering alone does not activate monitoring.
+**關鍵**：你必須同時呼叫 `.register()` 與 `.start()` —— 只註冊並不會啟用監控。
 
-**SQL Warehouse requirements:**
-- User must have `CAN USE` on the SQL warehouse
-- User must have `CAN EDIT` on the experiment
-- Monitoring job permissions are auto-granted on first scorer registration
+**SQL Warehouse 要求：**
+- User 必須對 SQL warehouse 具備 `CAN USE`
+- User 必須對 experiment 具備 `CAN EDIT`
+- 第一次註冊 scorer 時，系統會自動授與 monitoring job 所需權限
 
 ---
 
-## Pattern 13: Manage Monitoring Scorers
+## 模式 13：管理監控 Scorers
 
-List, update, stop, and delete production monitoring scorers.
+列出、更新、停止與刪除正式環境監控 scorers。
 
 ```python
 from mlflow.genai.scorers import list_scorers, get_scorer, delete_scorer, ScorerSamplingConfig
 
-# List all registered scorers for the active experiment
+# 列出 active experiment 中所有已註冊的 scorers
 scorers = list_scorers()
 for s in scorers:
     print(f"  {s.name}: sample_rate={s.sampling_config.sample_rate if s.sampling_config else 'N/A'}")
 
-# Get a specific scorer
+# 取得特定 scorer
 safety_scorer = get_scorer(name="production_safety")
 
-# Update sample rate (e.g., increase from 50% to 80%)
+# 更新取樣率（例如從 50% 提高到 80%）
 safety_scorer = safety_scorer.update(
     sampling_config=ScorerSamplingConfig(sample_rate=0.8)
 )
 
-# Stop monitoring (keeps registration for later re-start)
+# 停止監控（保留註冊，之後可重新啟動）
 safety_scorer = safety_scorer.stop()
 
-# Re-start monitoring
+# 重新啟動監控
 safety_scorer = safety_scorer.start(
     sampling_config=ScorerSamplingConfig(sample_rate=0.5)
 )
 
-# Delete entirely (removes registration)
+# 完全刪除（移除註冊）
 delete_scorer(name="production_safety")
 ```
 
 ---
 
-## Pattern 14: Query Traces from Unity Catalog Tables
+## 模式 14：從 Unity Catalog 資料表查詢 Traces
 
-Query ingested traces directly using SQL for custom analysis and dashboards.
+直接使用 SQL 查詢已匯入的 traces，以進行自訂分析與 dashboards。
 
 ```sql
--- Count traces per day
+-- 計算每日 trace 數量
 SELECT
   DATE(timestamp) as trace_date,
   COUNT(DISTINCT trace_id) as trace_count
 FROM my_catalog.my_schema.mlflow_experiment_trace_otel_spans
-WHERE parent_span_id IS NULL  -- root spans only
+WHERE parent_span_id IS NULL  -- 僅限 root spans
 GROUP BY DATE(timestamp)
 ORDER BY trace_date DESC;
 
--- Find slow traces (root span duration > 10s)
+-- 找出慢速 traces（root span 持續時間 > 10 秒）
 SELECT
   trace_id,
   name as root_span_name,
@@ -532,7 +532,7 @@ WHERE parent_span_id IS NULL
 ORDER BY duration_seconds DESC
 LIMIT 20;
 
--- Error rate by span name
+-- 依 span 名稱計算錯誤率
 SELECT
   name,
   COUNT(*) as total,
@@ -544,13 +544,13 @@ HAVING COUNT(*) > 10
 ORDER BY error_pct DESC;
 ```
 
-**From Python (via Spark):**
+**從 Python（透過 Spark）：**
 ```python
 from databricks.connect import DatabricksSession
 
 spark = DatabricksSession.builder.remote(serverless=True).getOrCreate()
 
-# Query trace spans
+# 查詢 trace spans
 spans_df = spark.sql("""
     SELECT trace_id, name, span_kind,
            (end_time_unix_nano - start_time_unix_nano) / 1e6 as duration_ms
@@ -564,9 +564,9 @@ spans_df.show()
 
 ---
 
-## Pattern 15: End-to-End Setup Script
+## 模式 15：端對端設定腳本
 
-Complete setup script for a new project — from creating the UC schema link to logging the first trace and enabling monitoring.
+新專案的完整設定腳本 —— 從建立 UC schema 連結，到記錄第一筆 trace 並啟用監控。
 
 ```python
 import os
@@ -577,26 +577,26 @@ from mlflow.tracing import set_databricks_monitoring_sql_warehouse_id
 from mlflow.genai.scorers import Safety, Guidelines, ScorerSamplingConfig
 
 # ============================================================
-# Configuration — UPDATE THESE VALUES
+# 設定 — 請更新這些值
 # ============================================================
 EXPERIMENT_NAME = "/Shared/my-agent-traces"
 CATALOG_NAME = "my_catalog"
 SCHEMA_NAME = "my_schema"
-SQL_WAREHOUSE_ID = "abc123def456"  # Your SQL warehouse ID
+SQL_WAREHOUSE_ID = "abc123def456"  # 你的 SQL warehouse ID
 
 # ============================================================
-# Step 1: Initial Setup
+# 步驟 1：初始設定
 # ============================================================
 mlflow.set_tracking_uri("databricks")
 os.environ["MLFLOW_TRACING_SQL_WAREHOUSE_ID"] = SQL_WAREHOUSE_ID
 
-# Create or retrieve experiment
+# 建立或取得 experiment
 if experiment := mlflow.get_experiment_by_name(EXPERIMENT_NAME):
     experiment_id = experiment.experiment_id
 else:
     experiment_id = mlflow.create_experiment(name=EXPERIMENT_NAME)
 
-# Link UC schema (creates trace tables automatically)
+# 連結 UC schema（會自動建立 trace 資料表）
 set_experiment_trace_location(
     location=UCSchemaLocation(
         catalog_name=CATALOG_NAME,
@@ -604,10 +604,10 @@ set_experiment_trace_location(
     ),
     experiment_id=experiment_id,
 )
-print(f"Linked experiment '{EXPERIMENT_NAME}' to {CATALOG_NAME}.{SCHEMA_NAME}")
+print(f"已將 experiment '{EXPERIMENT_NAME}' 連結到 {CATALOG_NAME}.{SCHEMA_NAME}")
 
 # ============================================================
-# Step 2: Set Trace Destination
+# 步驟 2：設定 Trace 目的地
 # ============================================================
 mlflow.set_experiment(EXPERIMENT_NAME)
 mlflow.tracing.set_destination(
@@ -618,21 +618,392 @@ mlflow.tracing.set_destination(
 )
 
 # ============================================================
-# Step 3: Enable Production Monitoring
+# 步驟 3：啟用正式環境監控
 # ============================================================
 set_databricks_monitoring_sql_warehouse_id(
     warehouse_id=SQL_WAREHOUSE_ID,
     experiment_id=experiment_id,
 )
 
-# Register and start safety monitoring (100% of traces)
+# 註冊並啟動 safety 監控（100% traces）
+safety = Safety().register(name="safety_monitor")
+safety = safety.start(
+    sampling_config=ScorerSamplingConfig(sample_rate=1.0)
+)
+print("已啟用 Safety 監控（100% 取樣率）")
+
+# 註冊並啟動自訂 guidelines（50% traces）
+tone = Guidelines(
+    name="professional_tone",
+    guidelines="回應必須專業、樂於助人且精簡"
+).register(name="tone_monitor")
+tone = tone.start(
+    sampling_config=ScorerSamplingConfig(sample_rate=0.5)
+)
+print("已啟用語氣監控（50% 取樣率）")
+
+# ============================================================
+# 步驟 4：使用測試 Trace 驗證
+# ============================================================
+@mlflow.trace
+def test_agent(query: str) -> str:
+    return f"針對以下內容的測試回應：{query}"
+
+result = test_agent("哈囉，trace 是否正常運作？")
+print(f"已記錄測試 trace。請至 Experiments UI 檢查：{EXPERIMENT_NAME}")
+```
+
+---
+
+## 限制與配額
+
+| 限制 | 數值 |
+|-------|-------|
+| Trace 匯入速率 | 每個 workspace 每秒 100 筆 traces |
+| 資料表匯入吞吐量 | 每張資料表每秒 100 MB |
+| 查詢吞吐量 | 每秒 200 次查詢 |
+| UI 效能 | 資料量超過 2TB 時會下降 |
+| Trace 刪除 | 不支援逐筆刪除（請使用 SQL） |
+| MLflow MCP server | 不支援儲存在 UC 中的 traces |
+| 區域可用性 | 僅限 `us-east-1` 與 `us-west-2`（Beta） |
+
+---
+
+## 在 UI 中檢視 Traces
+
+1. 前往 Databricks workspace 中的 **Experiments** 頁面
+2. 選取你的 experiment
+3. 點選 **Traces** 分頁
+4. 從下拉選單選取 **SQL warehouse**，以查詢儲存在 UC 中的 traces
+5. 瀏覽 traces、檢視 spans，並查看輸入／輸出
+
+**注意：** 你必須先選取 SQL warehouse，才能檢視儲存在 UC 中的 traces —— 系統不會自動載入。
+## 模式 9：從 Databricks Apps 記錄 Trace
+
+設定 Databricks App，將 trace 傳送到 Unity Catalog。
+
+**先決條件：**
+- App 使用 `mlflow[databricks]>=3.5.0`
+- App 的 service principal 對 trace 資料表具備 MODIFY 與 SELECT 權限（請參閱模式 2）
+
+**在 app 程式碼中：**
+```python
+import os
+import mlflow
+from mlflow.entities import UCSchemaLocation
+
+# 選項 A：Python API
+mlflow.tracing.set_destination(
+    destination=UCSchemaLocation(
+        catalog_name="my_catalog",
+        schema_name="my_schema",
+    )
+)
+
+# 選項 B：環境變數（在 app 設定中設定）
+os.environ["MLFLOW_TRACING_DESTINATION"] = "my_catalog.my_schema"
+
+# 你的 app 程式碼 —— trace 會送至 UC
+@mlflow.trace
+def handle_request(query: str) -> str:
+    return my_agent.invoke(query)
+```
+
+**部署步驟：**
+1. 在 **Authorization** 分頁下找到 app 的 service principal
+2. 在三個 `mlflow_experiment_trace_*` 資料表上授予 MODIFY 與 SELECT
+3. 在 app 程式碼中設定 trace 目的地
+4. 部署 app
+
+---
+
+## 模式 10：從 Model Serving Endpoints 記錄 Trace
+
+設定 model serving endpoint，將 trace 傳送到 Unity Catalog。
+
+**步驟 1：授予使用者 / service principal 權限**
+```sql
+GRANT MODIFY, SELECT ON TABLE my_catalog.my_schema.mlflow_experiment_trace_otel_logs
+  TO `serving-principal-id`;
+GRANT MODIFY, SELECT ON TABLE my_catalog.my_schema.mlflow_experiment_trace_otel_spans
+  TO `serving-principal-id`;
+```
+
+**步驟 2：產生 Personal Access Token (PAT)**
+
+為具備上述權限的身分建立 PAT。
+
+**步驟 3：將環境變數加入 endpoint**
+
+將下列內容加入 serving endpoint 設定：
+```
+DATABRICKS_TOKEN=<your-personal-access-token>
+MLFLOW_TRACING_DESTINATION=my_catalog.my_schema
+```
+
+**步驟 4：在提供服務的模型程式碼中設定目的地**
+```python
+import os
+import mlflow
+from mlflow.entities import UCSchemaLocation
+
+mlflow.tracing.set_destination(
+    destination=UCSchemaLocation(
+        catalog_name="my_catalog",
+        schema_name="my_schema",
+    )
+)
+
+# 模型的 predict 函式 —— trace 會寫入 UC
+@mlflow.trace
+def predict(model_input):
+    return my_model.invoke(model_input)
+```
+
+---
+
+## 模式 11：從第三方 OTEL Client 記錄 Trace
+
+透過 OTLP HTTP endpoint，將任何相容 OpenTelemetry 的 client 所產生的 trace 傳送到 Unity Catalog。
+
+```python
+from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter
+from opentelemetry.sdk.trace import TracerProvider
+from opentelemetry.sdk.trace.export import BatchSpanProcessor
+
+# 設定指向 Databricks 的 OTLP exporter
+otlp_trace_exporter = OTLPSpanExporter(
+    endpoint="https://<workspace-url>/api/2.0/otel/v1/traces",
+    headers={
+        "content-type": "application/x-protobuf",
+        "X-Databricks-UC-Table-Name": "my_catalog.my_schema.mlflow_experiment_trace_otel_spans",
+        "Authorization": "Bearer <YOUR_API_TOKEN>",
+    },
+)
+
+# 設定 tracer provider
+provider = TracerProvider()
+provider.add_span_processor(BatchSpanProcessor(otlp_trace_exporter))
+
+# 使用標準 OpenTelemetry API 建立 span
+tracer = provider.get_tracer("my-application")
+with tracer.start_as_current_span("my-operation") as span:
+    span.set_attribute("query", "What is MLflow?")
+    result = process_query("What is MLflow?")
+    span.set_attribute("result_length", len(result))
+```
+
+**注意：**
+- 透過 OTEL 匯入的 trace，若包含 root span，會出現在已連結的 experiment 中
+- 使用 `X-Databricks-UC-Table-Name` header 指定目標 spans 資料表
+- 標準 OTEL instrumentation library 可搭配此 endpoint 使用
+
+---
+
+## 模式 12：啟用生產環境監控
+
+註冊 scorer，以持續評估生產環境中的 trace。Scorer 會非同步地在抽樣 trace 上執行。
+
+```python
+import mlflow
+from mlflow.genai.scorers import Safety, Guidelines, ScorerSamplingConfig
+from mlflow.tracing import set_databricks_monitoring_sql_warehouse_id
+
+# 步驟 1：設定用於監控的 SQL warehouse
+set_databricks_monitoring_sql_warehouse_id(
+    warehouse_id="<SQL_WAREHOUSE_ID>",
+    experiment_id="<EXPERIMENT_ID>"  # 選用——若省略則使用目前的 active experiment
+)
+
+# 步驟 2：設定 active experiment
+mlflow.set_experiment("/Shared/my-agent-traces")
+
+# 步驟 3：註冊並啟動 scorer
+
+# Safety scorer —— 評估 100% 的 trace
+safety = Safety().register(name="production_safety")
+safety = safety.start(
+    sampling_config=ScorerSamplingConfig(sample_rate=1.0)
+)
+
+# 自訂 guidelines —— 評估 50% 的 trace
+tone_check = Guidelines(
+    name="professional_tone",
+    guidelines="The response must be professional and helpful"
+).register(name="production_tone")
+tone_check = tone_check.start(
+    sampling_config=ScorerSamplingConfig(sample_rate=0.5)
+)
+```
+
+**重要**：你必須同時執行 `.register()` 與 `.start()`——只有註冊並不會啟用監控。
+
+**SQL Warehouse 需求：**
+- 使用者必須對 SQL warehouse 擁有 `CAN USE`
+- 使用者必須對 experiment 擁有 `CAN EDIT`
+- 第一次註冊 scorer 時，系統會自動授予監控工作所需權限
+
+---
+## 模式 13：管理監控 Scorer
+
+列出、更新、停止與刪除生產環境監控 scorer。
+
+```python
+from mlflow.genai.scorers import list_scorers, get_scorer, delete_scorer, ScorerSamplingConfig
+
+# 列出 active experiment 的所有已註冊 scorer
+scorers = list_scorers()
+for s in scorers:
+    print(f"  {s.name}: sample_rate={s.sampling_config.sample_rate if s.sampling_config else 'N/A'}")
+
+# 取得特定 scorer
+safety_scorer = get_scorer(name="production_safety")
+
+# 更新抽樣率（例如從 50% 提高到 80%）
+safety_scorer = safety_scorer.update(
+    sampling_config=ScorerSamplingConfig(sample_rate=0.8)
+)
+
+# 停止監控（保留註冊，以便稍後重新啟動）
+safety_scorer = safety_scorer.stop()
+
+# 重新啟動監控
+safety_scorer = safety_scorer.start(
+    sampling_config=ScorerSamplingConfig(sample_rate=0.5)
+)
+
+# 完全刪除（移除註冊）
+delete_scorer(name="production_safety")
+```
+
+---
+
+## 模式 14：從 Unity Catalog 資料表查詢 Trace
+
+直接使用 SQL 查詢已匯入的 trace，以進行自訂分析與 dashboard 製作。
+
+```sql
+-- 計算每日 trace 數量
+SELECT
+  DATE(timestamp) as trace_date,
+  COUNT(DISTINCT trace_id) as trace_count
+FROM my_catalog.my_schema.mlflow_experiment_trace_otel_spans
+WHERE parent_span_id IS NULL  -- 僅 root span
+GROUP BY DATE(timestamp)
+ORDER BY trace_date DESC;
+
+-- 找出較慢的 trace（root span 持續時間 > 10 秒）
+SELECT
+  trace_id,
+  name as root_span_name,
+  (end_time_unix_nano - start_time_unix_nano) / 1e9 as duration_seconds
+FROM my_catalog.my_schema.mlflow_experiment_trace_otel_spans
+WHERE parent_span_id IS NULL
+  AND (end_time_unix_nano - start_time_unix_nano) / 1e9 > 10
+ORDER BY duration_seconds DESC
+LIMIT 20;
+
+-- 依 span 名稱統計錯誤率
+SELECT
+  name,
+  COUNT(*) as total,
+  SUM(CASE WHEN status_code = 'ERROR' THEN 1 ELSE 0 END) as errors,
+  ROUND(SUM(CASE WHEN status_code = 'ERROR' THEN 1 ELSE 0 END) * 100.0 / COUNT(*), 2) as error_pct
+FROM my_catalog.my_schema.mlflow_experiment_trace_otel_spans
+GROUP BY name
+HAVING COUNT(*) > 10
+ORDER BY error_pct DESC;
+```
+
+**從 Python（透過 Spark）：**
+```python
+from databricks.connect import DatabricksSession
+
+spark = DatabricksSession.builder.remote(serverless=True).getOrCreate()
+
+# 查詢 trace span
+spans_df = spark.sql("""
+    SELECT trace_id, name, span_kind,
+           (end_time_unix_nano - start_time_unix_nano) / 1e6 as duration_ms
+    FROM my_catalog.my_schema.mlflow_experiment_trace_otel_spans
+    WHERE name LIKE '%retriever%'
+    ORDER BY duration_ms DESC
+    LIMIT 100
+""")
+spans_df.show()
+```
+
+---
+
+## 模式 15：端到端設定腳本
+
+新專案的完整設定腳本——從建立 UC schema 連結，到記錄第一個 trace 與啟用監控。
+
+```python
+import os
+import mlflow
+from mlflow.entities import UCSchemaLocation
+from mlflow.tracing.enablement import set_experiment_trace_location
+from mlflow.tracing import set_databricks_monitoring_sql_warehouse_id
+from mlflow.genai.scorers import Safety, Guidelines, ScorerSamplingConfig
+
+# ============================================================
+# 設定 —— 請更新這些值
+# ============================================================
+EXPERIMENT_NAME = "/Shared/my-agent-traces"
+CATALOG_NAME = "my_catalog"
+SCHEMA_NAME = "my_schema"
+SQL_WAREHOUSE_ID = "abc123def456"  # 你的 SQL warehouse ID
+
+# ============================================================
+# 步驟 1：初始設定
+# ============================================================
+mlflow.set_tracking_uri("databricks")
+os.environ["MLFLOW_TRACING_SQL_WAREHOUSE_ID"] = SQL_WAREHOUSE_ID
+
+# 建立或取得 experiment
+if experiment := mlflow.get_experiment_by_name(EXPERIMENT_NAME):
+    experiment_id = experiment.experiment_id
+else:
+    experiment_id = mlflow.create_experiment(name=EXPERIMENT_NAME)
+
+# 連結 UC schema（會自動建立 trace 資料表）
+set_experiment_trace_location(
+    location=UCSchemaLocation(
+        catalog_name=CATALOG_NAME,
+        schema_name=SCHEMA_NAME
+    ),
+    experiment_id=experiment_id,
+)
+print(f"Linked experiment '{EXPERIMENT_NAME}' to {CATALOG_NAME}.{SCHEMA_NAME}")
+
+# ============================================================
+# 步驟 2：設定 Trace 目的地
+# ============================================================
+mlflow.set_experiment(EXPERIMENT_NAME)
+mlflow.tracing.set_destination(
+    destination=UCSchemaLocation(
+        catalog_name=CATALOG_NAME,
+        schema_name=SCHEMA_NAME,
+    )
+)
+
+# ============================================================
+# 步驟 3：啟用生產環境監控
+# ============================================================
+set_databricks_monitoring_sql_warehouse_id(
+    warehouse_id=SQL_WAREHOUSE_ID,
+    experiment_id=experiment_id,
+)
+
+# 註冊並啟動安全性監控（100% trace）
 safety = Safety().register(name="safety_monitor")
 safety = safety.start(
     sampling_config=ScorerSamplingConfig(sample_rate=1.0)
 )
 print("Safety monitoring enabled (100% sample rate)")
 
-# Register and start custom guidelines (50% of traces)
+# 註冊並啟動自訂 guidelines（50% trace）
 tone = Guidelines(
     name="professional_tone",
     guidelines="The response must be professional, helpful, and concise"
@@ -643,7 +1014,7 @@ tone = tone.start(
 print("Tone monitoring enabled (50% sample rate)")
 
 # ============================================================
-# Step 4: Verify with a Test Trace
+# 步驟 4：使用測試 Trace 驗證
 # ============================================================
 @mlflow.trace
 def test_agent(query: str) -> str:
@@ -655,26 +1026,26 @@ print(f"Test trace logged. Check the Experiments UI at: {EXPERIMENT_NAME}")
 
 ---
 
-## Limitations & Quotas
+## 限制與配額
 
-| Limit | Value |
+| 限制 | 數值 |
 |-------|-------|
-| Trace ingestion rate | 100 traces/second per workspace |
-| Table ingestion throughput | 100 MB/second per table |
-| Query throughput | 200 queries/second |
-| UI performance | Degrades with >2TB of data |
-| Trace deletion | Individual deletion not supported (use SQL) |
-| MLflow MCP server | Does not support UC-stored traces |
-| Region availability | `us-east-1` and `us-west-2` only (Beta) |
+| Trace 匯入速率 | 每個 workspace 每秒 100 個 trace |
+| 資料表匯入吞吐量 | 每個資料表每秒 100 MB |
+| 查詢吞吐量 | 每秒 200 次查詢 |
+| UI 效能 | 資料量超過 2TB 時會下降 |
+| Trace 刪除 | 不支援逐筆刪除（請使用 SQL） |
+| MLflow MCP server | 不支援儲存在 UC 中的 trace |
+| 區域可用性 | 僅支援 `us-east-1` 與 `us-west-2`（Beta） |
 
 ---
 
-## Viewing Traces in the UI
+## 在 UI 中檢視 Trace
 
-1. Navigate to the **Experiments** page in your Databricks workspace
-2. Select your experiment
-3. Click the **Traces** tab
-4. Select a **SQL warehouse** from the dropdown to query UC-stored traces
-5. Browse traces, inspect spans, view inputs/outputs
+1. 前往 Databricks workspace 中的 **Experiments** 頁面
+2. 選取你的 experiment
+3. 點選 **Traces** 分頁
+4. 從下拉選單中選擇 **SQL warehouse**，以查詢儲存在 UC 中的 trace
+5. 瀏覽 trace、檢查 span，以及查看輸入 / 輸出
 
-**Note:** You must select a SQL warehouse to view UC-stored traces — they are not loaded automatically.
+**注意：** 你必須先選擇一個 SQL warehouse，才能檢視儲存在 UC 中的 trace——系統不會自動載入它們。

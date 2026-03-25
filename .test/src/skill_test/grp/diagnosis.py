@@ -1,4 +1,4 @@
-"""Failure diagnosis - analyze errors and find relevant skill sections."""
+"""失敗診斷 - 分析錯誤並尋找相關技能章節。"""
 
 import re
 from dataclasses import dataclass
@@ -8,7 +8,7 @@ from typing import List, Dict, Any
 
 @dataclass
 class SkillSection:
-    """A relevant section from a skill file."""
+    """技能檔案中的相關章節。"""
 
     file_path: str
     section_name: str
@@ -18,7 +18,7 @@ class SkillSection:
 
 @dataclass
 class Diagnosis:
-    """Complete diagnosis of a failure."""
+    """失敗的完整診斷。"""
 
     error: str
     code_block: str
@@ -27,7 +27,7 @@ class Diagnosis:
 
 
 def find_skill_files(skill_name: str, base_path: str = ".claude/skills") -> List[Path]:
-    """Find all markdown files for a skill."""
+    """尋找技能的所有 Markdown 檔案。"""
     skill_path = Path(base_path) / skill_name
     if not skill_path.exists():
         return []
@@ -35,7 +35,7 @@ def find_skill_files(skill_name: str, base_path: str = ".claude/skills") -> List
 
 
 def extract_sections(file_path: Path) -> List[Dict[str, Any]]:
-    """Extract markdown sections from a file."""
+    """從檔案中擷取 Markdown 章節。"""
     content = file_path.read_text()
     sections = []
 
@@ -64,7 +64,7 @@ def extract_sections(file_path: Path) -> List[Dict[str, Any]]:
 
 
 def find_relevant_sections(error: str, code_block: str, skill_name: str) -> List[SkillSection]:
-    """Find skill sections relevant to an error."""
+    """尋找與錯誤相關的技能章節。"""
     relevant = []
 
     # Extract keywords from error and code

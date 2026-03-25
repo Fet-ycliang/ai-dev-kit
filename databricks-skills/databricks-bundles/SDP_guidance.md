@@ -1,11 +1,11 @@
-# SDP Pipeline Configuration for DABs
+# DABs 的 SDP 管線設定
 
-## Key Decisions (prompt if unclear)
-1. Streaming or batch oriented?
-2. Continuous or triggered execution?
-3. Serverless (default) or classic compute?
+## 關鍵決策（若不明確請詢問）
+1. 偏向串流還是批次？
+2. 連續執行還是觸發式執行？
+3. Serverless（預設值）還是 classic compute？
 
-## Pipeline Resource Pattern
+## Pipeline 資源模式
 
 ```yaml
 resources:
@@ -13,11 +13,11 @@ resources:
     pipeline_name:
       name: "[${bundle.target}] Pipeline Name"
 
-      # Target catalog and schema
+      # 目標 catalog 和 schema
       catalog: ${var.catalog}
       target: ${var.schema}
 
-      # Pipeline libraries
+      # Pipeline 程式庫
       libraries:
         - glob:
             include: ../src/pipelines/<pipeline_folder>/transformations/**
@@ -26,7 +26,7 @@ resources:
 
       serverless: true
 
-      # Pipeline configuration
+      # Pipeline 設定
       configuration:
         source_catalog: ${var.source_catalog}
         source_schema: ${var.source_schema}
@@ -42,11 +42,11 @@ resources:
           group_name: "users"
 ```
 
-**Permission levels**: `CAN_VIEW`, `CAN_RUN`, `CAN_MANAGE`
+**權限層級**：`CAN_VIEW`, `CAN_RUN`, `CAN_MANAGE`
 
-## Best Practices
+## 最佳實務
 
-1. **Use `root_path` and `libraries.glob`** for newer organization structure
-2. **Default to serverless** unless user specifies otherwise
-3. **Use variables** for catalog/schema parameterization
-4. **Set `development: true`** for dev/staging targets
+1. **對較新的組織結構使用 `root_path` 和 `libraries.glob`**
+2. **除非使用者另有指定，否則預設使用 serverless**
+3. **使用變數** 為 catalog/schema 參數化
+4. **在 dev/staging 目標環境中設定 `development: true`**

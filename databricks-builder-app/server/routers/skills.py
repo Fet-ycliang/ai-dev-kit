@@ -1,4 +1,4 @@
-"""Skills explorer and management API endpoints."""
+"""Skill 探索與管理 API 端點。"""
 
 import logging
 from pathlib import Path
@@ -20,28 +20,28 @@ router = APIRouter()
 
 
 class UpdateEnabledSkillsRequest(BaseModel):
-  """Request to update enabled skills for a project."""
+  """更新專案啟用 skill 的請求。"""
 
-  enabled_skills: list[str] | None = None  # None means all skills enabled
+  enabled_skills: list[str] | None = None  # None 代表啟用所有 skill
 
 
 def _get_skills_dir(project_id: str) -> Path:
-  """Get the skills directory for a project."""
+  """取得專案的 skill 目錄。"""
   project_dir = get_project_directory(project_id)
   return project_dir / '.claude' / 'skills'
 
 
 def _build_tree_node(path: Path, base_path: Path) -> dict:
-  """Build a tree node for a file or directory."""
+  """建立檔案或目錄的樹狀結構節點。"""
   relative_path = str(path.relative_to(base_path))
   name = path.name
 
   if path.is_dir():
     children = []
-    # Sort: directories first, then files, alphabetically
+    # 排序：目錄在前、檔案在後，依字母順序
     items = sorted(path.iterdir(), key=lambda x: (not x.is_dir(), x.name.lower()))
     for item in items:
-      # Skip hidden files and __pycache__
+      # 跳過隱藏檔案與 __pycache__
       if item.name.startswith('.') or item.name == '__pycache__':
         continue
       children.append(_build_tree_node(item, base_path))
@@ -61,7 +61,7 @@ def _build_tree_node(path: Path, base_path: Path) -> dict:
 
 @router.get('/projects/{project_id}/skills/tree')
 async def get_skills_tree(project_id: str):
-  """Get the skills directory tree for a project."""
+  """取得專案的 skill 目錄樹狀結構。"""
   skills_dir = _get_skills_dir(project_id)
 
   if not skills_dir.exists():
@@ -81,9 +81,9 @@ async def get_skills_tree(project_id: str):
 @router.get('/projects/{project_id}/skills/file')
 async def get_skill_file(
   project_id: str,
-  path: str = Query(..., description='Relative path to the file within the skills folder'),
+  path: str = Query(..., description='skill 資料夾中的檔案相對路徑'),
 ):
-  """Get the content of a skill file."""
+  """取得 skill 檔案的內容。"""
   skills_dir = _get_skills_dir(project_id)
 
   try:
@@ -114,11 +114,11 @@ async def get_skill_file(
 
 @router.get('/projects/{project_id}/skills/available')
 async def get_available_skills_for_project(project_id: str):
-  """Get all available skills with their enabled/disabled status for a project."""
+  """取得專案所有可用的 skill 及其啟用/停用狀態。"""
   project_dir = get_project_directory(project_id)
   enabled_skills = get_project_enabled_skills(project_dir)
 
-  # Get all skills (unfiltered) from app cache
+  # 從應用程式快取中取得所有 skill（未過濾）
   all_skills = get_available_skills()
 
   result = []
@@ -141,19 +141,19 @@ async def get_available_skills_for_project(project_id: str):
 
 @router.put('/projects/{project_id}/skills/enabled')
 async def update_enabled_skills(project_id: str, body: UpdateEnabledSkillsRequest):
-  """Update the list of enabled skills for a project.
+  """更新專案的啟用 skill 清單。
 
-  Setting enabled_skills to null re-enables all skills.
-  After updating, syncs the project's .claude/skills directory.
+  將 enabled_skills 設為 null 會重新啟用所有 skill。
+  更新後會同步專案的 .claude/skills 目錄。
   """
   project_dir = get_project_directory(project_id)
 
-  # Write to filesystem
+  # 寫入檔案系統
   success = set_project_enabled_skills(project_dir, body.enabled_skills)
   if not success:
     raise HTTPException(status_code=500, detail='Failed to update enabled skills')
 
-  # Sync the project's skills directory
+  # 同步專案的 skill 目錄
   sync_project_skills(project_dir, body.enabled_skills)
 
   return {
@@ -165,7 +165,7 @@ async def update_enabled_skills(project_id: str, body: UpdateEnabledSkillsReques
 
 @router.post('/projects/{project_id}/skills/reload')
 async def reload_skills(project_id: str):
-  """Reload skills for a project (respects enabled skills)."""
+  """重新載入專案的 skill（遵循已啟用的 skill 設定）。"""
   try:
     project_dir = get_project_directory(project_id)
     enabled_skills = get_project_enabled_skills(project_dir)

@@ -1,7 +1,7 @@
-"""Resource tracking manifest tools.
+"""資源追蹤 manifest 工具。
 
-Exposes the resource manifest as MCP tools so agents can list and clean up
-resources created across sessions.
+將資源 manifest 透過 MCP 工具公開，讓代理程式可以列出並清理
+跨工作階段建立的資源。
 """
 
 import logging
@@ -14,9 +14,9 @@ logger = logging.getLogger(__name__)
 
 
 def _delete_from_databricks(resource_type: str, resource_id: str) -> Optional[str]:
-    """Delete a resource from Databricks using the registered deleter.
+    """使用已註冊的 deleter 從 Databricks 刪除資源。
 
-    Returns error string or None on success.
+    成功時回傳 None，失敗時回傳錯誤字串。
     """
     deleter = _RESOURCE_DELETERS.get(resource_type)
     if not deleter:
@@ -31,22 +31,22 @@ def _delete_from_databricks(resource_type: str, resource_id: str) -> Optional[st
 @mcp.tool
 def list_tracked_resources(type: Optional[str] = None) -> Dict[str, Any]:
     """
-    List resources tracked in the project manifest.
+    列出專案 manifest 中追蹤的資源。
 
-    The manifest records every resource created through the MCP server
-    (dashboards, jobs, pipelines, Genie spaces, KAs, MAS, schemas, volumes, etc.).
-    Use this to see what was created across sessions.
+    manifest 會記錄所有透過 MCP server 建立的資源
+    （dashboards、jobs、pipelines、Genie spaces、KAs、MAS、schemas、volumes 等）。
+    可用此查看跨工作階段建立的內容。
 
-    Args:
-        type: Optional filter by resource type. One of: "dashboard", "job",
+    參數:
+        type: 依資源類型進行選用過濾。可為："dashboard", "job",
             "pipeline", "genie_space", "knowledge_assistant",
-            "multi_agent_supervisor", "catalog", "schema", "volume".
-            If not provided, returns all tracked resources.
+            "multi_agent_supervisor", "catalog", "schema", "volume"。
+            若未提供，則回傳所有追蹤中的資源。
 
-    Returns:
-        Dictionary with:
-        - resources: List of tracked resources (type, name, id, url, timestamps)
-        - count: Number of resources returned
+    回傳:
+        包含下列內容的 dictionary：
+        - resources: 追蹤中的資源清單（type、name、id、url、timestamps）
+        - count: 回傳的資源數量
     """
     resources = list_resources(resource_type=type)
     return {
@@ -62,23 +62,23 @@ def delete_tracked_resource(
     delete_from_databricks: bool = False,
 ) -> Dict[str, Any]:
     """
-    Delete a resource from the project manifest, and optionally from Databricks.
+    從專案 manifest 刪除資源，並可選擇同時從 Databricks 刪除。
 
-    Use this to clean up resources that were created during development/testing.
+    可用此清理開發／測試期間建立的資源。
 
-    Args:
-        type: Resource type (e.g., "dashboard", "job", "pipeline", "genie_space",
-            "knowledge_assistant", "multi_agent_supervisor", "catalog", "schema", "volume")
-        resource_id: The resource ID (as shown in list_tracked_resources)
-        delete_from_databricks: If True, also delete the resource from Databricks
-            before removing it from the manifest. Default: False (manifest-only).
+    參數:
+        type: 資源類型（例如 "dashboard", "job", "pipeline", "genie_space",
+            "knowledge_assistant", "multi_agent_supervisor", "catalog", "schema", "volume"）
+        resource_id: 資源 ID（如 list_tracked_resources 中所示）
+        delete_from_databricks: 若為 True，會先從 Databricks 刪除資源，
+            再從 manifest 移除。預設：False（僅移除 manifest）。
 
-    Returns:
-        Dictionary with:
-        - success: Whether the operation succeeded
-        - removed_from_manifest: Whether the resource was found and removed
-        - deleted_from_databricks: Whether the resource was deleted from Databricks
-        - error: Error message if deletion failed
+    回傳:
+        包含下列內容的 dictionary：
+        - success: 作業是否成功
+        - removed_from_manifest: 是否找到並從 manifest 移除該資源
+        - deleted_from_databricks: 是否已從 Databricks 刪除該資源
+        - error: 若刪除失敗則為錯誤訊息
     """
     result: Dict[str, Any] = {
         "success": True,
@@ -87,17 +87,17 @@ def delete_tracked_resource(
         "error": None,
     }
 
-    # Optionally delete from Databricks first
+    # 可選擇先從 Databricks 刪除
     if delete_from_databricks:
         error = _delete_from_databricks(type, resource_id)
         if error:
             result["error"] = f"Databricks deletion failed: {error}"
             result["success"] = False
-            # Still remove from manifest even if Databricks deletion failed
+            # 即使 Databricks 刪除失敗，仍從 manifest 移除
         else:
             result["deleted_from_databricks"] = True
 
-    # Remove from manifest
+    # 從 manifest 移除
     removed = remove_resource(resource_type=type, resource_id=resource_id)
     result["removed_from_manifest"] = removed
 

@@ -313,7 +313,7 @@ function Select-Checkbox {
             Write-Host "  $($j + 1). $mark $($Items[$j].Label)  ($hint)"
         }
         Write-Host ""
-        Write-Host "  Enter numbers to toggle (e.g. 1,3), or press Enter to accept defaults: " -NoNewline
+        Write-Host "  輸入數字以切換（例如 1,3），或按 Enter 接受預設值： " -NoNewline
         $input_ = Read-Host
         if (-not [string]::IsNullOrWhiteSpace($input_)) {
             # Reset all states
@@ -333,7 +333,7 @@ function Select-Checkbox {
 
     # Full interactive mode
     Write-Host ""
-    Write-Host "  Up/Down navigate, Space toggle, Enter on Confirm to finish" -ForegroundColor DarkGray
+    Write-Host "  ↑/↓ 導覽，空白鍵切換選取，在確認時按 Enter 完成" -ForegroundColor DarkGray
     Write-Host ""
 
     $totalRows = $count + 2  # items + blank + Confirm
@@ -473,7 +473,7 @@ function Select-Radio {
 
     # Full interactive mode
     Write-Host ""
-    Write-Host "  Up/Down navigate, Enter confirm" -ForegroundColor DarkGray
+    Write-Host "  ↑/↓ 導覽，Enter 確認" -ForegroundColor DarkGray
     Write-Host ""
 
     $totalRows = $count + 2  # items + blank + Confirm
@@ -970,7 +970,7 @@ function Invoke-PromptSkillsProfile {
         }
     } else {
         Write-Host ""
-        Write-Host "  Up/Down navigate, Space toggle, Enter on Confirm to finish" -ForegroundColor DarkGray
+        Write-Host "  ↑/↓ 導覽，空白鍵切換選取，在確認時按 Enter 完成" -ForegroundColor DarkGray
         Write-Host ""
 
         try { [Console]::CursorVisible = $false } catch {}
@@ -1858,14 +1858,14 @@ function Invoke-Main {
         if ($script:InstallSkills) {
             $skTotal = $script:SelectedSkills.Count + $script:SelectedMlflowSkills.Count + $script:SelectedApxSkills.Count
             if (-not [string]::IsNullOrWhiteSpace($script:UserSkills)) {
-                Write-Host "  Skills:      " -NoNewline; Write-Host "custom selection ($skTotal skills)" -ForegroundColor Green
+                Write-Host "  Skills:      " -NoNewline; Write-Host "自訂選擇（$skTotal 個 skills）" -ForegroundColor Green
             } else {
                 $profileDisplay = if ([string]::IsNullOrWhiteSpace($script:SkillsProfile)) { "all" } else { $script:SkillsProfile }
                 Write-Host "  Skills:      " -NoNewline; Write-Host "$profileDisplay ($skTotal skills)" -ForegroundColor Green
             }
         }
         if ($script:InstallMcp) {
-            Write-Host "  MCP config:  " -NoNewline; Write-Host "yes" -ForegroundColor Green
+            Write-Host "  MCP 設定:   " -NoNewline; Write-Host "是" -ForegroundColor Green
         }
         Write-Host ""
     }
