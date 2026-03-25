@@ -1,7 +1,7 @@
 """
-PDF - Synthetic PDF Document Generation
+PDF - 合成 PDF 文件產生
 
-Generate realistic PDF documents using LLM for RAG/unstructured data use cases.
+使用 LLM 產生逼真的 PDF 文件，適用於 RAG／非結構化資料使用情境。
 """
 
 from .generator import generate_pdf_documents, generate_single_pdf
@@ -15,14 +15,14 @@ from .models import (
 )
 
 __all__ = [
-    # Main functions
+    # 主要函式
     "generate_pdf_documents",
     "generate_single_pdf",
-    # Exceptions
+    # 例外
     "LLMConfigurationError",
-    # Enums
+    # 列舉
     "DocSize",
-    # Models
+    # 模型
     "DocumentSpecification",
     "DocumentSpecifications",
     "PDFGenerationResult",

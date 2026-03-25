@@ -1,6 +1,6 @@
-"""LLM calls for PDF generation using Databricks model serving.
+"""使用 Databricks model serving 執行 PDF 產生的 LLM 呼叫。
 
-Uses the same query_serving_endpoint as all other tools.
+使用與所有其他工具相同的 query_serving_endpoint。
 """
 
 import json
@@ -18,85 +18,85 @@ logger = logging.getLogger(__name__)
 
 
 class LLMConfigurationError(Exception):
-    """Raised when LLM is not properly configured."""
+    """當 LLM 未正確設定時引發。"""
 
 
 @lru_cache(maxsize=1)
 def _discover_databricks_gpt_endpoints() -> tuple[Optional[str], Optional[str]]:
-    """Discover the latest databricks-gpt endpoints.
+    """探索最新的 databricks-gpt endpoints。
 
-    Looks for endpoints starting with 'databricks-gpt' and returns:
-    - The latest non-nano model (highest version)
-    - The latest nano model (highest version with 'nano' in name)
+    尋找以 'databricks-gpt' 開頭的 endpoints，並回傳：
+    - 最新的非 nano 模型（最高版本）
+    - 最新的 nano 模型（名稱中含有 'nano' 的最高版本）
 
-    Returns:
-        Tuple of (main_model, nano_model). Either can be None if not found.
+    回傳：
+        (main_model, nano_model) 的 tuple。若未找到，任一值都可能為 None。
     """
     try:
-        # Get all endpoints - SDK fetches all, we filter client-side for databricks-gpt-*
+        # 取得所有 endpoints - SDK 會抓取全部，再由用戶端篩選 databricks-gpt-*
         endpoints = list_serving_endpoints(limit=None)
     except Exception as e:
-        logger.warning(f"Could not list endpoints for auto-discovery: {e}")
+        logger.warning(f"無法列出用於自動探索的 endpoints：{e}")
         return None, None
 
-    # Filter to databricks-gpt endpoints that are READY
+    # 篩選出狀態為 READY 的 databricks-gpt endpoints
     gpt_endpoints = [
         ep["name"] for ep in endpoints if ep["name"].startswith("databricks-gpt") and ep.get("state") == "READY"
     ]
 
     if not gpt_endpoints:
-        logger.warning("No databricks-gpt endpoints found")
+        logger.warning("找不到 databricks-gpt endpoints")
         return None, None
 
-    # Parse version from endpoint names like "databricks-gpt-5-4" or "databricks-gpt-5-4-nano"
+    # 從 endpoint 名稱（如 "databricks-gpt-5-4" 或 "databricks-gpt-5-4-nano"）解析版本
     def parse_version(name: str) -> tuple[int, ...]:
-        """Extract version numbers from endpoint name."""
-        # Match patterns like "5-4" or "5-4-nano"
+        """從 endpoint 名稱擷取版本號。"""
+        # 比對像是 "5-4" 或 "5-4-nano" 的模式
         match = re.search(r"databricks-gpt-(\d+(?:-\d+)*)", name)
         if match:
             version_str = match.group(1)
-            # Remove 'nano' suffix if present for version parsing
+            # 若有 'nano' 後綴，先移除再解析版本
             version_str = version_str.replace("-nano", "")
             return tuple(int(x) for x in version_str.split("-"))
         return (0,)
 
-    # Separate nano and non-nano endpoints
+    # 分開處理 nano 與非 nano endpoints
     nano_endpoints = [ep for ep in gpt_endpoints if "nano" in ep.lower()]
     main_endpoints = [ep for ep in gpt_endpoints if "nano" not in ep.lower()]
 
-    # Sort by version (highest first)
+    # 依版本排序（最高版本優先）
     main_endpoints.sort(key=parse_version, reverse=True)
     nano_endpoints.sort(key=parse_version, reverse=True)
 
     main_model = main_endpoints[0] if main_endpoints else None
-    nano_model = nano_endpoints[0] if nano_endpoints else main_model  # Fall back to main if no nano
+    nano_model = nano_endpoints[0] if nano_endpoints else main_model  # 若無 nano，回退至 main
 
-    logger.info(f"Discovered databricks-gpt endpoints: main={main_model}, nano={nano_model}")
+    logger.info(f"已探索到 databricks-gpt endpoints：main={main_model}，nano={nano_model}")
     return main_model, nano_model
 
 
 def _get_model_name(mini: bool = False, model_name: Optional[str] = None) -> str:
-    """Get the model endpoint name.
+    """取得模型 endpoint 名稱。
 
-    Priority:
-    1. Explicit model_name parameter
-    2. Environment variable (DATABRICKS_MODEL or DATABRICKS_MODEL_NANO)
-    3. Auto-discovered databricks-gpt endpoint
+    優先順序：
+    1. 明確傳入的 model_name 參數
+    2. 環境變數（DATABRICKS_MODEL 或 DATABRICKS_MODEL_NANO）
+    3. 自動探索到的 databricks-gpt endpoint
 
-    Args:
-        mini: Use smaller/faster model (nano variant)
-        model_name: Override model name
+    參數：
+        mini: 使用較小／較快的模型（nano 變體）
+        model_name: 覆寫模型名稱
 
-    Returns:
-        Model endpoint name
+    回傳：
+        模型 endpoint 名稱
 
-    Raises:
-        LLMConfigurationError: If no model can be found
+    引發：
+        LLMConfigurationError: 若找不到任何可用模型
     """
     if model_name:
         return model_name
 
-    # Check environment variables
+    # 檢查環境變數
     if mini:
         env_model = os.getenv("DATABRICKS_MODEL_NANO")
         if env_model:
@@ -106,7 +106,7 @@ def _get_model_name(mini: bool = False, model_name: Optional[str] = None) -> str
         if env_model:
             return env_model
 
-    # Auto-discover from available endpoints
+    # 從可用 endpoints 自動探索
     main_model, nano_model = _discover_databricks_gpt_endpoints()
 
     if mini and nano_model:
@@ -115,8 +115,8 @@ def _get_model_name(mini: bool = False, model_name: Optional[str] = None) -> str
         return main_model
 
     raise LLMConfigurationError(
-        "No LLM model configured. Set DATABRICKS_MODEL environment variable "
-        "or ensure a databricks-gpt-* endpoint is available in your workspace."
+        "未設定 LLM 模型。請設定 DATABRICKS_MODEL 環境變數，"
+        "或確認你的 workspace 中有可用的 databricks-gpt-* endpoint。"
     )
 
 
@@ -129,40 +129,40 @@ def call_llm(
     response_format: Optional[Union[str, dict[str, Any], type[BaseModel]]] = None,
     model_name: Optional[str] = None,
 ) -> str:
-    """Call Databricks model serving endpoint.
+    """呼叫 Databricks model serving endpoint。
 
-    Uses the same query_serving_endpoint as all other tools (SDK auth chain).
+    使用與所有其他工具相同的 query_serving_endpoint（SDK auth chain）。
 
-    Args:
-        prompt: User prompt
-        system_prompt: Optional system prompt
-        mini: Use smaller/faster model (nano variant if available)
-        max_tokens: Maximum tokens in response
-        temperature: Model temperature (default: 1.0)
-        response_format: Response format - 'json_object' (note: passed via system prompt hint)
-        model_name: Override model name (auto-discovered if not set)
+    參數：
+        prompt: 使用者 prompt
+        system_prompt: 可選的 system prompt
+        mini: 使用較小／較快的模型（若可用則使用 nano 變體）
+        max_tokens: 回應中的最大 token 數
+        temperature: 模型 temperature（預設：1.0）
+        response_format: 回應格式 - 'json_object'（注意：會透過 system prompt 提示傳遞）
+        model_name: 覆寫模型名稱（若未設定則自動探索）
 
-    Returns:
-        Generated content string
+    回傳：
+        產生的內容字串
     """
     endpoint_name = _get_model_name(mini=mini, model_name=model_name)
 
-    # Build messages
+    # 建立 messages
     messages: list[dict[str, str]] = []
 
-    # Add JSON hint to system prompt if json response requested
+    # 若要求 json 回應，則在 system prompt 加入 JSON 提示
     effective_system_prompt = system_prompt or ""
     if response_format == "json_object":
         if effective_system_prompt:
-            effective_system_prompt += "\n\nYou must respond with valid JSON only."
+            effective_system_prompt += "\n\n你必須只回應有效的 JSON。"
         else:
-            effective_system_prompt = "You must respond with valid JSON only."
+            effective_system_prompt = "你必須只回應有效的 JSON。"
 
     if effective_system_prompt:
         messages.append({"role": "system", "content": effective_system_prompt})
     messages.append({"role": "user", "content": prompt})
 
-    logger.info(f"Calling Databricks endpoint: {endpoint_name}")
+    logger.info(f"正在呼叫 Databricks endpoint：{endpoint_name}")
 
     try:
         response = query_serving_endpoint(
@@ -172,21 +172,21 @@ def call_llm(
             temperature=temperature if temperature != 1.0 else None,
         )
     except Exception as e:
-        logger.error(f"Error calling {endpoint_name}: {type(e).__name__}: {e}")
+        logger.error(f"呼叫 {endpoint_name} 時發生錯誤：{type(e).__name__}：{e}")
         raise
 
-    # Extract content from response
+    # 從回應擷取內容
     if not response.get("choices") or not response["choices"][0].get("message", {}).get("content"):
         finish_reason = response.get("choices", [{}])[0].get("finish_reason", "unknown")
-        raise Exception(f"Empty response from model. finish_reason={finish_reason}")
+        raise Exception(f"模型回應為空。finish_reason={finish_reason}")
 
     content = response["choices"][0]["message"]["content"]
 
-    # Validate Pydantic response
+    # 驗證 Pydantic 回應
     if isinstance(response_format, type) and issubclass(response_format, BaseModel):
         try:
             response_format.model_validate(json.loads(content))
         except Exception as e:
-            logger.warning(f"Response validation failed: {e}")
+            logger.warning(f"回應驗證失敗：{e}")
 
     return content

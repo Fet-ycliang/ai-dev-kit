@@ -1,64 +1,64 @@
 ---
 name: databricks-docs
-description: "Databricks documentation reference via llms.txt index. Use when other skills do not cover a topic, looking up unfamiliar Databricks features, or needing authoritative docs on APIs, configurations, or platform capabilities."
+description: "透過 llms.txt 索引參考 Databricks 文件。當其他技能未涵蓋某個主題、需要查詢不熟悉的 Databricks 功能，或需要 API、設定或平台能力的權威文件時使用。"
 ---
 
-# Databricks Documentation Reference
+# Databricks 文件參考
 
-This skill provides access to the complete Databricks documentation index via llms.txt - use it as a **reference resource** to supplement other skills and inform your use of MCP tools.
+此技能透過 llms.txt 提供完整的 Databricks 文件索引存取能力——可將它作為 **參考資源**，用來補充其他技能並協助你使用 MCP tools。
 
-## Role of This Skill
+## 此技能的角色
 
-This is a **reference skill**, not an action skill. Use it to:
+這是一個 **參考技能**，不是操作技能。可用於：
 
-- Look up documentation when other skills don't cover a topic
-- Get authoritative guidance on Databricks concepts and APIs
-- Find detailed information to inform how you use MCP tools
-- Discover features and capabilities you may not know about
+- 當其他技能未涵蓋某個主題時查找文件
+- 取得 Databricks 概念與 API 的權威指引
+- 找到詳細資訊，協助你判斷如何使用 MCP tools
+- 發掘你可能尚未知曉的功能與能力
 
-**Always prefer using MCP tools for actions** (execute_sql, create_or_update_pipeline, etc.) and **load specific skills for workflows** (databricks-python-sdk, databricks-spark-declarative-pipelines, etc.). Use this skill when you need reference documentation.
+**執行操作時，請一律優先使用 MCP tools**（execute_sql、create_or_update_pipeline 等），而 **工作流程則請載入對應的特定技能**（databricks-python-sdk、databricks-spark-declarative-pipelines 等）。當你需要參考文件時，再使用此技能。
 
-## How to Use
+## 使用方式
 
-Fetch the llms.txt documentation index:
+擷取 llms.txt 文件索引：
 
 **URL:** `https://docs.databricks.com/llms.txt`
 
-Use WebFetch to retrieve this index, then:
+使用 WebFetch 取得此索引，然後：
 
-1. Search for relevant sections/links
-2. Fetch specific documentation pages for detailed guidance
-3. Apply what you learn using the appropriate MCP tools
+1. 搜尋相關章節／連結
+2. 擷取特定文件頁面以取得詳細指引
+3. 使用適當的 MCP tools 套用你學到的內容
 
-## Documentation Structure
+## 文件結構
 
-The llms.txt file is organized by category:
+llms.txt 檔案依類別組織：
 
-- **Overview & Getting Started** - Basic concepts and tutorials
-- **Data Engineering** - Lakeflow, Spark, Delta Lake, pipelines
-- **SQL & Analytics** - Warehouses, queries, dashboards
+- **概覽與快速開始** - 基本概念與教學
+- **資料工程** - Lakeflow, Spark, Delta Lake, pipelines
+- **SQL 與分析** - Warehouses, queries, dashboards
 - **AI/ML** - MLflow, model serving, GenAI
-- **Governance** - Unity Catalog, permissions, security
-- **Developer Tools** - SDKs, CLI, APIs, Terraform
+- **治理** - Unity Catalog, permissions, security
+- **開發工具** - SDKs, CLI, APIs, Terraform
 
-## Example: Complementing Other Skills
+## 範例：補充其他技能
 
-**Scenario:** User wants to create a Delta Live Tables pipeline
+**情境：** 使用者想建立 Delta Live Tables pipeline
 
-1. Load `databricks-spark-declarative-pipelines` skill for workflow patterns
-2. Use this skill to fetch docs if you need clarification on specific DLT features
-3. Use `create_or_update_pipeline` MCP tool to actually create the pipeline
+1. 載入 `databricks-spark-declarative-pipelines` 技能以取得工作流程模式
+2. 若需要釐清特定 DLT 功能，再用此技能擷取文件
+3. 使用 `create_or_update_pipeline` MCP tool 實際建立 pipeline
 
-**Scenario:** User asks about an unfamiliar Databricks feature
+**情境：** 使用者詢問不熟悉的 Databricks 功能
 
-1. Fetch llms.txt to find relevant documentation
-2. Read the specific docs to understand the feature
-3. Determine which skill/tools apply, then use them
+1. 擷取 llms.txt 以找出相關文件
+2. 閱讀特定文件以了解該功能
+3. 判斷適用的技能／tools，然後使用它們
 
-## Related Skills
+## 相關技能
 
-- **[databricks-python-sdk](../databricks-python-sdk/SKILL.md)** - SDK patterns for programmatic Databricks access
-- **[databricks-spark-declarative-pipelines](../databricks-spark-declarative-pipelines/SKILL.md)** - DLT / Lakeflow pipeline workflows
-- **[databricks-unity-catalog](../databricks-unity-catalog/SKILL.md)** - Governance and catalog management
-- **[databricks-model-serving](../databricks-model-serving/SKILL.md)** - Serving endpoints and model deployment
-- **[databricks-mlflow-evaluation](../databricks-mlflow-evaluation/SKILL.md)** - MLflow 3 GenAI evaluation workflows
+- **[databricks-python-sdk](../databricks-python-sdk/SKILL.md)** - 以 SDK 模式進行程式化 Databricks 存取
+- **[databricks-spark-declarative-pipelines](../databricks-spark-declarative-pipelines/SKILL.md)** - DLT / Lakeflow pipeline 工作流程
+- **[databricks-unity-catalog](../databricks-unity-catalog/SKILL.md)** - 治理與 catalog 管理
+- **[databricks-model-serving](../databricks-model-serving/SKILL.md)** - serving endpoints 與 model 部署
+- **[databricks-mlflow-evaluation](../databricks-mlflow-evaluation/SKILL.md)** - MLflow 3 GenAI evaluation 工作流程

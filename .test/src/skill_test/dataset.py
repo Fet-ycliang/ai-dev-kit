@@ -55,12 +55,12 @@ class YAMLDatasetSource:
         for case in data.get("test_cases", []):
             outputs = case.get("outputs")
 
-            # Load response from external file if specified
+            # 若已指定外部檔案，從中載入回應
             if outputs and "expected_response_file" in outputs:
                 response_file = yaml_dir / outputs["expected_response_file"]
                 if response_file.exists():
                     with open(response_file) as rf:
-                        outputs = dict(outputs)  # Copy to avoid modifying original
+                        outputs = dict(outputs)  # 複製以避免修改原始資料
                         outputs["response"] = rf.read()
                         del outputs["expected_response_file"]
 
@@ -76,7 +76,7 @@ class YAMLDatasetSource:
         return records
 
     def save(self, records: List[EvalRecord]) -> None:
-        """Save records back to YAML file."""
+        """將記錄儲存回 YAML 檔案。"""
         data = {
             "test_cases": [
                 {
@@ -95,17 +95,17 @@ class YAMLDatasetSource:
 
 @dataclass
 class UCDatasetSource:
-    """Load evaluation dataset from Unity Catalog (Phase 2 - stub only)."""
+    """從 Unity Catalog 載入評估資料集（Phase 2 - 僅為 stub）。"""
 
     uc_table_name: str
 
     def load(self) -> List[EvalRecord]:
-        """Placeholder for UC integration."""
+        """UC 整合的佔位符。"""
         raise NotImplementedError("UC datasets deferred to Phase 2. Use YAMLDatasetSource for now.")
 
 
 def get_dataset_source(skill_name: str, base_path: Path = None) -> DatasetSource:
-    """Get the appropriate dataset source for a skill."""
+    """取得技能的適當資料集來源。"""
     if base_path is None:
         # Try relative to this module first (works from any cwd)
         module_base = Path(__file__).parent.parent / "skills"

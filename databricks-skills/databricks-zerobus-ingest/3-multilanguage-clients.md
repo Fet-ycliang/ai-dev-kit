@@ -1,14 +1,14 @@
-# Multi-Language Clients
+# 多語言用戶端
 
-Zerobus Ingest SDK examples for Java, Go, TypeScript/Node.js, and Rust. All languages follow the same core pattern: **SDK init -> create stream -> ingest records -> ACK -> flush -> close**.
+Zerobus 擷取 SDK 適用於 Java、Go、TypeScript/Node.js 和 Rust 的範例。所有語言遵循相同的核心模式：**SDK 初始化 -> 建立串流 -> 擷取記錄 -> ACK -> 清空 -> 關閉**。
 
 ---
 
-## Java (8+)
+## Java（8+）
 
-### Installation
+### 安裝
 
-Maven:
+Maven：
 ```xml
 <dependency>
     <groupId>com.databricks</groupId>
@@ -17,9 +17,9 @@ Maven:
 </dependency>
 ```
 
-### Protobuf Flow (Recommended)
+### Protobuf 流程（推薦）
 
-Java uses Protobuf by default. Generate and compile your `.proto` first (see [4-protobuf-schema.md](4-protobuf-schema.md)).
+Java 預設使用 Protobuf。首先產生並編譯您的 `.proto`（參見 [4-protobuf-schema.md](4-protobuf-schema.md)）。
 
 ```java
 import com.databricks.zerobus.*;
@@ -61,7 +61,7 @@ public class ZerobusProducer {
 }
 ```
 
-### Proto Generation for Java
+### Java Proto 產生
 
 ```bash
 java -jar zerobus-ingest-sdk-0.1.0-jar-with-dependencies.jar \
@@ -71,21 +71,21 @@ java -jar zerobus-ingest-sdk-0.1.0-jar-with-dependencies.jar \
     --table "catalog.schema.table_name" \
     --output "record.proto"
 
-# Compile to Java
+# 編譯為 Java
 protoc --java_out=src/main/java record.proto
 ```
 
 ---
 
-## Go (1.21+)
+## Go（1.21+）
 
-### Installation
+### 安裝
 
 ```bash
 go get github.com/databricks/zerobus-sdk-go
 ```
 
-### JSON Flow
+### JSON 流程
 
 ```go
 package main
@@ -129,7 +129,7 @@ func main() {
         )
         offset, err := stream.IngestRecordOffset(record)
         if err != nil {
-            log.Printf("Ingest failed for record %d: %v", i, err)
+            log.Printf("記錄 %d 擷取失敗：%v", i, err)
             continue
         }
         stream.WaitForOffset(offset)
@@ -139,33 +139,33 @@ func main() {
 }
 ```
 
-### Protobuf Flow
+### Protobuf 流程
 
 ```go
 options := zerobus.DefaultStreamConfigurationOptions()
 options.RecordType = zerobus.RecordTypeProto
 
-// Load compiled proto descriptor
+// 載入已編譯的 proto descriptor
 tableProps := zerobus.TableProperties{
     TableName:       tableName,
-    DescriptorProto: descriptorBytes, // compiled .proto descriptor
+    DescriptorProto: descriptorBytes, // 已編譯的 .proto descriptor
 }
 
 stream, err := sdk.CreateStream(tableProps, clientID, clientSecret, options)
-// ... ingest protobuf-serialized bytes ...
+// ... 擷取 protobuf 序列化位元組 ...
 ```
 
 ---
 
-## TypeScript / Node.js (16+)
+## TypeScript / Node.js（16+）
 
-### Installation
+### 安裝
 
 ```bash
 npm install @databricks/zerobus-ingest-sdk
 ```
 
-### JSON Flow
+### JSON 流程
 
 ```typescript
 import { ZerobusSdk, RecordType } from "@databricks/zerobus-ingest-sdk";
@@ -197,7 +197,7 @@ try {
 }
 ```
 
-### With Error Handling
+### 搭配錯誤處理
 
 ```typescript
 import { ZerobusSdk, RecordType } from "@databricks/zerobus-ingest-sdk";
@@ -213,7 +213,7 @@ async function ingestWithRetry(
       await stream.waitForOffset(offset);
       return true;
     } catch (error) {
-      console.warn(`Attempt ${attempt + 1}/${maxRetries} failed:`, error);
+      console.warn(`嘗試 ${attempt + 1}/${maxRetries} 失敗：`, error);
       if (attempt < maxRetries - 1) {
         await new Promise((r) => setTimeout(r, 2 ** attempt * 1000));
       }
@@ -225,16 +225,16 @@ async function ingestWithRetry(
 
 ---
 
-## Rust (1.70+)
+## Rust（1.70+）
 
-### Installation
+### 安裝
 
 ```bash
 cargo add databricks-zerobus-ingest-sdk
 cargo add tokio --features macros,rt-multi-thread
 ```
 
-### JSON Flow
+### JSON 流程
 
 ```rust
 use databricks_zerobus_ingest_sdk::{
@@ -280,7 +280,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
 }
 ```
 
-### Protobuf Flow
+### Protobuf 流程
 
 ```rust
 let table_properties = TableProperties {
@@ -297,7 +297,7 @@ let mut stream = sdk
     .create_stream(table_properties, client_id, client_secret, Some(options))
     .await?;
 
-// Ingest serialized protobuf bytes
+// 擷取序列化的 protobuf 位元組
 let record_bytes = my_proto_message.encode_to_vec();
 let offset = stream.ingest_record_offset(record_bytes).await?;
 stream.wait_for_offset(offset).await?;
@@ -305,13 +305,13 @@ stream.wait_for_offset(offset).await?;
 
 ---
 
-## Language Comparison
+## 語言比較
 
-| Feature | Python | Java | Go | TypeScript | Rust |
+| 功能 | Python | Java | Go | TypeScript | Rust |
 |---------|--------|------|----|------------|------|
-| Min version | 3.9+ | 8+ | 1.21+ | Node 16+ | 1.70+ |
-| Package | `databricks-zerobus-ingest-sdk` | `com.databricks:zerobus-ingest-sdk` | `github.com/databricks/zerobus-sdk-go` | `@databricks/zerobus-ingest-sdk` | `databricks-zerobus-ingest-sdk` |
-| Default serialization | JSON | Protobuf | JSON | JSON | JSON |
-| Async API | Yes (separate module) | CompletableFuture | Goroutines | Native async/await | Tokio async/await |
-| ACK pattern | `wait_for_offset(offset)` or `AckCallback` | `waitForOffset(offset)` | `WaitForOffset(offset)` | `await waitForOffset(offset)` | `wait_for_offset(offset).await?` |
-| Proto generation | `python -m zerobus.tools.generate_proto` | JAR CLI tool | External `protoc` | External `protoc` | External `protoc` |
+| 最小版本 | 3.9+ | 8+ | 1.21+ | Node 16+ | 1.70+ |
+| 套件 | `databricks-zerobus-ingest-sdk` | `com.databricks:zerobus-ingest-sdk` | `github.com/databricks/zerobus-sdk-go` | `@databricks/zerobus-ingest-sdk` | `databricks-zerobus-ingest-sdk` |
+| 預設序列化 | JSON | Protobuf | JSON | JSON | JSON |
+| 非同步 API | 是（單獨模組） | CompletableFuture | Goroutines | 原生 async/await | Tokio async/await |
+| ACK 模式 | `wait_for_offset(offset)` 或 `AckCallback` | `waitForOffset(offset)` | `WaitForOffset(offset)` | `await waitForOffset(offset)` | `wait_for_offset(offset).await?` |
+| Proto 產生 | `python -m zerobus.tools.generate_proto` | JAR CLI 工具 | 外部 `protoc` | 外部 `protoc` | 外部 `protoc` |

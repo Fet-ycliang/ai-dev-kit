@@ -1,42 +1,42 @@
-# Reverse ETL with Lakebase Autoscaling
+# Lakebase 自動擴展的反向 ETL
 
-## Overview
+## 概觀
 
-Reverse ETL allows you to sync data from Unity Catalog Delta tables into Lakebase Autoscaling as PostgreSQL tables. This enables OLTP access patterns on data processed in the Lakehouse.
+反向 ETL 可將 Unity Catalog 的 Delta tables 資料同步到 Lakebase 自動擴展，建立 PostgreSQL tables，讓在 Lakehouse 處理的資料能以 OLTP 型態被存取。
 
-## How It Works
+## 運作方式
 
-Synced tables create a managed copy of Unity Catalog data in Lakebase:
+同步資料表會在 Lakebase 建立 Unity Catalog 資料的受管複本：
 
-1. A new Unity Catalog table (read-only, managed by the sync pipeline)
-2. A Postgres table in Lakebase (queryable by applications)
+1. 一個新的 Unity Catalog table（唯讀，由同步管線管理）
+2. Lakebase 中的 Postgres table（供應用查詢）
 
-The sync pipeline uses managed Lakeflow Spark Declarative Pipelines to continuously update both tables.
+同步管線使用受管的 Lakeflow Spark 宣告式管線持續更新兩者。
 
-### Performance
+### 效能
 
-- **Continuous writes:** ~1,200 rows/sec per CU
-- **Bulk writes:** ~15,000 rows/sec per CU
-- **Connections used:** Up to 16 per synced table
+- **連續寫入：** 每 CU 約 1,200 列/秒
+- **批次寫入：** 每 CU 約 15,000 列/秒
+- **連線使用量：** 每個同步資料表最多 16 條連線
 
-## Sync Modes
+## 同步模式
 
-| Mode | Description | Best For | Notes |
+| 模式 | 說明 | 最佳用途 | 備註 |
 |------|-------------|----------|-------|
-| **Snapshot** | One-time full copy | Initial setup, historical analysis | 10x more efficient if modifying >10% of data |
-| **Triggered** | Scheduled updates on demand | Dashboards updated hourly/daily | Requires CDF on source table |
-| **Continuous** | Real-time streaming (seconds of latency) | Live applications | Highest cost, minimum 15s intervals, requires CDF |
+| **快照** | 單次完整複製 | 初始建置、歷史分析 | 若修改超過 10% 資料效率高 10 倍 |
+| **觸發式** | 需求觸發或排程更新 | 每時/每日更新的 dashboards | 來源資料表需啟用 CDF |
+| **連續** | 近即時串流（秒級延遲） | 即時應用 | 成本最高，間隔至少 15 秒，需啟用 CDF |
 
-**Note:** Triggered and Continuous modes require Change Data Feed (CDF) enabled on the source table:
+**注意：** 觸發式與連續模式需在來源資料表啟用 Change Data Feed (CDF)：
 
 ```sql
 ALTER TABLE your_catalog.your_schema.your_table
 SET TBLPROPERTIES (delta.enableChangeDataFeed = true)
 ```
 
-## Creating Synced Tables
+## 建立同步資料表
 
-### Using Python SDK
+### 透過 Python SDK
 
 ```python
 from databricks.sdk import WorkspaceClient
@@ -49,7 +49,7 @@ from databricks.sdk.service.database import (
 
 w = WorkspaceClient()
 
-# Create a synced table
+# 建立同步資料表
 synced_table = w.database.create_synced_database_table(
     SyncedDatabaseTable(
         name="lakebase_catalog.schema.synced_table",
@@ -64,10 +64,10 @@ synced_table = w.database.create_synced_database_table(
         ),
     )
 )
-print(f"Created synced table: {synced_table.name}")
+print(f"已建立同步資料表：{synced_table.name}")
 ```
 
-### Using CLI
+### 透過 CLI
 
 ```bash
 databricks database create-synced-database-table \
@@ -85,28 +85,28 @@ databricks database create-synced-database-table \
     }'
 ```
 
-## Checking Synced Table Status
+## 查詢同步資料表狀態
 
 ```python
 status = w.database.get_synced_database_table(name="lakebase_catalog.schema.synced_table")
-print(f"State: {status.data_synchronization_status.detailed_state}")
-print(f"Message: {status.data_synchronization_status.message}")
+print(f"狀態：{status.data_synchronization_status.detailed_state}")
+print(f"訊息：{status.data_synchronization_status.message}")
 ```
 
-## Deleting a Synced Table
+## 刪除同步資料表
 
-Delete from both Unity Catalog and Postgres:
+需同時刪除 Unity Catalog 與 Postgres：
 
-1. **Unity Catalog:** Delete from Catalog Explorer or SDK
-2. **Postgres:** Drop the table to free storage
+1. **Unity Catalog：** 於 Catalog Explorer 或 SDK 刪除
+2. **Postgres：** Drop table 以釋放儲存空間
 
 ```sql
 DROP TABLE your_database.your_schema.your_table;
 ```
 
-## Data Type Mapping
+## 資料型別對應
 
-| Unity Catalog Type | Postgres Type |
+| Unity Catalog 型別 | Postgres 型別 |
 |-------------------|---------------|
 | BIGINT | BIGINT |
 | BINARY | BYTEA |
@@ -126,18 +126,18 @@ DROP TABLE your_database.your_schema.your_table;
 | MAP | JSONB |
 | STRUCT | JSONB |
 
-**Unsupported types:** GEOGRAPHY, GEOMETRY, VARIANT, OBJECT
+**不支援的型別：** GEOGRAPHY、GEOMETRY、VARIANT、OBJECT
 
-## Capacity Planning
+## 容量規劃
 
-- **Connection usage:** Each synced table uses up to 16 connections
-- **Size limits:** 2 TB total across all synced tables; recommend < 1 TB per table
-- **Naming:** Database, schema, and table names only allow `[A-Za-z0-9_]+`
-- **Schema evolution:** Only additive changes (e.g., adding columns) for Triggered/Continuous modes
+- **連線使用量：** 每個同步資料表最多使用 16 條連線
+- **容量限制：** 所有同步資料表合計上限 2 TB；建議單表 < 1 TB
+- **命名規則：** Database、schema 與 table 名稱僅允許 `[A-Za-z0-9_]+`
+- **Schema 演進：** 觸發式/連續模式僅支援增加欄位等加法變更
 
-## Use Cases
+## 使用案例
 
-### Product Catalog for Web App
+### Web App 的產品目錄
 
 ```python
 w.database.create_synced_database_table(
@@ -152,7 +152,7 @@ w.database.create_synced_database_table(
 )
 ```
 
-### Real-time Feature Serving
+### 即時特徵服務
 
 ```python
 w.database.create_synced_database_table(
@@ -167,11 +167,11 @@ w.database.create_synced_database_table(
 )
 ```
 
-## Best Practices
+## 最佳實務
 
-1. **Enable CDF** on source tables before creating Triggered or Continuous synced tables
-2. **Choose appropriate sync mode**: Snapshot for small tables, Triggered for hourly/daily, Continuous for real-time
-3. **Monitor sync status**: Check for failures and latency via Catalog Explorer
-4. **Index target tables**: Create appropriate indexes in Postgres for your query patterns
-5. **Handle schema changes**: Only additive changes are supported for streaming modes
-6. **Account for connection limits**: Each synced table uses up to 16 connections
+1. **建立觸發式或連續表前先啟用 CDF**
+2. **選擇合適同步模式**：小型資料用快照、每時/每日用觸發式、即時情境用連續
+3. **監控同步狀態**：透過 Catalog Explorer 檢查失敗與延遲
+4. **在 Postgres 建立索引**：依查詢模式建立適當索引
+5. **處理 schema 變更**：串流模式僅支援加法變更
+6. **考量連線上限**：每個同步資料表會使用最多 16 條連線

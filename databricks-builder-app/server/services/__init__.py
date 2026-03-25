@@ -1,4 +1,4 @@
-"""Services module."""
+"""Services 模組。"""
 
 from .active_stream import ActiveStream, ActiveStreamManager, get_stream_manager
 from .agent import get_project_directory, stream_agent_response

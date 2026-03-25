@@ -86,7 +86,7 @@ export function ProjectsProvider({ children }: { children: ReactNode }) {
 export function useProjects() {
   const context = useContext(ProjectsContext);
   if (!context) {
-    throw new Error("useProjects must be used within a ProjectsProvider");
+    throw new Error('useProjects 必須在 ProjectsProvider 內使用');
   }
   return context;
 }

@@ -1,20 +1,20 @@
-# Querying Endpoints
+# 查詢端點
 
-Send requests to deployed Model Serving endpoints.
+向已部署的 Model Serving 端點發送請求。
 
-> **If MCP tools are not available**, use the Python SDK or REST API examples below.
+> **若 MCP 工具無法使用**，請使用下方的 Python SDK 或 REST API 範例。
 
-## MCP Tools
+## MCP 工具
 
-### Check Endpoint Status
+### 確認端點狀態
 
-Before querying, verify the endpoint is ready:
+查詢前先確認端點已就緒：
 
 ```
 get_serving_endpoint_status(name="my-agent-endpoint")
 ```
 
-Response:
+回應：
 ```json
 {
     "name": "my-agent-endpoint",
@@ -25,7 +25,7 @@ Response:
 }
 ```
 
-### Query Chat/Agent Endpoint
+### 查詢 Chat/Agent 端點
 
 ```
 query_serving_endpoint(
@@ -38,7 +38,7 @@ query_serving_endpoint(
 )
 ```
 
-Response:
+回應：
 ```json
 {
     "choices": [
@@ -58,7 +58,7 @@ Response:
 }
 ```
 
-### Query ML Model Endpoint
+### 查詢 ML 模型端點
 
 ```
 query_serving_endpoint(
@@ -70,14 +70,14 @@ query_serving_endpoint(
 )
 ```
 
-Response:
+回應：
 ```json
 {
     "predictions": [0.85, 0.72]
 }
 ```
 
-### List All Endpoints
+### 列出所有端點
 
 ```
 list_serving_endpoints(limit=20)
@@ -85,7 +85,7 @@ list_serving_endpoints(limit=20)
 
 ## Python SDK
 
-### Query Agent/Chat Endpoint
+### 查詢 Agent/Chat 端點
 
 ```python
 from databricks.sdk import WorkspaceClient
@@ -103,7 +103,7 @@ response = w.serving_endpoints.query(
 print(response.choices[0].message.content)
 ```
 
-### Query ML Model
+### 查詢 ML 模型
 
 ```python
 response = w.serving_endpoints.query(
@@ -116,7 +116,7 @@ response = w.serving_endpoints.query(
 print(response.predictions)
 ```
 
-### Streaming (Agent Endpoints)
+### 串流（Agent 端點）
 
 ```python
 for chunk in w.serving_endpoints.query(
@@ -130,7 +130,7 @@ for chunk in w.serving_endpoints.query(
 
 ## REST API
 
-### Get Endpoint Status
+### 取得端點狀態
 
 ```bash
 curl -X GET \
@@ -138,7 +138,7 @@ curl -X GET \
   -H "Authorization: Bearer <token>"
 ```
 
-### Query Chat/Agent Endpoint
+### 查詢 Chat/Agent 端點
 
 ```bash
 curl -X POST \
@@ -153,7 +153,7 @@ curl -X POST \
   }'
 ```
 
-### Query ML Model
+### 查詢 ML 模型
 
 ```bash
 curl -X POST \
@@ -167,15 +167,15 @@ curl -X POST \
   }'
 ```
 
-## Integration Patterns
+## 整合模式
 
-### In a Python Application
+### 在 Python 應用程式中
 
 ```python
 from databricks.sdk import WorkspaceClient
 import os
 
-# Uses DATABRICKS_HOST and DATABRICKS_TOKEN from environment
+# 從環境變數使用 DATABRICKS_HOST 與 DATABRICKS_TOKEN
 w = WorkspaceClient()
 
 def ask_agent(question: str) -> str:
@@ -185,12 +185,12 @@ def ask_agent(question: str) -> str:
     )
     return response.choices[0].message.content
 
-# Usage
+# 使用範例
 answer = ask_agent("What is a Delta table?")
 print(answer)
 ```
 
-### In Another Agent (Agent Chaining)
+### 在另一個 Agent 中（Agent 串接）
 
 ```python
 from databricks.sdk import WorkspaceClient
@@ -207,13 +207,13 @@ def ask_specialist_agent(question: str) -> str:
     )
     return response.choices[0].message.content
 
-# Add to your main agent's tools
+# 加入主 Agent 的工具清單
 tools = [ask_specialist_agent]
 ```
 
-### With OpenAI-Compatible Libraries
+### 與相容 OpenAI 的函式庫搭配使用
 
-Databricks endpoints are OpenAI-compatible:
+Databricks 端點相容 OpenAI：
 
 ```python
 from openai import OpenAI
@@ -224,14 +224,14 @@ client = OpenAI(
 )
 
 response = client.chat.completions.create(
-    model="<endpoint-name>",  # Any value works, endpoint determines model
+    model="<endpoint-name>",  # 任何值均可，端點決定模型
     messages=[{"role": "user", "content": "Hello!"}]
 )
 
 print(response.choices[0].message.content)
 ```
 
-## Error Handling
+## 錯誤處理
 
 ```python
 from databricks.sdk import WorkspaceClient
@@ -245,22 +245,22 @@ try:
         messages=[{"role": "user", "content": "Test"}]
     )
 except NotFound:
-    print("Endpoint not found - check name or wait for deployment")
+    print("找不到端點——確認名稱或等待部署完成")
 except PermissionDenied:
-    print("No permission to query this endpoint")
+    print("無權限查詢此端點")
 except Exception as e:
     if "NOT_READY" in str(e):
-        print("Endpoint is still starting up")
+        print("端點仍在啟動中")
     else:
         raise
 ```
 
-## Common Issues
+## 常見問題
 
-| Issue | Solution |
-|-------|----------|
-| **Endpoint NOT_READY** | Wait for deployment (~15 min for agents) |
-| **404 Not Found** | Check endpoint name, may differ from model name |
-| **Permission Denied** | Ensure token has serving endpoint permissions |
-| **Timeout** | Increase timeout, reduce max_tokens |
-| **Empty response** | Check model signature matches input format |
+| 問題 | 解決方式 |
+|------|---------|
+| **端點 NOT_READY** | 等待部署完成（Agent 約需 15 分鐘） |
+| **404 Not Found** | 確認端點名稱，可能與模型名稱不同 |
+| **Permission Denied** | 確認 token 具有服務端點權限 |
+| **逾時** | 增加 timeout，減少 max_tokens |
+| **空回應** | 確認模型簽章與輸入格式相符 |

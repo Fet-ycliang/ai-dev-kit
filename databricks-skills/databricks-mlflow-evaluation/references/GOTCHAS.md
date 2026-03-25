@@ -1,46 +1,46 @@
-# MLflow 3 GenAI - GOTCHAS & Common Mistakes
+# MLflow 3 GenAI — 常見錯誤與陷阱
 
-**CRITICAL**: Read this before writing any evaluation code. These are the most common mistakes that will cause failures.
+**重要**：撰寫任何評估程式碼前請先閱讀本文。以下是最常見的錯誤類型，會直接導致執行失敗。
 
-## Table of Contents
+## 目錄
 
-- [Using Model Serving Endpoints for Development](#-wrong-using-model-serving-endpoints-for-development)
-- [Wrong API Imports](#-wrong-api-imports)
-- [Wrong Evaluate Function](#-wrong-evaluate-function)
-- [Wrong Data Format](#-wrong-data-format)
-- [Wrong predict_fn Signature](#-wrong-predict_fn-signature)
-- [Wrong Scorer Decorator Usage](#-wrong-scorer-decorator-usage)
-- [Wrong Feedback Return](#-wrong-feedback-return)
-- [Wrong Guidelines Scorer Setup](#-wrong-guidelines-scorer-setup)
-- [Wrong Trace Search Syntax](#-wrong-trace-search-syntax)
-- [Wrong Expectations Usage](#-wrong-expectations-usage)
-- [Wrong RetrievalGroundedness Usage](#-wrong-retrievalgroundedness-usage)
-- [Wrong Custom Scorer Imports](#-wrong-custom-scorer-imports)
-- [Wrong Type Hints in Scorers](#-wrong-type-hints-in-scorers)
-- [Wrong Dataset Creation](#-wrong-dataset-creation)
-- [Wrong Multiple Feedback Names](#-wrong-multiple-feedback-names)
-- [Wrong Guidelines Context Reference](#-wrong-guidelines-context-reference)
-- [Wrong Production Monitoring Setup](#-wrong-production-monitoring-setup)
-- [Wrong Custom Judge Model Format](#-wrong-custom-judge-model-format)
-- [Wrong Aggregation Values](#-wrong-aggregation-values)
-- [Wrong Trace Ingestion Setup](#-wrong-trace-ingestion-setup)
-- [Wrong Trace Destination Format](#-wrong-trace-destination-format)
-- [Wrong MLflow Version for Trace Ingestion](#-wrong-mlflow-version-for-trace-ingestion)
-- [Wrong Linking UC Schema Without SQL Warehouse](#-wrong-linking-uc-schema-without-sql-warehouse)
-- [Wrong Label Schema Name — Alignment Will Fail](#-wrong-label-schema-name--alignment-will-fail)
-- [Wrong Aligned Judge Score Interpretation](#-wrong-aligned-judge-score-interpretation)
-- [Wrong MemAlign Embedding Model — Token Costs](#-wrong-memalign-embedding-model--token-costs)
-- [Wrong MemAlign Episodic Memory — Lazy Loading](#-wrong-memalign-episodic-memory--lazy-loading)
-- [Wrong GEPA Optimization Dataset — Missing expectations](#-wrong-gepa-optimization-dataset--missing-expectations)
-- [Summary Checklist](#summary-checklist)
+- [開發時使用 Model Serving Endpoint](#-錯誤開發時使用-model-serving-endpoint)
+- [錯誤的 API Import](#-錯誤的-api-import)
+- [錯誤的評估函式](#-錯誤的評估函式)
+- [錯誤的資料格式](#-錯誤的資料格式)
+- [錯誤的 predict_fn 簽章](#-錯誤的-predict_fn-簽章)
+- [錯誤的 Scorer 裝飾器用法](#-錯誤的-scorer-裝飾器用法)
+- [錯誤的 Feedback 回傳值](#-錯誤的-feedback-回傳值)
+- [錯誤的 Guidelines Scorer 設定](#-錯誤的-guidelines-scorer-設定)
+- [錯誤的 Trace 搜尋語法](#-錯誤的-trace-搜尋語法)
+- [錯誤的 Expectations 用法](#-錯誤的-expectations-用法)
+- [錯誤的 RetrievalGroundedness 用法](#-錯誤的-retrievalgroundedness-用法)
+- [錯誤的自訂 Scorer Import](#-錯誤的自訂-scorer-import)
+- [Scorer 中錯誤的型別提示](#-scorer-中錯誤的型別提示)
+- [錯誤的 Dataset 建立方式](#-錯誤的-dataset-建立方式)
+- [多 Feedback 名稱衝突](#-多-feedback-名稱衝突)
+- [Guidelines 中錯誤的 Context 變數參照](#-guidelines-中錯誤的-context-變數參照)
+- [錯誤的生產監控設定](#-錯誤的生產監控設定)
+- [錯誤的自訂 Judge 模型格式](#-錯誤的自訂-judge-模型格式)
+- [無效的聚合值名稱](#-無效的聚合值名稱)
+- [錯誤的 Trace 攝取設定](#-錯誤的-trace-攝取設定)
+- [錯誤的 Trace Destination 格式](#-錯誤的-trace-destination-格式)
+- [Trace 攝取使用過舊的 MLflow 版本](#-trace-攝取使用過舊的-mlflow-版本)
+- [缺少 SQL Warehouse 即連結 UC Schema](#-缺少-sql-warehouse-即連結-uc-schema)
+- [Label Schema 名稱錯誤 — 對齊將失敗](#-label-schema-名稱錯誤--對齊將失敗)
+- [誤解對齊後的 Judge 分數](#-誤解對齊後的-judge-分數)
+- [MemAlign Embedding Model 選擇不當 — Token 成本](#-memalign-embedding-model-選擇不當--token-成本)
+- [MemAlign Episodic Memory — 延遲載入](#-memalign-episodic-memory--延遲載入)
+- [GEPA 最佳化資料集缺少 expectations](#-gepa-最佳化資料集缺少-expectations)
+- [總結檢查清單](#總結檢查清單)
 
 ---
 
-## ❌ WRONG: Using Model Serving Endpoints for Development
+## ❌ 錯誤：開發時使用 Model Serving Endpoint
 
-### WRONG: Calling deployed endpoint for initial testing
+### 錯誤：呼叫已部署的 endpoint 進行初始測試
 ```python
-# ❌ WRONG - Don't use model serving endpoints during development
+# ❌ 錯誤——開發階段不應使用 model serving endpoint
 from databricks.sdk import WorkspaceClient
 
 w = WorkspaceClient()
@@ -48,20 +48,20 @@ client = w.serving_endpoints.get_open_ai_client()
 
 def predict_fn(messages):
     response = client.chat.completions.create(
-        model="my-agent-endpoint",  # Deployed endpoint
+        model="my-agent-endpoint",  # 已部署的 endpoint
         messages=messages
     )
     return {"response": response.choices[0].message.content}
 ```
 
-### ✅ CORRECT: Import and test agent locally
+### ✅ 正確：直接 import 並在本地測試 Agent
 ```python
-# ✅ CORRECT - Import agent directly for fast iteration
-from plan_execute_agent import AGENT  # Your local agent module
+# ✅ 正確——直接 import agent，加快疊代速度
+from plan_execute_agent import AGENT  # 您的本地 agent 模組
 
 def predict_fn(messages):
     result = AGENT.predict({"messages": messages})
-    # Extract response from ResponsesAgent format
+    # 從 ResponsesAgent 格式中取出回應
     if isinstance(result, dict) and "messages" in result:
         for msg in reversed(result["messages"]):
             if msg.get("role") == "assistant":
@@ -69,29 +69,29 @@ def predict_fn(messages):
     return {"response": str(result)}
 ```
 
-**Why?**
-- Local testing enables faster iteration (no deployment needed)
-- Full stack traces for debugging
-- No serving endpoint costs
-- Direct access to agent internals
+**原因：**
+- 本地測試無需部署，疊代速度更快
+- 可取得完整堆疊追蹤以利除錯
+- 無 serving endpoint 費用
+- 可直接存取 agent 內部狀態
 
-**When to use endpoints**: Only for production monitoring, load testing, or A/B testing deployed versions.
+**何時使用 endpoint**：僅用於生產監控、壓力測試，或對已部署版本進行 A/B 測試時。
 
 ---
 
-## ❌ WRONG API IMPORTS
+## ❌ 錯誤的 API Import
 
-### WRONG: Using old MLflow 2 imports
+### 錯誤：使用舊版 MLflow 2 的 import
 ```python
-# ❌ WRONG - These don't exist in MLflow 3 GenAI
+# ❌ 錯誤——MLflow 3 GenAI 中不存在這些 import
 from mlflow.evaluate import evaluate
 from mlflow.metrics import genai
 import mlflow.llm
 ```
 
-### ✅ CORRECT: MLflow 3 GenAI imports
+### ✅ 正確：MLflow 3 GenAI 的 import 方式
 ```python
-# ✅ CORRECT
+# ✅ 正確
 import mlflow.genai
 from mlflow.genai.scorers import Guidelines, Safety, Correctness, scorer
 from mlflow.genai.judges import meets_guidelines, is_correct, make_judge
@@ -100,11 +100,11 @@ from mlflow.entities import Feedback, Trace
 
 ---
 
-## ❌ WRONG EVALUATE FUNCTION
+## ❌ 錯誤的評估函式
 
-### WRONG: Using mlflow.evaluate()
+### 錯誤：使用 mlflow.evaluate()
 ```python
-# ❌ WRONG - This is the old API for classic ML
+# ❌ 錯誤——這是傳統 ML 使用的舊 API
 results = mlflow.evaluate(
     model=my_model,
     data=eval_data,
@@ -112,9 +112,9 @@ results = mlflow.evaluate(
 )
 ```
 
-### ✅ CORRECT: Using mlflow.genai.evaluate()
+### ✅ 正確：使用 mlflow.genai.evaluate()
 ```python
-# ✅ CORRECT - MLflow 3 GenAI evaluation
+# ✅ 正確——MLflow 3 GenAI 評估
 results = mlflow.genai.evaluate(
     data=eval_dataset,
     predict_fn=my_app,
@@ -124,19 +124,19 @@ results = mlflow.genai.evaluate(
 
 ---
 
-## ❌ WRONG DATA FORMAT
+## ❌ 錯誤的資料格式
 
-### WRONG: Flat data structure
+### 錯誤：扁平資料結構
 ```python
-# ❌ WRONG - Missing nested structure
+# ❌ 錯誤——缺少巢狀結構
 eval_data = [
     {"query": "What is X?", "expected": "X is..."}
 ]
 ```
 
-### ✅ CORRECT: Proper nested structure
+### ✅ 正確：正確的巢狀結構
 ```python
-# ✅ CORRECT - Must have 'inputs' key
+# ✅ 正確——必須包含 'inputs' 鍵
 eval_data = [
     {
         "inputs": {"query": "What is X?"},
@@ -147,40 +147,40 @@ eval_data = [
 
 ---
 
-## ❌ WRONG predict_fn SIGNATURE
+## ❌ 錯誤的 predict_fn 簽章
 
-### WRONG: Function expects dict
+### 錯誤：函式接收 dict
 ```python
-# ❌ WRONG - predict_fn receives **unpacked inputs
-def my_app(inputs):  # Receives dict
+# ❌ 錯誤——predict_fn 接收的是解包後的 inputs
+def my_app(inputs):  # 接收 dict
     query = inputs["query"]
     return {"response": "..."}
 ```
 
-### ✅ CORRECT: Function receives keyword args
+### ✅ 正確：函式接收關鍵字引數
 ```python
-# ✅ CORRECT - inputs are unpacked as kwargs
-def my_app(query, context=None):  # Receives individual keys
+# ✅ 正確——inputs 會以 kwargs 方式解包傳入
+def my_app(query, context=None):  # 接收個別鍵值
     return {"response": f"Answer to {query}"}
 
-# If inputs = {"query": "What is X?", "context": "..."}
-# Then my_app is called as: my_app(query="What is X?", context="...")
+# 若 inputs = {"query": "What is X?", "context": "..."}
+# 則呼叫方式為：my_app(query="What is X?", context="...")
 ```
 
 ---
 
-## ❌ WRONG SCORER DECORATOR USAGE
+## ❌ 錯誤的 Scorer 裝飾器用法
 
-### WRONG: Missing decorator
+### 錯誤：缺少裝飾器
 ```python
-# ❌ WRONG - This won't work as a scorer
+# ❌ 錯誤——不加裝飾器無法作為 scorer 運作
 def my_scorer(inputs, outputs):
     return True
 ```
 
-### ✅ CORRECT: Use @scorer decorator
+### ✅ 正確：使用 @scorer 裝飾器
 ```python
-# ✅ CORRECT
+# ✅ 正確
 from mlflow.genai.scorers import scorer
 
 @scorer
@@ -190,37 +190,37 @@ def my_scorer(inputs, outputs):
 
 ---
 
-## ❌ WRONG FEEDBACK RETURN
+## ❌ 錯誤的 Feedback 回傳值
 
-### WRONG: Returning wrong types
+### 錯誤：回傳錯誤的型別
 ```python
 @scorer
 def bad_scorer(outputs):
-    # ❌ WRONG - Can't return dict
+    # ❌ 錯誤——不能回傳 dict
     return {"score": 0.5, "reason": "..."}
-    
-    # ❌ WRONG - Can't return tuple
+
+    # ❌ 錯誤——不能回傳 tuple
     return (True, "rationale")
 ```
 
-### ✅ CORRECT: Return Feedback or primitive
+### ✅ 正確：回傳 Feedback 或基本型別
 ```python
 from mlflow.entities import Feedback
 
 @scorer
 def good_scorer(outputs):
-    # ✅ CORRECT - Return primitive
+    # ✅ 正確——回傳基本型別
     return True
     return 0.85
     return "yes"
-    
-    # ✅ CORRECT - Return Feedback object
+
+    # ✅ 正確——回傳 Feedback 物件
     return Feedback(
         value=True,
-        rationale="Explanation"
+        rationale="說明"
     )
-    
-    # ✅ CORRECT - Return list of Feedbacks
+
+    # ✅ 正確——回傳 Feedback 清單
     return [
         Feedback(name="metric_1", value=True),
         Feedback(name="metric_2", value=0.9)
@@ -229,79 +229,79 @@ def good_scorer(outputs):
 
 ---
 
-## ❌ WRONG GUIDELINES SCORER SETUP
+## ❌ 錯誤的 Guidelines Scorer 設定
 
-### WRONG: Missing required parameters
+### 錯誤：缺少必填參數
 ```python
-# ❌ WRONG - Missing 'name' parameter
+# ❌ 錯誤——缺少 'name' 參數
 scorer = Guidelines(guidelines="Must be professional")
 ```
 
-### ✅ CORRECT: Include name and guidelines
+### ✅ 正確：同時提供 name 與 guidelines
 ```python
-# ✅ CORRECT
+# ✅ 正確
 scorer = Guidelines(
-    name="professional_tone",  # REQUIRED
-    guidelines="The response must be professional"  # REQUIRED
+    name="professional_tone",  # 必填
+    guidelines="The response must be professional"  # 必填
 )
 ```
 
 ---
 
-## ❌ WRONG TRACE SEARCH SYNTAX
+## ❌ 錯誤的 Trace 搜尋語法
 
-### WRONG: Missing prefixes and wrong quotes
+### 錯誤：缺少前綴或使用錯誤的引號
 ```python
-# ❌ WRONG - Missing prefix
+# ❌ 錯誤——缺少前綴
 mlflow.search_traces("status = 'OK'")
 
-# ❌ WRONG - Using double quotes
+# ❌ 錯誤——使用雙引號
 mlflow.search_traces('attributes.status = "OK"')
 
-# ❌ WRONG - Missing backticks for dotted names
+# ❌ 錯誤——含點號的名稱未加反引號
 mlflow.search_traces("tags.mlflow.traceName = 'my_app'")
 
-# ❌ WRONG - Using OR (not supported)
+# ❌ 錯誤——不支援 OR
 mlflow.search_traces("attributes.status = 'OK' OR attributes.status = 'ERROR'")
 ```
 
-### ✅ CORRECT: Proper filter syntax
+### ✅ 正確：正確的篩選語法
 ```python
-# ✅ CORRECT - Use prefix and single quotes
+# ✅ 正確——使用前綴與單引號
 mlflow.search_traces("attributes.status = 'OK'")
 
-# ✅ CORRECT - Backticks for dotted names
+# ✅ 正確——含點號的名稱加反引號
 mlflow.search_traces("tags.`mlflow.traceName` = 'my_app'")
 
-# ✅ CORRECT - AND is supported
+# ✅ 正確——支援 AND
 mlflow.search_traces("attributes.status = 'OK' AND tags.env = 'prod'")
 
-# ✅ CORRECT - Time in milliseconds
+# ✅ 正確——時間使用毫秒
 import time
-cutoff = int((time.time() - 3600) * 1000)  # 1 hour ago
+cutoff = int((time.time() - 3600) * 1000)  # 1 小時前
 mlflow.search_traces(f"attributes.timestamp_ms > {cutoff}")
 ```
 
 ---
 
-## ❌ WRONG EXPECTATIONS USAGE
+## ❌ 錯誤的 Expectations 用法
 
-### WRONG: Using Correctness without expectations
+### 錯誤：使用 Correctness 但未提供 expectations
 ```python
-# ❌ WRONG - Correctness requires expected_facts or expected_response
+# ❌ 錯誤——Correctness 需要 expected_facts 或 expected_response
 eval_data = [
     {"inputs": {"query": "What is X?"}}
 ]
 results = mlflow.genai.evaluate(
     data=eval_data,
     predict_fn=my_app,
-    scorers=[Correctness()]  # Will fail - no ground truth!
+    scorers=[Correctness()]  # 將失敗——無基準答案！
 )
 ```
 
-### ✅ CORRECT: Include expectations for Correctness
+### ✅ 正確：為 Correctness 提供 expectations
 ```python
-# ✅ CORRECT
+# ✅ 正確
 eval_data = [
     {
         "inputs": {"query": "What is X?"},
@@ -314,39 +314,39 @@ eval_data = [
 
 ---
 
-## ❌ WRONG RetrievalGroundedness USAGE
+## ❌ 錯誤的 RetrievalGroundedness 用法
 
-### WRONG: Using without RETRIEVER span
+### 錯誤：應用程式中無 RETRIEVER span
 ```python
-# ❌ WRONG - App has no RETRIEVER span type
+# ❌ 錯誤——應用程式沒有 RETRIEVER span 類型
 @mlflow.trace
 def my_rag_app(query):
-    docs = get_documents(query)  # Not marked as retriever
+    docs = get_documents(query)  # 未標記為 retriever
     return generate_response(docs, query)
 
-# RetrievalGroundedness will fail - can't find retriever spans
+# RetrievalGroundedness 將失敗——找不到 retriever span
 ```
 
-### ✅ CORRECT: Mark retrieval with proper span type
+### ✅ 正確：以正確的 span type 標記檢索步驟
 ```python
-# ✅ CORRECT - Use span_type="RETRIEVER"
+# ✅ 正確——使用 span_type="RETRIEVER"
 @mlflow.trace(span_type="RETRIEVER")
 def retrieve_documents(query):
     return [doc1, doc2]
 
 @mlflow.trace
 def my_rag_app(query):
-    docs = retrieve_documents(query)  # Now has RETRIEVER span
+    docs = retrieve_documents(query)  # 現在有 RETRIEVER span
     return generate_response(docs, query)
 ```
 
 ---
 
-## ❌ WRONG CUSTOM SCORER IMPORTS
+## ❌ 錯誤的自訂 Scorer Import
 
-### WRONG: External imports at module level
+### 錯誤：在模組層級使用外部 import
 ```python
-# ❌ WRONG for production monitoring - external import outside function
+# ❌ 錯誤——生產監控的 scorer 不可在函式外部 import
 import my_custom_library
 
 @scorer
@@ -354,22 +354,22 @@ def production_scorer(outputs):
     return my_custom_library.process(outputs)
 ```
 
-### ✅ CORRECT: Inline imports for production scorers
+### ✅ 正確：在函式內部 import（生產 scorer 適用）
 ```python
-# ✅ CORRECT - Import inside function for serialization
+# ✅ 正確——在函式內部 import 以利序列化
 @scorer
 def production_scorer(outputs):
-    import json  # Import inside for production monitoring
+    import json  # 在函式內部 import，供生產監控使用
     return len(json.dumps(outputs)) > 100
 ```
 
 ---
 
-## ❌ WRONG TYPE HINTS IN SCORERS
+## ❌ Scorer 中錯誤的型別提示
 
-### WRONG: Type hints requiring imports in signature
+### 錯誤：型別提示需要在函式簽章中 import
 ```python
-# ❌ WRONG - Type hints break serialization for production monitoring
+# ❌ 錯誤——型別提示會破壞生產監控的序列化
 from typing import List
 
 @scorer
@@ -377,14 +377,14 @@ def bad_scorer(outputs: List[str]) -> bool:
     return True
 ```
 
-### ✅ CORRECT: Avoid complex type hints or use dict
+### ✅ 正確：避免複雜型別提示，或使用 dict
 ```python
-# ✅ CORRECT - Simple types work
+# ✅ 正確——簡單型別可使用
 @scorer
 def good_scorer(outputs):
     return True
 
-# ✅ CORRECT - dict is fine
+# ✅ 正確——dict 可使用
 @scorer
 def good_scorer(outputs: dict) -> bool:
     return True
@@ -392,22 +392,22 @@ def good_scorer(outputs: dict) -> bool:
 
 ---
 
-## ❌ WRONG Dataset Creation
+## ❌ 錯誤的 Dataset 建立方式
 
-### WRONG: Missing Spark session for MLflow datasets
+### 錯誤：建立 MLflow 管理的 Dataset 前未初始化 Spark
 ```python
-# ❌ WRONG - Need Spark for MLflow-managed datasets
+# ❌ 錯誤——MLflow 管理的 dataset 需要 Spark
 import mlflow.genai.datasets
 
 dataset = mlflow.genai.datasets.create_dataset(
     uc_table_name="catalog.schema.my_dataset"
 )
-# Error: No Spark session available
+# 錯誤：找不到 Spark session
 ```
 
-### ✅ CORRECT: Initialize Spark first
+### ✅ 正確：先初始化 Spark
 ```python
-# ✅ CORRECT
+# ✅ 正確
 from databricks.connect import DatabricksSession
 
 spark = DatabricksSession.builder.remote(serverless=True).getOrCreate()
@@ -419,24 +419,24 @@ dataset = mlflow.genai.datasets.create_dataset(
 
 ---
 
-## ❌ WRONG Multiple Feedback Names
+## ❌ 多 Feedback 名稱衝突
 
-### WRONG: Multiple feedbacks without unique names
+### 錯誤：多個 Feedback 未指定唯一名稱
 ```python
 @scorer
 def bad_multi_scorer(outputs):
-    # ❌ WRONG - Feedbacks will conflict
+    # ❌ 錯誤——Feedback 將互相衝突
     return [
         Feedback(value=True),
         Feedback(value=0.8)
     ]
 ```
 
-### ✅ CORRECT: Unique names for each Feedback
+### ✅ 正確：為每個 Feedback 指定唯一名稱
 ```python
 @scorer
 def good_multi_scorer(outputs):
-    # ✅ CORRECT - Each has unique name
+    # ✅ 正確——每個均有唯一名稱
     return [
         Feedback(name="check_1", value=True),
         Feedback(name="check_2", value=0.8)
@@ -445,20 +445,20 @@ def good_multi_scorer(outputs):
 
 ---
 
-## ❌ WRONG Guidelines Context Reference
+## ❌ Guidelines 中錯誤的 Context 變數參照
 
-### WRONG: Wrong variable names in guidelines
+### 錯誤：使用錯誤的變數名稱
 ```python
-# ❌ WRONG - Guidelines use 'request' and 'response', not custom keys
+# ❌ 錯誤——Guidelines 使用 'request' 與 'response'，不是自訂鍵名
 Guidelines(
     name="check",
-    guidelines="The output must address the query"  # 'output' and 'query' not available
+    guidelines="The output must address the query"  # 'output' 和 'query' 不可用
 )
 ```
 
-### ✅ CORRECT: Use 'request' and 'response'
+### ✅ 正確：使用 'request' 與 'response'
 ```python
-# ✅ CORRECT - These are auto-extracted
+# ✅ 正確——這兩個變數會自動從 trace 中提取
 Guidelines(
     name="check",
     guidelines="The response must address the request"
@@ -467,20 +467,20 @@ Guidelines(
 
 ---
 
-## ❌ WRONG Production Monitoring Setup
+## ❌ 錯誤的生產監控設定
 
-### WRONG: Forgetting to start after register
+### 錯誤：只 register 忘記 start
 ```python
-# ❌ WRONG - Registered but not started
+# ❌ 錯誤——已 register 但未 start
 from mlflow.genai.scorers import Safety
 
 safety = Safety().register(name="safety_check")
-# Scorer exists but isn't running!
+# Scorer 存在但未執行！
 ```
 
-### ✅ CORRECT: Register then start
+### ✅ 正確：register 後再 start
 ```python
-# ✅ CORRECT - Both register and start
+# ✅ 正確——必須 register 並 start
 from mlflow.genai.scorers import Safety, ScorerSamplingConfig
 
 safety = Safety().register(name="safety_check")
@@ -491,66 +491,66 @@ safety = safety.start(
 
 ---
 
-## ❌ WRONG Custom Judge Model Format
+## ❌ 錯誤的自訂 Judge 模型格式
 
-### WRONG: Wrong model format
+### 錯誤：模型格式錯誤
 ```python
-# ❌ WRONG - Missing provider prefix
+# ❌ 錯誤——缺少 provider 前綴
 Guidelines(name="test", guidelines="...", model="gpt-4o")
 
-# ❌ WRONG - Wrong separator
+# ❌ 錯誤——分隔符號錯誤
 Guidelines(name="test", guidelines="...", model="databricks:gpt-4o")
 ```
 
-### ✅ CORRECT: Use provider:/model format
+### ✅ 正確：使用 provider:/model 格式
 ```python
-# ✅ CORRECT - Use :/ separator
+# ✅ 正確——使用 :/ 分隔符號
 Guidelines(name="test", guidelines="...", model="databricks:/my-endpoint")
 Guidelines(name="test", guidelines="...", model="openai:/gpt-4o")
 ```
 
 ---
 
-## ❌ WRONG Aggregation Values
+## ❌ 無效的聚合值名稱
 
-### WRONG: Invalid aggregation names
+### 錯誤：使用不存在的聚合名稱
 ```python
-# ❌ WRONG - p50, p99, sum are not valid
+# ❌ 錯誤——p50、p99、sum 均不合法
 @scorer(aggregations=["mean", "p50", "p99", "sum"])
 def my_scorer(outputs) -> float:
     return 0.5
 ```
 
-### ✅ CORRECT: Use valid aggregation names
+### ✅ 正確：使用合法的聚合名稱
 ```python
-# ✅ CORRECT - Only these 6 are valid
+# ✅ 正確——僅以下 6 個合法
 @scorer(aggregations=["min", "max", "mean", "median", "variance", "p90"])
 def my_scorer(outputs) -> float:
     return 0.5
 ```
 
-**Valid aggregations:**
-- `min` - minimum value
-- `max` - maximum value
-- `mean` - average value
-- `median` - 50th percentile (NOT `p50`)
-- `variance` - statistical variance
-- `p90` - 90th percentile (only p90, NOT p50 or p99)
+**合法的聚合名稱：**
+- `min` — 最小值
+- `max` — 最大值
+- `mean` — 平均值
+- `median` — 第 50 百分位數（**不是** `p50`）
+- `variance` — 統計變異數
+- `p90` — 第 90 百分位數（僅 p90，**不支援** p50 或 p99）
 
 ---
 
-## ❌ WRONG Trace Ingestion Setup
+## ❌ 錯誤的 Trace 攝取設定
 
-### WRONG: Using ALL_PRIVILEGES instead of explicit grants
+### 錯誤：使用 ALL_PRIVILEGES 而非明確的授權
 ```sql
--- ❌ WRONG - ALL_PRIVILEGES does NOT include required permissions
+-- ❌ 錯誤——ALL_PRIVILEGES 不包含所需權限
 GRANT ALL_PRIVILEGES ON TABLE my_catalog.my_schema.mlflow_experiment_trace_otel_spans
   TO `user@company.com`;
 ```
 
-### ✅ CORRECT: Grant explicit MODIFY and SELECT
+### ✅ 正確：明確授予 MODIFY 與 SELECT
 ```sql
--- ✅ CORRECT - Explicit MODIFY and SELECT required
+-- ✅ 正確——必須明確授予 MODIFY 與 SELECT
 GRANT MODIFY, SELECT ON TABLE my_catalog.my_schema.mlflow_experiment_trace_otel_spans
   TO `user@company.com`;
 GRANT MODIFY, SELECT ON TABLE my_catalog.my_schema.mlflow_experiment_trace_otel_logs
@@ -561,52 +561,52 @@ GRANT MODIFY, SELECT ON TABLE my_catalog.my_schema.mlflow_experiment_trace_otel_
 
 ---
 
-## ❌ WRONG Trace Destination Format
+## ❌ 錯誤的 Trace Destination 格式
 
-### WRONG: Wrong format for environment variable
+### 錯誤：環境變數格式錯誤
 ```python
-# ❌ WRONG - Missing schema or wrong separator
+# ❌ 錯誤——缺少 schema 或分隔符號錯誤
 os.environ["MLFLOW_TRACING_DESTINATION"] = "my_catalog"
 os.environ["MLFLOW_TRACING_DESTINATION"] = "my_catalog/my_schema"
 ```
 
-### ✅ CORRECT: Use catalog.schema format
+### ✅ 正確：使用 catalog.schema 格式
 ```python
-# ✅ CORRECT - Dot-separated catalog.schema
+# ✅ 正確——以點號分隔的 catalog.schema
 os.environ["MLFLOW_TRACING_DESTINATION"] = "my_catalog.my_schema"
 ```
 
 ---
 
-## ❌ WRONG MLflow Version for Trace Ingestion
+## ❌ Trace 攝取使用過舊的 MLflow 版本
 
-### WRONG: Using MLflow < 3.9.0 for UC trace ingestion
+### 錯誤：UC trace 攝取使用 MLflow < 3.9.0
 ```bash
-# ❌ WRONG - Trace ingestion requires 3.9.0+
+# ❌ 錯誤——Trace 攝取需要 3.9.0+
 pip install mlflow[databricks]>=3.1.0
 ```
 
-### ✅ CORRECT: Use MLflow 3.9.0+ for UC traces
+### ✅ 正確：UC trace 使用 MLflow 3.9.0+
 ```bash
-# ✅ CORRECT
+# ✅ 正確
 pip install "mlflow[databricks]>=3.9.0" --upgrade --force-reinstall
 ```
 
 ---
 
-## ❌ WRONG Linking UC Schema Without SQL Warehouse
+## ❌ 缺少 SQL Warehouse 即連結 UC Schema
 
-### WRONG: Missing SQL warehouse configuration
+### 錯誤：未設定 SQL warehouse 就連結
 ```python
-# ❌ WRONG - No SQL warehouse configured
+# ❌ 錯誤——未設定 SQL warehouse
 mlflow.set_tracking_uri("databricks")
-# Missing: os.environ["MLFLOW_TRACING_SQL_WAREHOUSE_ID"] = "..."
+# 缺少：os.environ["MLFLOW_TRACING_SQL_WAREHOUSE_ID"] = "..."
 set_experiment_trace_location(location=UCSchemaLocation(...), ...)
 ```
 
-### ✅ CORRECT: Set SQL warehouse before linking
+### ✅ 正確：先設定 SQL warehouse 再連結
 ```python
-# ✅ CORRECT - Set warehouse ID first
+# ✅ 正確——先設定 warehouse ID
 mlflow.set_tracking_uri("databricks")
 os.environ["MLFLOW_TRACING_SQL_WAREHOUSE_ID"] = "<SQL_WAREHOUSE_ID>"
 set_experiment_trace_location(location=UCSchemaLocation(...), ...)
@@ -614,131 +614,131 @@ set_experiment_trace_location(location=UCSchemaLocation(...), ...)
 
 ---
 
-## ❌ WRONG Label Schema Name — Alignment Will Fail
+## ❌ Label Schema 名稱錯誤 — 對齊將失敗
 
-### WRONG: Label schema name does not match the judge name used in evaluate()
+### 錯誤：Label schema 名稱與 evaluate() 中的 judge 名稱不一致
 ```python
-# ❌ WRONG - Judge name and label schema name don't match
-# Judge is registered as "domain_quality_base" in evaluate()
+# ❌ 錯誤——judge 名稱與 label schema 名稱不相符
+# evaluate() 中 judge 以 "domain_quality_base" 名稱註冊
 domain_quality_judge = make_judge(name="domain_quality_base", ...)
 registered_base_judge = domain_quality_judge.register(experiment_id=EXPERIMENT_ID)
 
-# But label schema uses a different name
+# 但 label schema 使用了不同的名稱
 feedback_schema = label_schemas.create_label_schema(
-    name="domain_quality_rating",    # ❌ Does not match judge name
+    name="domain_quality_rating",    # ❌ 與 judge 名稱不符
     type="feedback",
     ...
 )
-# align() will not be able to pair SME feedback with LLM judge scores
+# align() 將無法將 SME 回饋與 LLM judge 分數配對
 ```
 
-### ✅ CORRECT: Label schema name matches the judge name exactly
+### ✅ 正確：Label schema 名稱與 judge 名稱完全一致
 ```python
-# ✅ CORRECT - Judge name and label schema name are identical
+# ✅ 正確——judge 名稱與 label schema 名稱完全相同
 JUDGE_NAME = "domain_quality_base"
 
 domain_quality_judge = make_judge(name=JUDGE_NAME, ...)
 registered_base_judge = domain_quality_judge.register(experiment_id=EXPERIMENT_ID)
 
 feedback_schema = label_schemas.create_label_schema(
-    name=JUDGE_NAME,                 # ✅ Matches judge name exactly
+    name=JUDGE_NAME,                 # ✅ 與 judge 名稱完全一致
     type="feedback",
     ...
 )
 ```
 
-**Why?** The `align()` function pairs SME feedback with LLM judge scores by matching the label schema name to the judge name on the same traces. If the names differ, `align()` cannot find the corresponding score pairs and alignment will fail or produce incorrect results.
+**原因：** `align()` 函式透過比對 label schema 名稱與同一 trace 上的 judge 名稱，來配對 SME 回饋與 LLM judge 分數。若名稱不一致，`align()` 無法找到對應的分數配對，對齊將失敗或產生錯誤結果。
 
 ---
 
-## ❌ WRONG Aligned Judge Score Interpretation
+## ❌ 誤解對齊後的 Judge 分數
 
-### WRONG: Assuming a lower aligned judge score means the agent got worse
+### 錯誤：以為對齊後分數下降代表 Agent 退步
 ```python
-# ❌ WRONG interpretation - panicking because aligned judge gives lower scores
-# Unaligned judge: 4.2/5.0 average
-# Aligned judge:   3.1/5.0 average
-# "The agent regressed!" — No, the judge got more accurate.
+# ❌ 錯誤的解讀——看到對齊後 judge 給出較低分數就恐慌
+# 未對齊的 judge：平均 4.2/5.0
+# 對齊後的 judge：平均 3.1/5.0
+# 「Agent 退步了！」——不，是 judge 變得更精準了。
 ```
 
-### ✅ CORRECT: Understanding that a lower aligned score reflects more accurate evaluation
+### ✅ 正確：理解較低的對齊後分數代表更準確的評估
 ```python
-# ✅ CORRECT interpretation
-# The aligned judge now evaluates with domain-expert standards rather than generic best practices.
-# A lower score from a more accurate judge is a better signal than an inflated score from
-# a judge that doesn't understand your domain. The unaligned judge was underspecified.
-# Use optimize_prompts() with the aligned judge to improve the agent against this standard.
+# ✅ 正確的解讀
+# 對齊後的 judge 現在以領域專家的標準評估，而非通用的最佳實踐。
+# 來自更精準 judge 的較低分數，遠比來自不了解您領域的 judge 的虛高分數更有參考價值。
+# 未對齊的 judge 評估標準不夠明確。
+# 請使用 optimize_prompts() 搭配已對齊的 judge 來改善 agent。
 ```
 
-**Why?** An unaligned judge evaluates against generic best practices and often gives inflated scores. Once aligned with SME feedback, the judge applies domain-specific criteria that are harder to satisfy. The lower score is not a regression in agent quality; it is a more honest assessment. The optimization phase (`optimize_prompts()`) will then improve the agent against this more accurate standard.
+**原因：** 未對齊的 judge 以通用最佳實踐評估，往往給出虛高的分數。一旦以 SME 回饋完成對齊，judge 會套用更嚴格的領域特定標準。較低的分數不是 Agent 品質下滑；而是更誠實的評估。最佳化階段（`optimize_prompts()`）將根據這個更精準的標準來改善 Agent。
 
 ---
 
-## ❌ WRONG MemAlign Embedding Model — Token Costs
+## ❌ MemAlign Embedding Model 選擇不當 — Token 成本
 
-### WRONG: Using the default embedding model without awareness of cost
+### 錯誤：未意識到預設 embedding model 的成本
 ```python
-# ❌ COSTLY - Default embedding model may be expensive for large trace sets
+# ❌ 成本高——大量 trace 時預設 embedding model 可能非常昂貴
 optimizer = MemAlignOptimizer(
     reflection_lm=REFLECTION_MODEL,
     retrieval_k=5,
-    # No embedding_model specified → defaults to "openai/text-embedding-3-small"
+    # 未指定 embedding_model → 預設使用 "openai/text-embedding-3-small"
 )
 ```
 
-### ✅ CORRECT: Use a Databricks-hosted embedding model or size your trace set accordingly
+### ✅ 正確：使用 Databricks 託管的 embedding model，並縮小 trace 集的範圍
 ```python
-# ✅ CORRECT - Use a hosted model to control costs; scope trace set to labeled traces only
+# ✅ 正確——使用託管模型控制成本；將 trace 集限縮至已標記的 trace
 optimizer = MemAlignOptimizer(
     reflection_lm=REFLECTION_MODEL,
     retrieval_k=5,
     embedding_model="databricks:/databricks-gte-large-en",
 )
 
-# ✅ ALSO CORRECT - Filter to only labeled/tagged traces, not all experiment traces
+# ✅ 同樣正確——只篩選已標記/已標注的 trace，而非整個 experiment 的 trace
 traces = mlflow.search_traces(
     locations=[EXPERIMENT_ID],
-    filter_string="tag.eval = 'complete'",  # Scope to relevant traces only
+    filter_string="tag.eval = 'complete'",  # 只包含相關 trace
     return_type="list",
 )
 aligned_judge = base_judge.align(traces=traces, optimizer=optimizer)
 ```
 
-**Why?** MemAlign embeds every trace for retrieval (`retrieval_k` nearest neighbors per evaluation). Large trace sets with an expensive embedding model multiply quickly. Databricks-hosted models (`databricks:/databricks-gte-large-en`) keep costs on-platform.
+**原因：** MemAlign 為每次評估的最近鄰檢索（`retrieval_k`）嵌入所有 trace。大量 trace 搭配昂貴的 embedding model 會使成本快速累積。使用 Databricks 託管模型（`databricks:/databricks-gte-large-en`）可將費用保留在平台內。
 
 ---
 
-## ❌ WRONG MemAlign Episodic Memory — Lazy Loading
+## ❌ MemAlign Episodic Memory — 延遲載入
 
-### WRONG: Expecting episodic memory to be populated immediately after get_scorer()
+### 錯誤：期望 get_scorer() 後立即能取得 episodic memory
 ```python
-# ❌ WRONG - Episodic memory appears empty, looks like alignment didn't work
+# ❌ 錯誤——episodic memory 看起來是空的，誤以為對齊失敗
 retrieved_judge = get_scorer(name="domain_quality_base", experiment_id=EXPERIMENT_ID)
-print(retrieved_judge._episodic_memory)  # Prints: [] — misleading!
-print(retrieved_judge._semantic_memory)  # Prints: [] — also empty!
+print(retrieved_judge._episodic_memory)  # 輸出：[] — 具有誤導性！
+print(retrieved_judge._semantic_memory)  # 輸出：[] — 同樣是空的！
 ```
 
-### ✅ CORRECT: Episodic memory is lazily loaded — use the judge first, then inspect
+### ✅ 正確：Episodic memory 為延遲載入——先使用 judge，再檢查
 ```python
-# ✅ CORRECT - Semantic guidelines ARE loaded; episodic memory loads on first use
+# ✅ 正確——semantic guidelines 已載入；episodic memory 在首次使用時才載入
 retrieved_judge = get_scorer(name="domain_quality_base", experiment_id=EXPERIMENT_ID)
 
-# The instructions field already contains the distilled guidelines — inspect this instead
-print(retrieved_judge.instructions)  # ✅ Shows full aligned instructions with guidelines
+# instructions 欄位已包含精煉後的 guidelines——應檢查此欄位
+print(retrieved_judge.instructions)  # ✅ 顯示含 guidelines 的完整對齊 instructions
 
-# To verify episodic memory, run the judge on a sample first, then inspect
-# Memory loads lazily when the judge retrieves similar examples during scoring
+# 若要驗證 episodic memory，先在範本上執行 judge，再檢查
+# Memory 在 judge 於評分時需要檢索相似範例時才會延遲載入
 ```
 
-**Why?** MemAlign's episodic memory (stored examples) is loaded on-demand when the judge needs to retrieve similar examples at scoring time. The `_episodic_memory` list is empty on deserialization. The aligned `instructions` field (which includes distilled semantic guidelines) is the reliable thing to inspect after `get_scorer()`.
+**原因：** MemAlign 的 episodic memory（儲存的範例）在 judge 評分時需要檢索相似範例才會按需載入。反序列化後 `_episodic_memory` 清單為空。`get_scorer()` 後可靠的檢查對象是 `instructions` 欄位（包含精煉後的 semantic guidelines）。
 
 ---
 
-## ❌ WRONG GEPA Optimization Dataset — Missing expectations
+## ❌ GEPA 最佳化資料集缺少 expectations
 
-### WRONG: Using eval-style dataset (inputs only) for optimize_prompts()
+### 錯誤：使用只有 inputs 的評估資料集執行 optimize_prompts()
 ```python
-# ❌ WRONG - GEPA requires expectations; optimization will fail or produce poor results
+# ❌ 錯誤——GEPA 需要 expectations；缺少時最佳化將失敗或效果不佳
 optimization_dataset = [
     {"inputs": {"input": [{"role": "user", "content": "How does the offense attack the blitz?"}]}},
     {"inputs": {"input": [{"role": "user", "content": "What are 3rd down tendencies?"}]}},
@@ -746,16 +746,16 @@ optimization_dataset = [
 
 result = mlflow.genai.optimize_prompts(
     predict_fn=predict_fn,
-    train_data=optimization_dataset,   # ❌ Missing expectations
+    train_data=optimization_dataset,   # ❌ 缺少 expectations
     prompt_uris=[prompt.uri],
     optimizer=GepaPromptOptimizer(...),
     scorers=[aligned_judge],
 )
 ```
 
-### ✅ CORRECT: Include expectations in every optimization dataset record
+### ✅ 正確：最佳化資料集的每筆記錄都必須包含 expectations
 ```python
-# ✅ CORRECT - Each record must have both inputs AND expectations
+# ✅ 正確——每筆記錄必須同時包含 inputs 與 expectations
 optimization_dataset = [
     {
         "inputs": {
@@ -782,33 +782,33 @@ optimization_dataset = [
 ]
 ```
 
-**Why?** GEPA uses the `expectations` field during reflection — it compares the agent's output against the expected behavior to generate targeted prompt improvement suggestions. Without `expectations`, GEPA cannot reason about *why* the current prompt is underperforming. This is the most common cause of poor optimization results.
+**原因：** GEPA 在反思階段使用 `expectations` 欄位——將 agent 的輸出與預期行為進行比較，以產生有針對性的 prompt 改善建議。沒有 `expectations`，GEPA 無法判斷當前 prompt *為何* 表現不佳。這是最佳化效果不佳最常見的原因。
 
 ---
 
-## Summary Checklist
+## 總結檢查清單
 
-Before running evaluation, verify:
+執行評估前，請確認：
 
-- [ ] Using `mlflow.genai.evaluate()` (not `mlflow.evaluate()`)
-- [ ] Data has `inputs` key (nested structure)
-- [ ] `predict_fn` accepts **unpacked kwargs (not dict)
-- [ ] Scorers have `@scorer` decorator
-- [ ] Guidelines have both `name` and `guidelines`
-- [ ] Correctness has `expectations.expected_facts` or `expected_response`
-- [ ] RetrievalGroundedness has `RETRIEVER` span in trace
-- [ ] Trace filters use `attributes.` prefix and single quotes
-- [ ] Production scorers have inline imports
-- [ ] Multiple Feedbacks have unique names
-- [ ] Aggregations use valid names: min, max, mean, median, variance, p90
-- [ ] UC trace ingestion uses `mlflow[databricks]>=3.9.0`
-- [ ] UC tables have explicit MODIFY + SELECT grants (not ALL_PRIVILEGES)
-- [ ] `MLFLOW_TRACING_SQL_WAREHOUSE_ID` set before linking UC schema
-- [ ] `MLFLOW_TRACING_DESTINATION` uses `catalog.schema` format (dot-separated)
-- [ ] Production monitoring scorers are both registered AND started
-- [ ] MemAlign `embedding_model` can be explicitly set (don't rely on default for large trace sets)
-- [ ] After `get_scorer()` for a MemAlign judge, inspect `.instructions` not `._episodic_memory` as episodic memory is lazily loaded
-- [ ] GEPA `train_data` has both `inputs` AND `expectations` per record
-- [ ] Label schema `name` matches the judge `name` used in `evaluate()` (required for `align()` to pair scores)
-- [ ] Aligned judge scores may be lower than unaligned — this is expected if the judge is now more accurate
-- [ ] MemAlign is scorer-agnostic (works with any `feedback_value_type` — float, bool, categorical)
+- [ ] 使用 `mlflow.genai.evaluate()`（不是 `mlflow.evaluate()`）
+- [ ] 資料有 `inputs` 鍵（巢狀結構）
+- [ ] `predict_fn` 接收 **kwargs（非 dict）
+- [ ] Scorer 有 `@scorer` 裝飾器
+- [ ] Guidelines 同時提供 `name` 與 `guidelines`
+- [ ] Correctness 有 `expectations.expected_facts` 或 `expected_response`
+- [ ] RetrievalGroundedness 在 trace 中有 `RETRIEVER` span
+- [ ] Trace 篩選器使用 `attributes.` 前綴與單引號
+- [ ] 生產 scorer 在函式內部 import
+- [ ] 多個 Feedback 均有唯一名稱
+- [ ] 聚合使用合法名稱：min、max、mean、median、variance、p90
+- [ ] UC trace 攝取使用 `mlflow[databricks]>=3.9.0`
+- [ ] UC 資料表有明確的 MODIFY + SELECT 授權（不是 ALL_PRIVILEGES）
+- [ ] 連結 UC schema 前已設定 `MLFLOW_TRACING_SQL_WAREHOUSE_ID`
+- [ ] `MLFLOW_TRACING_DESTINATION` 使用 `catalog.schema` 格式（點號分隔）
+- [ ] 生產監控 scorer 已 register 且 start
+- [ ] MemAlign `embedding_model` 可明確指定（大量 trace 時不依賴預設值）
+- [ ] 對 MemAlign judge 呼叫 `get_scorer()` 後，檢查 `.instructions` 而非 `._episodic_memory`（episodic memory 為延遲載入）
+- [ ] GEPA `train_data` 每筆記錄都有 `inputs` 與 `expectations`
+- [ ] Label schema `name` 與 `evaluate()` 中的 judge `name` 完全一致（`align()` 配對分數所需）
+- [ ] 對齊後的 judge 分數可能低於未對齊時——若 judge 更精準，這是預期行為
+- [ ] MemAlign 與 scorer 無關（適用於任何 `feedback_value_type`——float、bool、categorical）

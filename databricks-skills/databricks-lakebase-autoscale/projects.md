@@ -1,10 +1,10 @@
 # Lakebase Autoscaling Projects
 
-## Overview
+## 概觀
 
-A project is the top-level container for Lakebase Autoscaling resources, including branches, computes, databases, and roles. Each project is isolated and contains its own Postgres version, compute defaults, and restore window settings.
+Project 是 Lakebase Autoscaling 資源的最上層容器，包含 branches、computes、databases 與 roles。每個 project 彼此隔離，並具備自己的 Postgres 版本、compute 預設值與還原視窗設定。
 
-## Project Structure
+## 專案結構
 
 ```
 Project
@@ -14,26 +14,26 @@ Project
         └── Databases (Postgres databases)
 ```
 
-When a project is created, it includes by default:
-- A `production` branch (the default branch)
-- A primary read-write compute (8-32 CU, autoscaling enabled, scale-to-zero disabled)
-- A `databricks_postgres` database
-- A Postgres role for the creating user's Databricks identity
+建立 project 時，預設包含：
+- `production` 分支（預設分支）
+- 主要 read-write compute（8-32 CU，啟用 autoscaling、停用 scale-to-zero）
+- `databricks_postgres` 資料庫
+- 為建立者 Databricks 身分建立的 Postgres role
 
-## Resource Naming
+## 資源命名
 
-Projects follow a hierarchical naming convention:
+Project 採階層式命名規則：
 ```
 projects/{project_id}
 ```
 
-**Resource ID requirements:**
-- 1-63 characters long
-- Lowercase letters, digits, and hyphens only
-- Cannot start or end with a hyphen
-- Cannot be changed after creation
+**Resource ID 規範：**
+- 長度 1-63 個字元
+- 只能使用小寫字母、數字與連字號
+- 不可以連字號作為開頭或結尾
+- 建立後不可變更
 
-## Creating a Project
+## 建立 Project
 
 ### Python SDK
 
@@ -43,7 +43,7 @@ from databricks.sdk.service.postgres import Project, ProjectSpec
 
 w = WorkspaceClient()
 
-# Create a project (long-running operation)
+# 建立專案（長時間執行的操作）
 operation = w.postgres.create_project(
     project=Project(
         spec=ProjectSpec(
@@ -54,7 +54,7 @@ operation = w.postgres.create_project(
     project_id="my-app"
 )
 
-# Wait for completion
+# 等待完成
 result = operation.wait()
 print(f"Created project: {result.name}")
 print(f"Display name: {result.status.display_name}")
@@ -74,7 +74,7 @@ databricks postgres create-project \
     }'
 ```
 
-## Getting Project Details
+## 取得 Project 詳細資訊
 
 ### Python SDK
 
@@ -92,9 +92,9 @@ print(f"Postgres version: {project.status.pg_version}")
 databricks postgres get-project projects/my-app
 ```
 
-**Note:** The `spec` field is not populated for GET operations. All properties are returned in the `status` field.
+**注意：** GET 操作不會填入 `spec` 欄位，所有屬性皆回傳於 `status`。
 
-## Listing Projects
+## 列出 Projects
 
 ```python
 projects = w.postgres.list_projects()
@@ -105,14 +105,14 @@ for project in projects:
     print(f"  Postgres version: {project.status.pg_version}")
 ```
 
-## Updating a Project
+## 更新 Project
 
-Updates require an `update_mask` specifying which fields to modify:
+更新時需使用 `update_mask` 指定要修改的欄位：
 
 ```python
 from databricks.sdk.service.postgres import Project, ProjectSpec, FieldMask
 
-# Update display name
+# 更新顯示名稱
 operation = w.postgres.update_project(
     name="projects/my-app",
     project=Project(
@@ -137,15 +137,15 @@ databricks postgres update-project projects/my-app spec.display_name \
     }'
 ```
 
-## Deleting a Project
+## 刪除 Project
 
-**WARNING:** Deleting a project is permanent and also deletes all branches, computes, databases, roles, and data.
+**警告：** 刪除 project 為永久操作，會同時刪除所有 branches、computes、databases、roles 與資料。
 
-Delete all Unity Catalog catalogs and synced tables before deleting the project.
+刪除前請先清除所有 Unity Catalog catalogs 與 synced tables。
 
 ```python
 operation = w.postgres.delete_project(name="projects/my-app")
-# This is a long-running operation
+# 這是長時間執行的操作
 ```
 
 ### CLI
@@ -154,51 +154,51 @@ operation = w.postgres.delete_project(name="projects/my-app")
 databricks postgres delete-project projects/my-app
 ```
 
-## Project Settings
+## Project 設定
 
-### Compute Defaults
+### Compute 預設值
 
-Default settings for new primary computes:
-- Compute size range (0.5-112 CU)
-- Scale-to-zero timeout (default: 5 minutes)
+新建主要 compute 的預設設定：
+- Compute 規模範圍（0.5-112 CU）
+- Scale-to-zero 逾時（預設 5 分鐘）
 
 ### Instant Restore
 
-Configure the restore window length (2-35 days). Longer windows increase storage costs.
+設定還原視窗長度（2-35 天），時間越長儲存成本越高。
 
-### Postgres Version
+### Postgres 版本
 
-Supports Postgres 16 and Postgres 17.
+支援 Postgres 16 與 Postgres 17。
 
-## Project Limits
+## Project 限制
 
-| Resource | Limit |
+| 資源 | 上限 |
 |----------|-------|
-| Concurrently active computes | 20 |
-| Branches per project | 500 |
-| Postgres roles per branch | 500 |
-| Postgres databases per branch | 500 |
-| Logical data size per branch | 8 TB |
-| Projects per workspace | 1000 |
+| 同時運作的 computes | 20 |
+| 每個 project 的 branches | 500 |
+| 每個 branch 的 Postgres roles | 500 |
+| 每個 branch 的 Postgres databases | 500 |
+| 每個 branch 的邏輯資料量 | 8 TB |
+| 每個 workspace 的 projects | 1000 |
 | Protected branches | 1 |
 | Root branches | 3 |
-| Unarchived branches | 10 |
+| 未封存 branches | 10 |
 | Snapshots | 10 |
-| Maximum history retention | 35 days |
-| Minimum scale-to-zero time | 60 seconds |
+| 最大歷史保留 | 35 天 |
+| 最小 scale-to-zero 時間 | 60 秒 |
 
-## Long-Running Operations
+## 長時間操作（LRO）
 
-All create, update, and delete operations return a long-running operation (LRO). Use `.wait()` in the SDK to block until completion:
+所有 create、update、delete 操作都會回傳 long-running operation（LRO）。可於 SDK 中使用 `.wait()` 等待完成：
 
 ```python
-# Start operation
+# 啟動操作
 operation = w.postgres.create_project(...)
 
-# Wait for completion
+# 等待完成
 result = operation.wait()
 
-# Or check status manually
+# 或手動查詢狀態
 op_status = w.postgres.get_operation(name=operation.name)
 print(f"Done: {op_status.done}")
 ```

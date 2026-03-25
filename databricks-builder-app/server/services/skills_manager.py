@@ -1,6 +1,6 @@
-"""Skills manager for copying and managing Databricks skills.
+"""複製和管理 Databricks 技能的 Skills 管理器。
 
-Handles copying skills from the source repository to the app and project directories.
+處理從來源儲存庫複製技能到應用程式及專案目錄。
 """
 
 import json
@@ -12,10 +12,10 @@ from pathlib import Path
 logger = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------------------
-# Skill → MCP tool mapping
-# Maps skill names to their exclusive Databricks MCP tool function names.
-# Tools NOT listed here (sql, compute, file, operation tracking) are always
-# available regardless of which skills are enabled.
+# Skill → MCP 工具映射
+# 將技能名稱映射到其專屬的 Databricks MCP 工具函式名稱。
+# 此處未列出的工具（sql、compute、file、operation tracking）無論
+# 啟用哪些技能都始終可用。
 # ---------------------------------------------------------------------------
 SKILL_TOOL_MAPPING: dict[str, list[str]] = {
   'databricks-agent-bricks': ['manage_ka', 'manage_mas'],
@@ -46,8 +46,8 @@ SKILL_TOOL_MAPPING: dict[str, list[str]] = {
     'delete_volume_file', 'delete_volume_directory', 'create_volume_directory',
     'get_volume_file_info',
   ],
-  # APX (FastAPI+React) and Python (Dash/Streamlit/etc.) share the same
-  # app lifecycle tools — the skill content differs, not the MCP operations.
+  # APX (FastAPI+React) 和 Python (Dash/Streamlit/etc.) 共享相同的
+  # 應用程式生命週期工具 — 技能內容不同，非 MCP 操作。
   'databricks-app-apx': [
     'create_or_update_app', 'get_app', 'delete_app',
   ],
@@ -61,34 +61,34 @@ def get_allowed_mcp_tools(
   all_tool_names: list[str],
   enabled_skills: list[str] | None = None,
 ) -> list[str]:
-  """Filter MCP tool names based on enabled skills.
+  """根據啟用的技能過濾 MCP 工具名稱。
 
-  Tools mapped to disabled skills are removed. Tools not mapped to any skill
-  (e.g. execute_sql, compute tools) are always kept.
+  映射到停用技能的工具會被移除。未映射到任何技能的工具
+  （例如 execute_sql、compute 工具）始終保留。
 
   Args:
-      all_tool_names: Full list of MCP tool names (mcp__databricks__xxx format)
-      enabled_skills: List of enabled skill names, or None for all skills.
+      all_tool_names: 完整的 MCP 工具名稱列表（mcp__databricks__xxx 格式）
+      enabled_skills: 啟用的技能名稱列表，或 None 代表所有技能。
 
   Returns:
-      Filtered list of allowed MCP tool names.
+      過濾後允許的 MCP 工具名稱列表。
   """
   if enabled_skills is None:
     return all_tool_names
 
-  # Collect tool names that belong to DISABLED skills
+  # 收集屬於停用技能的工具名稱
   enabled_set = set(enabled_skills)
   blocked_tools: set[str] = set()
   for skill_name, tool_names in SKILL_TOOL_MAPPING.items():
     if skill_name not in enabled_set:
       blocked_tools.update(tool_names)
 
-  # Don't block a tool if it's also claimed by an ENABLED skill
+  # 若工具也被啟用的技能宣稱則不阻擋
   for skill_name in enabled_skills:
     for tool_name in SKILL_TOOL_MAPPING.get(skill_name, []):
       blocked_tools.discard(tool_name)
 
-  # Filter: tool name format is mcp__databricks__{name}
+  # 過濾：工具名稱格式為 mcp__databricks__{name}
   prefix = 'mcp__databricks__'
   return [
     t for t in all_tool_names
@@ -96,19 +96,19 @@ def get_allowed_mcp_tools(
   ]
 
 
-# Source skills directory - check multiple locations
-# 1. Sibling to this app (local development): ../../databricks-skills
-# 2. Deployed location (Databricks Apps): ./skills at app root
+# 來源技能目錄 - 檢查多個位置
+# 1. 此應用程式的兄弟目錄（本地開發）：../../databricks-skills
+# 2. 部署位置（Databricks Apps）：應用程式根目錄的 ./skills
 _DEV_SKILLS_DIR = Path(__file__).parent.parent.parent.parent / 'databricks-skills'
 _DEPLOYED_SKILLS_DIR = Path(__file__).parent.parent.parent / 'skills'
 
-# Local cache of skills within this app (copied on startup)
+# 此應用程式內的本地技能快取（啟動時複製）
 APP_SKILLS_DIR = Path(__file__).parent.parent.parent / 'skills'
 
-# Prefer dev location (sibling repo) when available to avoid self-deletion:
-# APP_SKILLS_DIR == _DEPLOYED_SKILLS_DIR, so using deployed as source would
-# delete the source during copy_skills_to_app(). Only fall back to deployed
-# location when the dev source repo isn't available (actual deployment).
+# 可用時優先使用開發位置（兄弟 repo）以避免自我刪除：
+# APP_SKILLS_DIR == _DEPLOYED_SKILLS_DIR，所以使用 deployed 作為來源會
+# 在 copy_skills_to_app() 期間刪除來源。僅在開發來源 repo
+# 不可用時才回退到 deployed 位置（實際部署）。
 if _DEV_SKILLS_DIR.exists() and any(_DEV_SKILLS_DIR.iterdir()):
   SKILLS_SOURCE_DIR = _DEV_SKILLS_DIR
 elif _DEPLOYED_SKILLS_DIR.exists() and any(_DEPLOYED_SKILLS_DIR.iterdir()):
@@ -118,10 +118,10 @@ else:
 
 
 def _get_enabled_skills() -> list[str] | None:
-  """Get list of enabled skills from environment.
+  """從環境取得啟用技能的列表。
 
   Returns:
-      List of skill names to include, or None to include all skills
+      要包含的技能名稱列表，或 None 代表包含所有技能
   """
   enabled = os.environ.get('ENABLED_SKILLS', '').strip()
   if not enabled:
@@ -130,14 +130,14 @@ def _get_enabled_skills() -> list[str] | None:
 
 
 def get_available_skills(enabled_skills: list[str] | None = None) -> list[dict]:
-  """Get list of available skills with their metadata.
+  """取得可用技能及其中繼資料的列表。
 
   Args:
-      enabled_skills: Optional list of skill names to include.
-          If None, all skills are returned.
+      enabled_skills: 要包含的技能名稱可選列表。
+          若為 None，回傳所有技能。
 
   Returns:
-      List of dicts with name, description, and path for each skill
+      每個技能的名稱、描述和路徑的字典列表
   """
   skills = []
 
@@ -153,11 +153,11 @@ def get_available_skills(enabled_skills: list[str] | None = None) -> list[dict]:
     if not skill_md.exists():
       continue
 
-    # Parse frontmatter to get name and description
+    # 解析 frontmatter 以取得名稱與描述
     try:
       content = skill_md.read_text()
       if content.startswith('---'):
-        # Extract YAML frontmatter
+        # 擷取 YAML frontmatter
         end_idx = content.find('---', 3)
         if end_idx > 0:
           frontmatter = content[3:end_idx].strip()
@@ -171,7 +171,7 @@ def get_available_skills(enabled_skills: list[str] | None = None) -> list[dict]:
               description = line.split(':', 1)[1].strip().strip('"\'')
 
           if name:
-            # Filter by enabled_skills if provided
+            # 若提供 enabled_skills 則過濾
             if enabled_skills is not None and name not in enabled_skills:
               continue
             skills.append({
@@ -186,30 +186,30 @@ def get_available_skills(enabled_skills: list[str] | None = None) -> list[dict]:
 
 
 class SkillNotFoundError(Exception):
-  """Raised when an enabled skill is not found in the source directory."""
+  """當在來源目錄中找不到啟用的技能時引發。"""
 
   pass
 
 
 def copy_skills_to_app() -> bool:
-  """Copy skills from source repo to app's skills directory.
+  """從來源 repo 複製技能到應用程式的 skills 目錄。
 
-  Called on server startup to ensure we have the latest skills.
-  Only copies skills listed in ENABLED_SKILLS env var (if set).
+  在伺服器啟動時呼叫以確保我們有最新技能。
+  僅複製 ENABLED_SKILLS 環境變數中列出的技能（若已設定）。
 
   Returns:
-      True if successful, False otherwise
+      若成功則回傳 True，否則回傳 False
 
   Raises:
-      SkillNotFoundError: If an enabled skill folder doesn't exist or lacks SKILL.md
+      SkillNotFoundError: 若啟用的技能資料夾不存在或缺少 SKILL.md
   """
   if not SKILLS_SOURCE_DIR.exists():
     logger.warning(f'Skills source directory not found: {SKILLS_SOURCE_DIR}')
     return False
 
-  # Guard against self-deletion: in deployed apps, SKILLS_SOURCE_DIR and
-  # APP_SKILLS_DIR resolve to the same directory. Deleting APP_SKILLS_DIR
-  # would destroy the source. Skills are already in place, so skip the copy.
+  # 避免自我刪除：在已部署的應用程式中，SKILLS_SOURCE_DIR 與
+  # APP_SKILLS_DIR 可能解析到同一個目錄。刪除 APP_SKILLS_DIR
+  # 會破壞來源內容。由於 Skills 已就緒，因此略過複製。
   if SKILLS_SOURCE_DIR.resolve() == APP_SKILLS_DIR.resolve():
     logger.info(f'Skills source and app directory are the same ({APP_SKILLS_DIR}), skipping copy')
     return True
@@ -218,7 +218,7 @@ def copy_skills_to_app() -> bool:
   if enabled_skills:
     logger.info(f'Filtering skills to: {enabled_skills}')
 
-    # Validate that all enabled skills exist before copying
+    # 複製前驗證所有啟用的技能是否存在
     for skill_name in enabled_skills:
       skill_path = SKILLS_SOURCE_DIR / skill_name
       skill_md_path = skill_path / 'SKILL.md'
@@ -238,17 +238,17 @@ def copy_skills_to_app() -> bool:
         )
 
   try:
-    # Remove existing skills directory if it exists
+    # 若存在則移除現有技能目錄
     if APP_SKILLS_DIR.exists():
       shutil.rmtree(APP_SKILLS_DIR)
 
-    # Copy skill directories (filtered by ENABLED_SKILLS if set)
+    # 複製技能目錄（若已設定 ENABLED_SKILLS 則過濾）
     APP_SKILLS_DIR.mkdir(parents=True, exist_ok=True)
 
     copied_count = 0
     for item in SKILLS_SOURCE_DIR.iterdir():
       if item.is_dir() and (item / 'SKILL.md').exists():
-        # Skip if not in enabled list (when list is specified)
+        # 若不在啟用列表中則跳過（當指定列表時）
         if enabled_skills and item.name not in enabled_skills:
           logger.debug(f'Skipping skill (not enabled): {item.name}')
           continue
@@ -262,22 +262,22 @@ def copy_skills_to_app() -> bool:
     return True
 
   except SkillNotFoundError:
-    raise  # Re-raise validation errors
+    raise  # 重新引發驗證錯誤
   except Exception as e:
     logger.error(f'Failed to copy skills: {e}')
     return False
 
 
 def copy_skills_to_project(project_dir: Path, enabled_skills: list[str] | None = None) -> bool:
-  """Copy skills to a project's .claude/skills directory.
+  """複製技能到專案的 .claude/skills 目錄。
 
   Args:
-      project_dir: Path to the project directory
-      enabled_skills: Optional list of skill names to copy.
-          If None, all skills are copied (backward compatible).
+      project_dir: 專案目錄的路徑
+      enabled_skills: 要複製的技能名稱可選列表。
+          若為 None，複製所有技能（向後相容）。
 
   Returns:
-      True if successful, False otherwise
+      若成功則回傳 True，否則回傳 False
   """
   if not APP_SKILLS_DIR.exists():
     logger.warning('App skills directory not found, trying to copy from source')
@@ -287,7 +287,7 @@ def copy_skills_to_project(project_dir: Path, enabled_skills: list[str] | None =
     logger.warning('No skills available to copy')
     return False
 
-  # Build a set of enabled skill directory names by matching SKILL.md name to dir
+  # 透過將 SKILL.md name 與目錄匹配來建立啟用技能目錄名稱的集合
   enabled_dir_names = None
   if enabled_skills is not None:
     enabled_dir_names = set()
@@ -299,11 +299,11 @@ def copy_skills_to_project(project_dir: Path, enabled_skills: list[str] | None =
         enabled_dir_names.add(skill_dir.name)
 
   try:
-    # Create .claude/skills directory in project
+    # 在專案中建立 .claude/skills 目錄
     project_skills_dir = project_dir / '.claude' / 'skills'
     project_skills_dir.mkdir(parents=True, exist_ok=True)
 
-    # Copy skills (filtered if enabled_dir_names is set)
+    # 複製技能（若設定 enabled_dir_names 則過濾）
     copied_count = 0
     for skill_dir in APP_SKILLS_DIR.iterdir():
       if skill_dir.is_dir() and (skill_dir / 'SKILL.md').exists():
@@ -324,17 +324,17 @@ def copy_skills_to_project(project_dir: Path, enabled_skills: list[str] | None =
 
 
 def sync_project_skills(project_dir: Path, enabled_skills: list[str] | None = None) -> bool:
-  """Sync a project's skills directory to match the enabled skills list.
+  """同步專案的 skills 目錄以匹配啟用技能列表。
 
-  Removes skills not in the enabled list and adds missing ones.
-  More efficient than a full wipe-and-recopy for incremental changes.
+  移除不在啟用列表中的技能並新增缺失的技能。
+  對於增量變更比完全清除並重新複製更有效率。
 
   Args:
-      project_dir: Path to the project directory
-      enabled_skills: List of enabled skill names, or None for all skills
+      project_dir: 專案目錄的路徑
+      enabled_skills: 啟用技能名稱的列表，或 None 代表所有技能
 
   Returns:
-      True if successful, False otherwise
+      若成功則回傳 True，否則回傳 False
   """
   if not APP_SKILLS_DIR.exists():
     logger.warning('App skills directory not found')
@@ -344,7 +344,7 @@ def sync_project_skills(project_dir: Path, enabled_skills: list[str] | None = No
     project_skills_dir = project_dir / '.claude' / 'skills'
     project_skills_dir.mkdir(parents=True, exist_ok=True)
 
-    # Build mapping: skill_name -> app_skills_dir_name
+    # 建構映射：skill_name -> app_skills_dir_name
     name_to_dir = {}
     for skill_dir in APP_SKILLS_DIR.iterdir():
       if not skill_dir.is_dir() or not (skill_dir / 'SKILL.md').exists():
@@ -353,19 +353,19 @@ def sync_project_skills(project_dir: Path, enabled_skills: list[str] | None = No
       if skill_name:
         name_to_dir[skill_name] = skill_dir.name
 
-    # Determine which dir names should be present
+    # 確定應該存在哪些目錄名稱
     if enabled_skills is not None:
       desired_dirs = {name_to_dir[name] for name in enabled_skills if name in name_to_dir}
     else:
       desired_dirs = set(name_to_dir.values())
 
-    # Remove skills that shouldn't be there
+    # 移除不應存在的技能
     for existing in project_skills_dir.iterdir():
       if existing.is_dir() and existing.name not in desired_dirs:
         logger.debug(f'Removing disabled skill from project: {existing.name}')
         shutil.rmtree(existing)
 
-    # Add missing skills
+    # 新增缺失的技能
     for dir_name in desired_dirs:
       dest = project_skills_dir / dir_name
       if not dest.exists():
@@ -383,13 +383,13 @@ def sync_project_skills(project_dir: Path, enabled_skills: list[str] | None = No
 
 
 def _parse_skill_name(skill_dir: Path) -> str | None:
-  """Parse the skill name from a skill directory's SKILL.md frontmatter.
+  """從技能目錄的 SKILL.md frontmatter 解析技能名稱。
 
   Args:
-      skill_dir: Path to the skill directory
+      skill_dir: 技能目錄的路徑
 
   Returns:
-      Skill name string, or None if not parseable
+      技能名稱字串，或若無法解析則回傳 None
   """
   skill_md = skill_dir / 'SKILL.md'
   if not skill_md.exists():
@@ -409,33 +409,33 @@ def _parse_skill_name(skill_dir: Path) -> str | None:
 
 
 def reload_project_skills(project_dir: Path, enabled_skills: list[str] | None = None) -> bool:
-  """Reload skills for a project by refreshing from source.
+  """透過從來源更新為專案重新載入技能。
 
-  This function:
-  1. Refreshes the app's skills cache from the source repo
-  2. Removes the project's existing skills
-  3. Copies the updated skills to the project (filtered by enabled_skills)
+  此函式：
+  1. 從來源 repo 更新應用程式的技能快取
+  2. 移除專案現有的技能
+  3. 將更新的技能複製到專案（依 enabled_skills 過濾）
 
   Args:
-      project_dir: Path to the project directory
-      enabled_skills: Optional list of skill names to include.
-          If None, all skills are copied.
+      project_dir: 專案目錄的路徑
+      enabled_skills: 要包含的技能名稱可選列表。
+          若為 None，複製所有技能。
 
   Returns:
-      True if successful, False otherwise
+      若成功則回傳 True，否則回傳 False
   """
   try:
-    # First, refresh app skills from source
+    # 首先，從來源更新應用程式技能
     logger.info('Refreshing app skills from source...')
     copy_skills_to_app()
 
-    # Remove existing project skills
+    # 移除現有專案技能
     project_skills_dir = project_dir / '.claude' / 'skills'
     if project_skills_dir.exists():
       logger.info(f'Removing existing project skills: {project_skills_dir}')
       shutil.rmtree(project_skills_dir)
 
-    # Copy fresh skills to project (filtered by enabled_skills)
+    # 複製新技能到專案（依 enabled_skills 過濾）
     logger.info('Copying fresh skills to project...')
     return copy_skills_to_project(project_dir, enabled_skills=enabled_skills)
 
@@ -445,10 +445,10 @@ def reload_project_skills(project_dir: Path, enabled_skills: list[str] | None = 
 
 
 def get_skills_summary() -> str:
-  """Get a summary of available skills for the system prompt.
+  """取得 system prompt 的可用技能摘要。
 
   Returns:
-      Markdown-formatted summary of skills
+      Markdown 格式的技能摘要
   """
   skills = get_available_skills()
 
@@ -456,31 +456,31 @@ def get_skills_summary() -> str:
     return ''
 
   lines = ['## Available Skills', '']
-  lines.append('Use the `Skill` tool to invoke these skills for specialized guidance:')
+  lines.append('使用 `Skill` 工具來呼叫這些技能以取得專業指導：')
   lines.append('')
 
   for skill in skills:
     lines.append(f"- **{skill['name']}**: {skill['description']}")
 
   lines.append('')
-  lines.append('To use a skill, invoke it by name (e.g., `skill: "sdp"`).')
+  lines.append('要使用技能，請依名稱呼叫（例如 `skill: "sdp"`）。')
 
   return '\n'.join(lines)
 
 
 # ---------------------------------------------------------------------------
-# File-based enabled skills storage (no DB migration required)
-# Stored at: project_dir/.claude/enabled_skills.json
+# 以檔案為基礎的啟用技能儲存（無需 DB migration）
+# 儲存位置：project_dir/.claude/enabled_skills.json
 # ---------------------------------------------------------------------------
 
 _ENABLED_SKILLS_FILENAME = 'enabled_skills.json'
 
 
 def get_project_enabled_skills(project_dir: Path) -> list[str] | None:
-  """Read the enabled skills list for a project from the filesystem.
+  """從檔案系統讀取專案的啟用技能列表。
 
   Returns:
-      List of enabled skill names, or None if all skills are enabled.
+      啟用技能名稱的列表，或 None 若所有技能都已啟用。
   """
   config_path = project_dir / '.claude' / _ENABLED_SKILLS_FILENAME
   if not config_path.exists():
@@ -496,20 +496,20 @@ def get_project_enabled_skills(project_dir: Path) -> list[str] | None:
 
 
 def set_project_enabled_skills(project_dir: Path, enabled_skills: list[str] | None) -> bool:
-  """Write the enabled skills list for a project to the filesystem.
+  """將專案的啟用技能列表寫入檔案系統。
 
   Args:
-      project_dir: Path to the project directory
-      enabled_skills: List of skill names to enable, or None for all skills.
+      project_dir: 專案目錄的路徑
+      enabled_skills: 要啟用的技能名稱列表，或 None 代表所有技能。
 
   Returns:
-      True if successful, False otherwise
+      若成功則回傳 True，否則回傳 False
   """
   claude_dir = project_dir / '.claude'
   config_path = claude_dir / _ENABLED_SKILLS_FILENAME
   try:
     if enabled_skills is None:
-      # All skills enabled — remove the config file if it exists
+      # 所有技能已啟用 — 若設定檔存在則移除
       if config_path.exists():
         config_path.unlink()
     else:

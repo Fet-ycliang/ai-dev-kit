@@ -1,34 +1,34 @@
-# Deployment
+# 部署
 
-Deploy models to serving endpoints. Uses async job-based approach for agents (deployment takes ~15 min).
+將模型部署至服務端點。Agent 使用非同步以 Job 為基礎的方式（部署約需 15 分鐘）。
 
-> **If MCP tools are not available**, use `databricks.agents.deploy()` directly in a notebook, or create jobs via CLI: `databricks jobs create --json @job.json`
+> **若 MCP 工具無法使用**，可在 Notebook 中直接使用 `databricks.agents.deploy()`，或透過 CLI 建立 Job：`databricks jobs create --json @job.json`
 
-## Deployment Options
+## 部署選項
 
-| Model Type | Method | Time |
-|------------|--------|------|
-| **Classical ML** | SDK/UI | 2-5 min |
-| **GenAI Agent** | `databricks.agents.deploy()` | ~15 min |
+| 模型類型 | 方式 | 所需時間 |
+|---------|------|---------|
+| **傳統 ML** | SDK/UI | 2–5 分鐘 |
+| **GenAI Agent** | `databricks.agents.deploy()` | 約 15 分鐘 |
 
-## GenAI Agent Deployment (Job-Based)
+## GenAI Agent 部署（以 Job 為基礎）
 
-Since agent deployment takes ~15 minutes, use a job to avoid MCP timeouts.
+Agent 部署約需 15 分鐘，使用 Job 可避免 MCP 逾時。
 
-### Step 1: Create Deployment Script
+### 步驟一：建立部署腳本
 
 ```python
 # deploy_agent.py
 import sys
 from databricks import agents
 
-# Get params from job or command line
+# 從 Job 或命令列取得參數
 model_name = sys.argv[1] if len(sys.argv) > 1 else "main.agents.my_agent"
 version = sys.argv[2] if len(sys.argv) > 2 else "1"
 
 print(f"Deploying {model_name} version {version}...")
 
-# Deploy - this takes ~15 min
+# 部署——約需 15 分鐘
 deployment = agents.deploy(
     model_name,
     version,
@@ -39,9 +39,9 @@ print(f"Deployment complete!")
 print(f"Endpoint: {deployment.endpoint_name}")
 ```
 
-### Step 2: Create Deployment Job (One-Time)
+### 步驟二：建立部署 Job（一次性）
 
-Use the `manage_jobs` MCP tool with action="create":
+使用 `manage_jobs` MCP 工具，action="create"：
 
 ```
 manage_jobs(
@@ -63,11 +63,11 @@ manage_jobs(
 )
 ```
 
-Save the returned `job_id`.
+儲存回傳的 `job_id`。
 
-### Step 3: Run Deployment (Async)
+### 步驟三：執行部署（非同步）
 
-Use `manage_job_runs` with action="run_now" - returns immediately:
+使用 `manage_job_runs`，action="run_now"——立即回傳：
 
 ```
 manage_job_runs(
@@ -77,27 +77,27 @@ manage_job_runs(
 )
 ```
 
-Save the returned `run_id`.
+儲存回傳的 `run_id`。
 
-### Step 4: Check Status
+### 步驟四：確認狀態
 
-Check job run status:
+確認 Job 執行狀態：
 
 ```
 manage_job_runs(action="get", run_id="<run_id>")
 ```
 
-Or check endpoint directly:
+或直接確認端點：
 
 ```
 get_serving_endpoint_status(name="<endpoint_name>")
 ```
 
-## Classical ML Deployment
+## 傳統 ML 部署
 
-For traditional ML models, deployment is faster - use SDK directly.
+傳統 ML 模型部署速度較快，直接使用 SDK。
 
-### Via MLflow Deployments SDK
+### 透過 MLflow Deployments SDK
 
 ```python
 from mlflow.deployments import get_deploy_client
@@ -120,7 +120,7 @@ endpoint = client.create_endpoint(
 )
 ```
 
-### Via Databricks SDK
+### 透過 Databricks SDK
 
 ```python
 from databricks.sdk import WorkspaceClient
@@ -144,41 +144,41 @@ endpoint = w.serving_endpoints.create_and_wait(
 )
 ```
 
-## Endpoint Naming and Visibility
+## 端點命名與可見性
 
-### Auto-generated Names
+### 自動產生的名稱
 
-When you call `agents.deploy()`, the endpoint name is auto-derived from the UC model path by replacing dots with underscores and prefixing with `agents_`:
+呼叫 `agents.deploy()` 時，端點名稱從 UC 模型路徑自動衍生，將點號替換為連字號並加上 `agents_` 前綴：
 
-| UC Model Path | Auto-generated Endpoint Name |
-|---------------|------------------------------|
+| UC 模型路徑 | 自動產生的端點名稱 |
+|------------|-----------------|
 | `main.agents.my_agent` | `agents_main-agents-my_agent` |
 | `catalog.schema.model` | `agents_catalog-schema-model` |
 | `users.jane.demo_bot` | `agents_users-jane-demo_bot` |
 
-The exact format can vary. To avoid surprises, **always specify the endpoint name explicitly**:
+實際格式可能有所差異。為避免意外，**務必明確指定端點名稱**：
 
 ```python
 deployment = agents.deploy(
     "main.agents.my_agent",
     "1",
-    endpoint_name="my-agent-endpoint",  # Control the name
+    endpoint_name="my-agent-endpoint",  # 自行控制名稱
     tags={"source": "mcp", "environment": "dev"}
 )
 ```
 
-### Finding Endpoints in the UI
+### 在 UI 中尋找端點
 
-Endpoints created via `agents.deploy()` appear under **Serving** in the Databricks UI. If you don't see your endpoint:
+透過 `agents.deploy()` 建立的端點會顯示在 Databricks UI 的 **Serving** 下。若找不到端點：
 
-1. **Check the filter** - The Serving page defaults to "Owned by me". If the deployment ran as a service principal (e.g., via a job), switch to "All" to see it.
-2. **Verify via API** - Use `list_serving_endpoints()` or `get_serving_endpoint_status(name="...")` to confirm the endpoint exists and check its state.
-3. **Check the name** - The auto-generated name may not be what you expect. Print `deployment.endpoint_name` in the deploy script or check the job run output.
+1. **確認過濾條件** — Serving 頁面預設顯示「Owned by me」。若部署以 service principal 執行（例如透過 Job），請切換至「All」。
+2. **透過 API 確認** — 使用 `list_serving_endpoints()` 或 `get_serving_endpoint_status(name="...")` 確認端點存在並確認其狀態。
+3. **確認名稱** — 自動產生的名稱可能與預期不同。在部署腳本中列印 `deployment.endpoint_name`，或確認 Job 執行輸出。
 
-### Deployment Script with Explicit Naming
+### 含明確命名的部署腳本
 
 ```python
-# deploy_agent.py - recommended pattern
+# deploy_agent.py — 建議模式
 import sys
 from databricks import agents
 
@@ -200,12 +200,12 @@ print(f"Endpoint name: {deployment.endpoint_name}")
 print(f"Query URL: {deployment.query_endpoint}")
 ```
 
-## Deployment Job Template
+## 部署 Job 範本
 
-Complete job definition for reusable agent deployment:
+可重複使用的 Agent 部署完整 Job 定義：
 
 ```yaml
-# resources/deploy_agent_job.yml (for Asset Bundles)
+# resources/deploy_agent_job.yml（用於 Asset Bundles）
 resources:
   jobs:
     deploy_agent:
@@ -230,9 +230,9 @@ resources:
               spark.master: "local[*]"
 ```
 
-## Update Existing Endpoint
+## 更新現有端點
 
-To update an endpoint with a new model version:
+以新版本模型更新端點：
 
 ```python
 from mlflow.deployments import get_deploy_client
@@ -245,7 +245,7 @@ client.update_endpoint(
         "served_entities": [
             {
                 "entity_name": "main.agents.my_agent",
-                "entity_version": "2",  # New version
+                "entity_version": "2",  # 新版本
                 "workload_size": "Small",
                 "scale_to_zero_enabled": True
             }
@@ -259,20 +259,20 @@ client.update_endpoint(
 )
 ```
 
-## Workflow Summary
+## 工作流程摘要
 
-| Step | MCP Tool | Waits? |
-|------|----------|--------|
-| Upload deploy script | `upload_folder` | Yes |
-| Create job (one-time) | `manage_jobs` (action="create") | Yes |
-| Run deployment | `manage_job_runs` (action="run_now") | **No** - returns immediately |
-| Check job status | `manage_job_runs` (action="get") | Yes |
-| Check endpoint status | `get_serving_endpoint_status` | Yes |
+| 步驟 | MCP 工具 | 是否等待完成 |
+|------|---------|------------|
+| 上傳部署腳本 | `upload_folder` | 是 |
+| 建立 Job（一次性） | `manage_jobs`（action="create"） | 是 |
+| 執行部署 | `manage_job_runs`（action="run_now"） | **否**——立即回傳 |
+| 確認 Job 狀態 | `manage_job_runs`（action="get"） | 是 |
+| 確認端點狀態 | `get_serving_endpoint_status` | 是 |
 
-## After Deployment
+## 部署後
 
-Once endpoint is READY:
+端點 READY 後：
 
-1. **Test with MCP**: `query_serving_endpoint(name="...", messages=[...])`
-2. **Share with team**: Endpoint URL in Databricks UI
-3. **Integrate in apps**: Use REST API or SDK
+1. **以 MCP 測試**：`query_serving_endpoint(name="...", messages=[...])`
+2. **分享給團隊**：Databricks UI 中的端點 URL
+3. **整合至應用程式**：使用 REST API 或 SDK

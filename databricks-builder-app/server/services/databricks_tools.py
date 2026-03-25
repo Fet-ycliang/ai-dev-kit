@@ -1,11 +1,11 @@
-"""Dynamic tool loader for Databricks tools.
+"""Databricks 工具的動態工具載入器。
 
-Scans FastMCP tools from databricks-mcp-server and creates
-in-process SDK tools for the Claude Code Agent SDK.
+從 databricks-mcp-server 掃描 FastMCP 工具並為
+Claude Code Agent SDK 建立 in-process SDK 工具。
 
-Includes async handoff for long-running operations to prevent
-Claude connection timeouts. When a tool exceeds SAFE_EXECUTION_THRESHOLD,
-execution continues in background and returns an operation ID for polling.
+包含長時間執行操作的非同步移交，以避免
+Claude 連線逾時。當工具超過 SAFE_EXECUTION_THRESHOLD 時，
+執行繼續在背景進行並回傳操作 ID 供輪詢。
 """
 
 import asyncio
@@ -27,19 +27,19 @@ from .operation_tracker import (
 
 logger = logging.getLogger(__name__)
 
-# Seconds before switching to async mode to avoid connection timeout
-# Anthropic API has ~50s stream idle timeout, we switch early to keep messages flowing
-# Lower threshold ensures tool results return quickly, preventing cumulative timeout
+# 切換到非同步模式以避免連線逾時的秒數
+# Anthropic API 有約 50 秒的 stream 閒置逾時，我們提早切換以保持訊息流動
+# 較低的閾值確保工具結果快速回傳，避免累積逾時
 SAFE_EXECUTION_THRESHOLD = 10
 
 
 def load_databricks_tools():
-    """Dynamically scan FastMCP tools and create in-process SDK MCP server.
+    """動態掃描 FastMCP 工具並建立 in-process SDK MCP server。
 
     Returns:
-        Tuple of (server_config, tool_names) where:
-        - server_config: McpSdkServerConfig for ClaudeAgentOptions.mcp_servers
-        - tool_names: List of tool names in mcp__databricks__* format
+        Tuple (server_config, tool_names)，其中：
+        - server_config: ClaudeAgentOptions.mcp_servers 的 McpSdkServerConfig
+        - tool_names: mcp__databricks__* 格式的工具名稱列表
     """
     sdk_tools, tool_names = _get_all_sdk_tools()
 
@@ -49,37 +49,37 @@ def load_databricks_tools():
     return server, tool_names
 
 
-# Cached SDK tools (loaded once, reused for filtered server creation)
+# 快取的 SDK 工具（載入一次，重複用於過濾的 server 建立）
 _all_sdk_tools = None
 _all_tool_names = None
 
 
 def _get_all_sdk_tools():
-    """Load and cache all SDK tool wrappers.
+    """載入並快取所有 SDK 工具包裝器。
 
     Returns:
-        Tuple of (sdk_tools, tool_names)
+        Tuple (sdk_tools, tool_names)
     """
     global _all_sdk_tools, _all_tool_names
 
     if _all_sdk_tools is not None:
         return _all_sdk_tools, _all_tool_names
 
-    # Import triggers @mcp.tool registration
+    # Import 觸發 @mcp.tool 註冊
     from databricks_mcp_server.server import mcp
     from databricks_mcp_server.tools import sql, compute, file, pipelines  # noqa: F401
 
     sdk_tools = []
     tool_names = []
 
-    # Wrap all Databricks MCP tools
+    # 包裝所有 Databricks MCP 工具
     for name, mcp_tool in mcp._tool_manager._tools.items():
         input_schema = _convert_schema(mcp_tool.parameters)
         sdk_tool = _make_wrapper(name, mcp_tool.description, input_schema, mcp_tool.fn)
         sdk_tools.append(sdk_tool)
         tool_names.append(f'mcp__databricks__{name}')
 
-    # Add operation tracking tools (for async handoff pattern)
+    # 新增操作追蹤工具（用於非同步移交模式）
     sdk_tools.append(_create_check_operation_status_tool())
     tool_names.append('mcp__databricks__check_operation_status')
 
@@ -92,16 +92,15 @@ def _get_all_sdk_tools():
 
 
 def create_filtered_databricks_server(allowed_tool_names: list[str]):
-    """Create an MCP server with only the specified tools.
+    """建立僅包含指定工具的 MCP server。
 
-    Used to restrict which Databricks tools the agent can access based on
-    which skills are enabled.
+    用於根據啟用的技能限制 agent 可存取的 Databricks 工具。
 
     Args:
-        allowed_tool_names: List of tool names in mcp__databricks__* format
+        allowed_tool_names: mcp__databricks__* 格式的工具名稱列表
 
     Returns:
-        Tuple of (server_config, filtered_tool_names)
+        Tuple (server_config, filtered_tool_names)
     """
     all_sdk_tools, all_tool_names = _get_all_sdk_tools()
 
@@ -124,25 +123,24 @@ def create_filtered_databricks_server(allowed_tool_names: list[str]):
 
 
 def _create_check_operation_status_tool():
-    """Create the check_operation_status tool for polling async operations."""
+    """建立 check_operation_status 工具用於輪詢非同步操作。"""
 
     @tool(
         "check_operation_status",
-        """Check status of an async operation.
+        """檢查非同步操作的狀態。
 
-Use this to get results of long-running operations that were moved to
-background execution. When a tool takes longer than 30 seconds, it returns
-an operation_id instead of blocking. Use this tool to poll for the result.
+使用此工具取得移至背景執行的長時間執行操作結果。當工具執行超過 30 秒時，
+它會回傳 operation_id 而非阻塞。使用此工具輪詢結果。
 
 Args:
-    operation_id: The operation ID returned by the long-running tool
+    operation_id: 長時間執行工具回傳的操作 ID
 
 Returns:
-    - status: 'running', 'completed', or 'failed'
-    - tool_name: Name of the original tool
-    - result: The operation result (if completed)
-    - error: Error message (if failed)
-    - elapsed_seconds: Time since operation started
+    - status: 'running'、'completed' 或 'failed'
+    - tool_name: 原始工具的名稱
+    - result: 操作結果（若已完成）
+    - error: 錯誤訊息（若失敗）
+    - elapsed_seconds: 操作啟動後經過的時間
 """,
         {"operation_id": str},
     )
@@ -183,20 +181,20 @@ Returns:
 
 
 def _create_list_operations_tool():
-    """Create the list_operations tool for viewing all tracked operations."""
+    """建立 list_operations 工具用於檢視所有追蹤的操作。"""
 
     @tool(
         "list_operations",
-        """List all tracked async operations.
+        """列出所有追蹤的非同步操作。
 
-Use this to see all operations that are running or recently completed.
-Useful for checking what's in progress or finding an operation ID.
+使用此工具查看所有執行中或最近完成的操作。
+對檢查進行中的內容或尋找操作 ID 很有用。
 
 Args:
-    status: Optional filter - 'running', 'completed', or 'failed'
+    status: 可選過濾器 - 'running'、'completed' 或 'failed'
 
 Returns:
-    List of operations with their status and elapsed time
+    包含狀態和經過時間的操作列表
 """,
         {"status": str},
     )
@@ -212,7 +210,7 @@ Returns:
 
 
 def _convert_schema(json_schema: dict) -> dict[str, type]:
-    """Convert JSON schema to SDK simple format: {"param": type}"""
+    """將 JSON schema 轉換為 SDK 簡單格式：{"param": type}"""
     type_map = {
         'string': str,
         'integer': int,
@@ -224,7 +222,7 @@ def _convert_schema(json_schema: dict) -> dict[str, type]:
     result = {}
 
     for param, spec in json_schema.get('properties', {}).items():
-        # Handle anyOf (optional types like "string | null")
+        # 處理 anyOf（可選類型如 "string | null"）
         if 'anyOf' in spec:
             for opt in spec['anyOf']:
                 if opt.get('type') != 'null':
@@ -237,16 +235,16 @@ def _convert_schema(json_schema: dict) -> dict[str, type]:
 
 
 def _make_wrapper(name: str, description: str, schema: dict, fn):
-    """Create SDK tool wrapper for a FastMCP function.
+    """為 FastMCP 函式建立 SDK 工具包裝器。
 
-    The wrapper runs the sync function in a thread pool to avoid
-    blocking the async event loop. It also handles JSON string parsing
-    for complex types (lists, dicts) that the Claude agent may pass as strings.
+    包裝器在執行緒池中執行同步函式以避免
+    阻塞非同步事件迴圈。它也處理複雜類型（lists、dicts）的
+    JSON 字串解析，Claude agent 可能將其作為字串傳遞。
 
-    Includes async handoff for long-running operations:
-    - Operations completing within SAFE_EXECUTION_THRESHOLD return normally
-    - Operations exceeding the threshold switch to background execution
-      and return an operation_id for polling via check_operation_status
+    包含長時間執行操作的非同步移交：
+    - 在 SAFE_EXECUTION_THRESHOLD 內完成的操作正常回傳
+    - 超過閾值的操作切換到背景執行
+      並回傳 operation_id 供透過 check_operation_status 輪詢
     """
 
     @tool(name, description, schema)
@@ -259,59 +257,59 @@ def _make_wrapper(name: str, description: str, schema: dict, fn):
         print(f'[MCP TOOL] {name} called with args: {args}', file=sys.stderr, flush=True)
         logger.info(f'[MCP] Tool {name} called with args: {args}')
         try:
-            # Parse JSON strings for complex types (Claude agent sometimes sends these as strings)
+            # 解析複雜類型的 JSON 字串（Claude agent 有時將這些作為字串傳送）
             parsed_args = {}
             for key, value in args.items():
                 if isinstance(value, str) and value.strip().startswith(('[', '{')):
-                    # Try to parse as JSON if it looks like a list or dict
+                    # 若看起來像 list 或 dict 則嘗試解析為 JSON
                     try:
                         parsed_args[key] = json.loads(value)
                         print(f'[MCP TOOL] Parsed {key} from JSON string', file=sys.stderr, flush=True)
                     except json.JSONDecodeError:
-                        # Not valid JSON, keep as string
+                        # 非有效 JSON，保持為字串
                         parsed_args[key] = value
                 else:
                     parsed_args[key] = value
 
-            # FastMCP tools are sync - run in thread pool with heartbeat
+            # FastMCP 工具是同步的 - 在執行緒池中執行並帶心跳
             print(f'[MCP TOOL] Running {name} in thread pool with heartbeat...', file=sys.stderr, flush=True)
 
-            # Copy context to propagate Databricks auth contextvars to the thread
+            # 複製 context 以將 Databricks 認證 contextvars 傳播到執行緒
             ctx = copy_context()
 
             def run_in_context():
-                """Run the tool function within the copied context."""
+                """在複製的 context 中執行工具函式。"""
                 return ctx.run(fn, **parsed_args)
 
-            # Run tool in executor so we can poll for completion with heartbeat
-            # Use executor.submit() to get a concurrent.futures.Future (thread-safe)
-            # instead of loop.run_in_executor() which returns an asyncio.Future
+            # 在 executor 中執行工具以便我們可以用心跳輪詢完成
+            # 使用 executor.submit() 來取得 concurrent.futures.Future（執行緒安全）
+            # 而非 loop.run_in_executor() 它回傳 asyncio.Future
             loop = asyncio.get_event_loop()
             executor = concurrent.futures.ThreadPoolExecutor(max_workers=1)
             cf_future = executor.submit(run_in_context)  # concurrent.futures.Future
-            # Wrap in asyncio.Future for async waiting
+            # 包裝在 asyncio.Future 中以便非同步等待
             future = asyncio.wrap_future(cf_future, loop=loop)
 
-            # Heartbeat every 10 seconds while waiting for the tool to complete
+            # 等待工具完成時每 10 秒心跳一次
             HEARTBEAT_INTERVAL = 10
             heartbeat_count = 0
             while True:
                 try:
-                    # Wait for result with timeout
+                    # 等待結果並設定逾時
                     result = await asyncio.wait_for(
                         asyncio.shield(future),
                         timeout=HEARTBEAT_INTERVAL
                     )
-                    # Tool completed successfully
+                    # 工具成功完成
                     break
                 except asyncio.TimeoutError:
-                    # Tool still running - emit heartbeat
+                    # 工具仍在執行 - 發出心跳
                     heartbeat_count += 1
                     elapsed = time.time() - start_time
                     print(f'[MCP HEARTBEAT] {name} still running... ({elapsed:.0f}s elapsed, heartbeat #{heartbeat_count})', file=sys.stderr, flush=True)
                     logger.debug(f'[MCP] Heartbeat for {name}: {elapsed:.0f}s elapsed')
 
-                    # Check if we should switch to async mode to avoid connection timeout
+                    # 檢查是否應切換到非同步模式以避免連線逾時
                     if elapsed > SAFE_EXECUTION_THRESHOLD:
                         op_id = create_operation(name, parsed_args)
                         print(
@@ -325,15 +323,15 @@ def _make_wrapper(name: str, description: str, schema: dict, fn):
                             f'(operation_id: {op_id})'
                         )
 
-                        # Start background thread to complete the operation
-                        # We use threading.Thread instead of asyncio.create_task because
-                        # the fresh event loop pattern may not keep tasks alive
+                        # 啟動背景執行緒以完成操作
+                        # 我們使用 threading.Thread 而非 asyncio.create_task 因為
+                        # fresh event loop 模式可能不會保持任務存活
                         def complete_in_background(op_id, cf_future, executor):
-                            """Background thread to wait for completion and store result."""
+                            """背景執行緒等待完成並儲存結果。"""
                             try:
-                                # Block until the future completes (it's already running)
-                                # cf_future is a concurrent.futures.Future which is thread-safe
-                                result = cf_future.result()  # This blocks
+                                # 阻塞直到 future 完成（它已在執行中）
+                                # cf_future 是 concurrent.futures.Future，執行緒安全
+                                result = cf_future.result()  # 這會阻塞
                                 complete_operation(op_id, result=result)
                                 print(
                                     f'[MCP ASYNC] Operation {op_id} completed successfully',
@@ -364,7 +362,7 @@ def _make_wrapper(name: str, description: str, schema: dict, fn):
                         )
                         bg_thread.start()
 
-                        # Return immediately with operation info
+                        # 立即回傳操作資訊
                         return {
                             'content': [
                                 {
@@ -374,9 +372,9 @@ def _make_wrapper(name: str, description: str, schema: dict, fn):
                                         'operation_id': op_id,
                                         'tool_name': name,
                                         'message': (
-                                            f'Operation is taking longer than {SAFE_EXECUTION_THRESHOLD}s '
-                                            f'and has been moved to background execution. '
-                                            f'Use check_operation_status("{op_id}") to poll for results.'
+                                            f'操作執行超過 {SAFE_EXECUTION_THRESHOLD} 秒'
+                                            f'已移至背景執行。'
+                                            f'使用 check_operation_status("{op_id}") 輪詢結果。'
                                         ),
                                         'elapsed_seconds': round(elapsed, 1),
                                     }),
@@ -384,7 +382,7 @@ def _make_wrapper(name: str, description: str, schema: dict, fn):
                             ]
                         }
 
-                    # Continue waiting
+                    # 繼續等待
                     continue
 
             elapsed = time.time() - start_time

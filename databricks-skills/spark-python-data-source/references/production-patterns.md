@@ -1,17 +1,17 @@
-# Production Patterns
+# 生產模式
 
-Observability, security, validation, and operational best practices.
+可觀測性、安全性、驗證和操作最佳實踐。
 
-## Observability and Metrics
+## 可觀測性和指標
 
-Track operation metrics for monitoring:
+追蹤操作指標供監控：
 
 ```python
 class ObservableWriter:
-    """Writer with comprehensive metrics tracking."""
+    """具綜合指標追蹤的寫入器。"""
 
     def write(self, iterator):
-        """Write with metrics collection."""
+        """具指標收集的寫入。"""
         from pyspark import TaskContext
         from datetime import datetime
         import time
@@ -61,25 +61,25 @@ class ObservableWriter:
             raise
 
     def _report_metrics(self, metrics):
-        """Report metrics to monitoring system."""
-        # Example: CloudWatch, Prometheus, Databricks metrics
+        """向監控系統報告指標。"""
+        # 範例：CloudWatch、Prometheus、Databricks 指標
         print(f"METRICS: {json.dumps(metrics)}")
 
-        # Calculate derived metrics
+        # 計算衍生指標
         if metrics["duration_seconds"] > 0:
             throughput = metrics["rows_processed"] / metrics["duration_seconds"]
-            print(f"Throughput: {throughput:.2f} rows/second")
+            print(f"輸送量：{throughput:.2f} 列/秒")
 ```
 
-## Logging Best Practices
+## 記錄最佳實踐
 
-Structured logging for production debugging:
+生產偵錯的結構化記錄：
 
 ```python
 import logging
 import json
 
-# Configure structured logging
+# 設定結構化記錄
 logging.basicConfig(
     format='%(asctime)s %(levelname)s [%(name)s] %(message)s',
     level=logging.INFO
@@ -87,11 +87,11 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 class StructuredLogger:
-    """Logger with structured output."""
+    """具結構化輸出的記錄器。"""
 
     @staticmethod
     def log_operation(operation, context, **kwargs):
-        """Log operation with structured context."""
+        """記錄具結構化內容的操作。"""
         log_entry = {
             "operation": operation,
             "context": context,
@@ -101,7 +101,7 @@ class StructuredLogger:
 
     @staticmethod
     def log_error(operation, error, context):
-        """Log error with context."""
+        """記錄具內容的錯誤。"""
         log_entry = {
             "operation": operation,
             "error_type": type(error).__name__,
@@ -112,7 +112,7 @@ class StructuredLogger:
 
 class LoggingWriter:
     def write(self, iterator):
-        """Write with structured logging."""
+        """具結構化記錄的寫入。"""
         from pyspark import TaskContext
 
         context = TaskContext.get()
@@ -144,65 +144,65 @@ class LoggingWriter:
             raise
 ```
 
-## Security Validation
+## 安全驗證
 
-Input validation and sanitization for production data sources:
+生產資料來源的輸入驗證和清理：
 
 ```python
 import re
 import ipaddress
 
 class SecureDataSource:
-    """Data source with input validation."""
+    """具輸入驗證的資料來源。"""
 
     def __init__(self, options):
         self._validate_options(options)
         self.options = options
 
     def _validate_options(self, options):
-        """Validate options at system boundary."""
+        """在系統邊界驗證選項。"""
         required = ["host", "database", "table"]
         missing = [opt for opt in required if opt not in options]
         if missing:
-            raise ValueError(f"Missing required options: {', '.join(missing)}")
+            raise ValueError(f"缺少必要選項：{', '.join(missing)}")
 
         self._validate_host(options["host"])
 
         if "port" in options:
             port = int(options["port"])
             if port < 1 or port > 65535:
-                raise ValueError(f"Port must be 1-65535, got {port}")
+                raise ValueError(f"連接埠必須為 1-65535，得到 {port}")
 
         self._validate_identifier(options["table"], "table")
 
     def _validate_host(self, host):
-        """Validate host is valid IP or hostname."""
+        """驗證主機為有效 IP 或主機名稱。"""
         try:
             ipaddress.ip_address(host)
             return
         except ValueError:
             pass
         if not re.match(r'^[a-zA-Z0-9][a-zA-Z0-9-\.]*[a-zA-Z0-9]$', host):
-            raise ValueError(f"Invalid host format: {host}")
+            raise ValueError(f"無效的主機格式：{host}")
 
     def _validate_identifier(self, identifier, name):
-        """Validate SQL identifier to prevent injection."""
+        """驗證 SQL 識別子以防止注入。"""
         if not re.match(r'^[a-zA-Z_][a-zA-Z0-9_]*$', identifier):
             raise ValueError(
-                f"Invalid {name} identifier: {identifier}. "
-                f"Must contain only letters, numbers, and underscores."
+                f"無效的 {name} 識別子：{identifier}。"
+                f"必須僅包含字母、數字和底線。"
             )
 ```
 
-For credential sanitization in logs and secrets management, see [authentication-patterns.md](authentication-patterns.md) — the "Security Best Practices" and "Use Secrets Management" sections.
+如需認證中的認證清理和機密管理，請參閱 [authentication-patterns.md](authentication-patterns.md) -- 「安全最佳實踐」和「使用機密管理」章節。
 
-## Configuration Validation
+## 組態驗證
 
-Validate configuration before execution:
+在執行前驗證組態：
 
 ```python
 class ConfigValidator:
-    """Validate data source configuration."""
+    """驗證資料來源組態。"""
 
     VALID_CONSISTENCY_LEVELS = {
         "ONE", "TWO", "THREE", "QUORUM", "ALL",
@@ -215,54 +215,54 @@ class ConfigValidator:
 
     @classmethod
     def validate(cls, options):
-        """Validate all configuration options."""
+        """驗證所有組態選項。"""
         errors = []
 
-        # Validate consistency level
+        # 驗證一致性層級
         if "consistency" in options:
             consistency = options["consistency"].upper()
             if consistency not in cls.VALID_CONSISTENCY_LEVELS:
                 errors.append(
-                    f"Invalid consistency level '{consistency}'. "
-                    f"Valid: {', '.join(cls.VALID_CONSISTENCY_LEVELS)}"
+                    f"無效的一致性層級 '{consistency}'。"
+                    f"有效值：{', '.join(cls.VALID_CONSISTENCY_LEVELS)}"
                 )
 
-        # Validate compression
+        # 驗證壓縮
         if "compression" in options:
             compression = options["compression"].lower()
             if compression not in cls.VALID_COMPRESSION:
                 errors.append(
-                    f"Invalid compression '{compression}'. "
-                    f"Valid: {', '.join(cls.VALID_COMPRESSION)}"
+                    f"無效的壓縮 '{compression}'。"
+                    f"有效值：{', '.join(cls.VALID_COMPRESSION)}"
                 )
 
-        # Validate numeric ranges
+        # 驗證數值範圍
         if "timeout" in options:
             timeout = int(options["timeout"])
             if timeout < 0 or timeout > 300:
-                errors.append(f"timeout must be 0-300 seconds, got {timeout}")
+                errors.append(f"timeout 必須為 0-300 秒，得到 {timeout}")
 
         if "batch_size" in options:
             batch_size = int(options["batch_size"])
             if batch_size < 1 or batch_size > 10000:
-                errors.append(f"batch_size must be 1-10000, got {batch_size}")
+                errors.append(f"batch_size 必須為 1-10000，得到 {batch_size}")
 
-        # Validate dependent options
+        # 驗證依存選項
         if options.get("ssl_enabled", "false").lower() == "true":
             if "ssl_ca_cert" not in options:
-                errors.append("ssl_ca_cert required when ssl_enabled=true")
+                errors.append("ssl_enabled=true 時需要 ssl_ca_cert")
 
         if errors:
-            raise ValueError("Configuration errors:\n" + "\n".join(f"- {e}" for e in errors))
+            raise ValueError("組態錯誤：\n" + "\n".join(f"- {e}" for e in errors))
 ```
 
-## Resource Cleanup
+## 資源清理
 
-Ensure proper resource cleanup:
+確保適當的資源清理：
 
 ```python
 class ManagedResourceWriter:
-    """Writer with guaranteed resource cleanup."""
+    """具保證資源清理的寫入器。"""
 
     def __init__(self, options):
         self.options = options
@@ -270,13 +270,13 @@ class ManagedResourceWriter:
         self._session = None
 
     def _get_connection(self):
-        """Lazy connection initialization."""
+        """延遲連接初始化。"""
         if self._connection is None:
             self._connection = self._create_connection()
         return self._connection
 
     def write(self, iterator):
-        """Write with guaranteed cleanup."""
+        """具保證清理的寫入。"""
         try:
             connection = self._get_connection()
 
@@ -284,16 +284,16 @@ class ManagedResourceWriter:
                 self._send_data(connection, row)
 
         finally:
-            # Always cleanup resources
+            # 始終清理資源
             self._cleanup()
 
     def _cleanup(self):
-        """Clean up resources."""
+        """清理資源。"""
         if self._session:
             try:
                 self._session.close()
             except Exception as e:
-                logger.warning(f"Error closing session: {e}")
+                logger.warning(f"關閉工作階段時出錯：{e}")
             finally:
                 self._session = None
 
@@ -301,25 +301,25 @@ class ManagedResourceWriter:
             try:
                 self._connection.close()
             except Exception as e:
-                logger.warning(f"Error closing connection: {e}")
+                logger.warning(f"關閉連接時出錯：{e}")
             finally:
                 self._connection = None
 
     def __del__(self):
-        """Cleanup on garbage collection."""
+        """垃圾回收時清理。"""
         self._cleanup()
 ```
 
-## Health Checks
+## 健康檢查
 
-Monitor system health:
+監控系統健康：
 
 ```python
 class HealthCheckMixin:
-    """Mixin for health check functionality."""
+    """用於健康檢查功能的 mixin。"""
 
     def check_health(self):
-        """Perform health check before operations."""
+        """在操作前執行健康檢查。"""
         checks = {
             "connection": self._check_connection(),
             "authentication": self._check_authentication(),
@@ -330,55 +330,55 @@ class HealthCheckMixin:
         failed = [name for name, passed in checks.items() if not passed]
 
         if failed:
-            raise Exception(f"Health check failed: {', '.join(failed)}")
+            raise Exception(f"健康檢查失敗：{', '.join(failed)}")
 
         return checks
 
     def _check_connection(self):
-        """Check connection to external system."""
+        """檢查與外部系統的連接。"""
         try:
             self._test_connection()
             return True
         except Exception as e:
-            logger.error(f"Connection check failed: {e}")
+            logger.error(f"連接檢查失敗：{e}")
             return False
 
     def _check_authentication(self):
-        """Check authentication is valid."""
+        """檢查認證有效。"""
         try:
             self._verify_credentials()
             return True
         except Exception as e:
-            logger.error(f"Authentication check failed: {e}")
+            logger.error(f"認證檢查失敗：{e}")
             return False
 
     def _check_rate_limit(self):
-        """Check if under rate limits."""
-        # Check current rate usage
+        """檢查是否在速率限制以下。"""
+        # 檢查目前速率使用量
         current_rate = self._get_current_rate()
         limit = self._get_rate_limit()
 
-        return current_rate < limit * 0.8  # 80% threshold
+        return current_rate < limit * 0.8  # 80% 閾值
 
     def _check_disk_space(self):
-        """Check available disk space."""
+        """檢查可用磁碟空間。"""
         import shutil
 
         usage = shutil.disk_usage("/")
         free_percent = (usage.free / usage.total) * 100
 
-        return free_percent > 10  # 10% minimum
+        return free_percent > 10  # 10% 最少
 ```
 
-## Operational Best Practices
+## 操作最佳實踐
 
-1. **Monitoring**: Track throughput, latency, error rates
-2. **Logging**: Use structured logging with correlation IDs
-3. **Secrets**: Never log sensitive values, use secrets management
-4. **Validation**: Validate all inputs to prevent injection attacks
-5. **Resource Cleanup**: Always close connections and clean up resources
-6. **Health Checks**: Verify system health before operations
-7. **Rate Limiting**: Respect API rate limits with backoff
-8. **Alerting**: Set up alerts for error rates and latency
-9. **Documentation**: Document all configuration options
-10. **Version Control**: Tag releases and maintain changelog
+1. **監控**：追蹤輸送量、延遲、錯誤率
+2. **記錄**：使用具相關編號的結構化記錄
+3. **機密**：永不記錄機密值，使用機密管理
+4. **驗證**：驗證所有輸入以防止注入攻擊
+5. **資源清理**：始終關閉連接並清理資源
+6. **健康檢查**：在操作前驗證系統健康
+7. **速率限制**：使用退避尊重 API 速率限制
+8. **警告**：為錯誤率和延遲設定警告
+9. **文件**：記錄所有組態選項
+10. **版本控制**：標記版本並維護變更日誌

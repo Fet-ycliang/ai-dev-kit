@@ -1,7 +1,7 @@
 """
-Middleware for the Databricks MCP Server.
+Databricks MCP Server 的中介層。
 
-Provides cross-cutting concerns like timeout handling for all MCP tool calls.
+提供逾時處理等橫切關注點，套用於所有 MCP 工具呼叫。
 """
 
 import json
@@ -15,16 +15,16 @@ logger = logging.getLogger(__name__)
 
 
 class TimeoutHandlingMiddleware(Middleware):
-    """Catches TimeoutError from any tool and returns a structured result.
+    """攔截任何工具拋出的 TimeoutError，並回傳結構化結果。
 
-    When async operations (job runs, pipeline updates, resource provisioning)
-    exceed their timeout, this middleware converts the exception into a JSON
-    response that tells the agent the operation is still in progress and
-    should NOT be retried blindly.
+    當非同步作業（job 執行、pipeline 更新、資源佈建）
+    超過逾時限制時，此 middleware 會將例外轉成 JSON
+    回應，告知代理操作仍在進行中，
+    且不應盲目重試。
 
-    Without this middleware, a TimeoutError bubbles up as an MCP error,
-    which agents interpret as a failure and retry — potentially creating
-    duplicate resources (see GitHub issue #65).
+    若沒有這個 middleware，TimeoutError 會向上冒泡成為 MCP 錯誤，
+    而代理會將其解讀為失敗並重試——可能因此建立
+    重複資源（見 GitHub issue #65）。
     """
 
     async def on_call_tool(

@@ -1,6 +1,6 @@
-"""GEPA configuration presets for skill optimization.
+"""技能優化的 GEPA 配置預設。
 
-Uses the optimize_anything API with GEPAConfig/EngineConfig/ReflectionConfig.
+使用具備 GEPAConfig/EngineConfig/ReflectionConfig 的 optimize_anything API。
 """
 
 import os
@@ -16,45 +16,45 @@ DEFAULT_TOKEN_BUDGET: int | None = int(os.environ.get("GEPA_TOKEN_BUDGET", "0"))
 
 
 # ---------------------------------------------------------------------------
-# Register Databricks models with litellm so it knows their true context
-# windows.  Without this, litellm may fuzzy-match to a similar model with
-# different limits, or worse, the Databricks serving endpoint may reject
-# requests that exceed a vLLM-configured max_model_len.
+# 向 litellm 註冊 Databricks model，讓它知道正確的 context
+# window。否則，litellm 可能會模糊比對到限制不同的相似 model，
+# 更糟的是，Databricks serving endpoint 可能會拒絕超過
+# vLLM 設定之 max_model_len 的請求。
 #
-# NOTE: This does NOT override the endpoint's own max_model_len setting.
-# If the Databricks endpoint itself is configured with a low limit (e.g.
-# 8192), you must either reconfigure the endpoint or use a different
-# provider (openai/, anthropic/) whose endpoints support larger contexts.
+# 注意：這不會覆寫 endpoint 自身的 max_model_len 設定。
+# 如果 Databricks endpoint 本身設定了較低限制（例如
+# 8192），你必須重新配置該 endpoint，或改用其他
+# provider（openai/、anthropic/），其 endpoint 支援更大的 context。
 # ---------------------------------------------------------------------------
 def _configure_litellm_retries() -> None:
-    """Configure litellm to retry on transient errors (429, 529, 500).
+    """配置 litellm 在暫時性錯誤（429、529、500）時進行重試。
 
-    GEPA calls litellm.completion() without passing num_retries, so we
-    set it globally.  This handles Anthropic 529 "Overloaded" errors,
-    rate limits, and other transient failures with exponential backoff.
+    GEPA 會呼叫 litellm.completion() 而不傳入 num_retries，因此我們
+    在全域層級設定它。這可處理 Anthropic 529「Overloaded」錯誤、
+    rate limit，以及其他使用指數退避的暫時性失敗。
 
-    Rate-limit retries get extra attempts (10) since --include-tools sends
-    large contexts that easily hit token-per-minute ceilings on Opus.
+    對於 rate-limit 重試會給予額外嘗試次數（10），因為 --include-tools 會傳送
+    大型 context，在 Opus 上很容易撞到每分鐘 Token 上限。
     """
     try:
         import litellm
         from litellm import RetryPolicy
 
         litellm.num_retries = 5
-        litellm.request_timeout = 180  # seconds per attempt
+        litellm.request_timeout = 180  # 每次嘗試的秒數
         litellm.retry_policy = RetryPolicy(
             RateLimitErrorRetries=10,
             InternalServerErrorRetries=5,
             TimeoutErrorRetries=5,
         )
-        # Drop log noise from retries
+        # 降低重試造成的日誌噪音
         litellm.suppress_debug_info = True
     except ImportError:
         pass
 
 
 def _register_litellm_models() -> None:
-    """Register Databricks model context windows with litellm."""
+    """向 litellm 註冊 Databricks model 的 context window。"""
     try:
         import litellm
 
@@ -133,8 +133,8 @@ _register_litellm_models()
 _configure_litellm_retries()
 
 
-# Overhead multiplier: the reflection prompt is roughly this many times
-# the raw candidate tokens (includes background, ASI, framing).
+# 額外開銷乘數：reflection prompt 約為原始候選 Token 的這個倍數
+# （包含 background、ASI、framing）。
 _REFLECTION_OVERHEAD_MULTIPLIER = 3
 
 PRESETS: dict[str, GEPAConfig] = {
@@ -166,7 +166,7 @@ PRESETS: dict[str, GEPAConfig] = {
     ),
 }
 
-# Base max_metric_calls per preset (used to scale by component count)
+# 每個預設的基礎 max_metric_calls（用於依元件數量縮放）
 PRESET_BASE_CALLS: dict[str, int] = {
     "minimal": 8,
     "quick": 15,
@@ -174,8 +174,8 @@ PRESET_BASE_CALLS: dict[str, int] = {
     "thorough": 150,
 }
 
-# Per-preset caps: safety net so component scaling never exceeds a reasonable
-# ceiling.  Important for --tools-only mode which has many tool components.
+# 各預設的上限：安全機制，避免元件縮放超出合理上限。
+# 對具有許多 tool 元件的 --tools-only 模式尤其重要。
 PRESET_MAX_CALLS: dict[str, int] = {
     "minimal": 15,
     "quick": 45,
@@ -183,13 +183,13 @@ PRESET_MAX_CALLS: dict[str, int] = {
     "thorough": 300,
 }
 
-# Maximum total metric calls per pass to avoid runaway runtimes.
-# With many components, uncapped scaling (e.g., 50 * 17 = 850) can cause
-# multi-hour hangs with slower reflection models like Sonnet.
+# 每個 pass 的最大總 metric 呼叫數，以避免失控的執行時間。
+# 元件很多時，未設上限的縮放（例如 50 * 17 = 850）可能會導致
+# 像 Sonnet 這樣較慢的 reflection model 卡住數小時。
 MAX_METRIC_CALLS_PER_PASS = 300
 
-# Models known to be fast enough for large multi-component optimization.
-# Other models get the metric-call cap applied.
+# 已知足夠快、能處理大型多元件優化的 models。
+# 其他 model 會套用 metric-call 上限。
 _FAST_REFLECTION_MODELS = {
     "databricks/databricks-claude-opus-4-6",
     "databricks/databricks-gpt-5-2",
@@ -199,12 +199,12 @@ _FAST_REFLECTION_MODELS = {
 
 
 def validate_databricks_env() -> None:
-    """Check that DATABRICKS_API_BASE is set correctly for litellm.
+    """檢查 DATABRICKS_API_BASE 是否已針對 litellm 正確設定。
 
-    litellm's Databricks provider requires:
+    litellm 的 Databricks provider 需要：
         DATABRICKS_API_BASE=https://<workspace>.cloud.databricks.com/serving-endpoints
 
-    A common mistake is omitting /serving-endpoints, which causes 404 errors.
+    常見錯誤是漏掉 /serving-endpoints，這會導致 404 錯誤。
     """
     api_base = os.environ.get("DATABRICKS_API_BASE", "")
     if api_base and not api_base.rstrip("/").endswith("/serving-endpoints"):
@@ -221,17 +221,17 @@ def validate_reflection_context(
     reflection_lm: str,
     total_candidate_tokens: int,
 ) -> None:
-    """Warn if the candidate is likely too large for the reflection model.
+    """若候選內容對 reflection model 而言可能過大則發出警告。
 
-    Queries litellm's model registry for the model's max_input_tokens and
-    compares against the estimated reflection prompt size.
+    會查詢 litellm 的 model registry 以取得 model 的 max_input_tokens，
+    並與估計的 reflection prompt 大小比較。
 
-    Note: this checks litellm's *client-side* knowledge of the model.  The
-    Databricks serving endpoint may have a *different* (lower) limit set via
-    vLLM's ``max_model_len``.  If you see ``BadRequestError`` with
-    ``max_model_len`` in the message, the endpoint itself is the bottleneck --
-    switch to a provider whose endpoint supports your context needs (e.g.
-    ``openai/gpt-4o`` or ``anthropic/claude-sonnet-4-5-20250514``).
+    注意：這裡檢查的是 litellm 對 model 的*用戶端*認知。Databricks
+    serving endpoint 可能透過 vLLM 的 ``max_model_len`` 設定了*不同*
+    （更低）的限制。如果你看到訊息中含有 ``max_model_len`` 的
+    ``BadRequestError``，瓶頸就在 endpoint 本身——
+    請改用其 endpoint 支援所需 context 的 provider（例如
+    ``openai/gpt-4o`` 或 ``anthropic/claude-sonnet-4-5-20250514``）。
     """
     try:
         import litellm
@@ -239,7 +239,7 @@ def validate_reflection_context(
         info = litellm.get_model_info(reflection_lm)
         limit = info.get("max_input_tokens") or info.get("max_tokens") or 0
     except Exception:
-        return  # can't determine limit -- skip check
+        return  # 無法判定限制——略過檢查
 
     if limit <= 0:
         return
@@ -270,15 +270,15 @@ def estimate_pass_duration(
     total_candidate_tokens: int,
     num_dataset_examples: int = 7,
 ) -> float | None:
-    """Estimate wall-clock seconds for one optimization pass.
+    """估計單一優化 pass 的實際耗時秒數。
 
-    Metric calls are mostly fast local evaluations.  The slow part is
-    reflection LLM calls, which happen roughly once per iteration
-    (num_metric_calls / num_dataset_examples iterations).
+    metric 呼叫大多是快速的本地評估。較慢的部分是
+    reflection LLM 呼叫，約略每次迭代發生一次
+    （num_metric_calls / num_dataset_examples 次迭代）。
 
-    Returns None if estimation is not possible.
+    若無法估計則回傳 None。
     """
-    # Rough per-reflection latency (seconds) based on model class
+    # 依 model 類別粗略估計每次 reflection 的延遲（秒）
     if reflection_lm in _FAST_REFLECTION_MODELS:
         secs_per_reflection = 5.0
     elif "sonnet" in reflection_lm.lower():
@@ -288,11 +288,11 @@ def estimate_pass_duration(
     else:
         secs_per_reflection = 15.0
 
-    # Scale by candidate size (larger candidates → slower)
+    # 依候選內容大小縮放（候選越大 → 越慢）
     size_factor = min(max(1.0, total_candidate_tokens / 10_000), 2.5)
     adjusted = secs_per_reflection * size_factor
 
-    # Approximate iterations (each iteration evaluates all dataset examples)
+    # 近似的迭代次數（每次迭代都會評估所有資料集範例）
     num_iterations = max(1, num_metric_calls // max(num_dataset_examples, 1))
 
     return num_iterations * adjusted
@@ -304,29 +304,29 @@ def get_preset(
     num_components: int = 1,
     max_metric_calls_override: int | None = None,
 ) -> GEPAConfig:
-    """Get a GEPA config preset by name, scaled by component count.
+    """依名稱取得 GEPA 配置預設，並依元件數量縮放。
 
-    When optimizing multiple components (skill + tool modules), GEPA's
-    round-robin selector divides the budget across all of them.  We scale
-    ``max_metric_calls`` so that *each component* receives the preset's
-    base budget rather than splitting it.
+    在優化多個元件（技能 + 工具模組）時，GEPA 的
+    round-robin selector 會將預算分散到所有元件。我們會縮放
+    ``max_metric_calls``，讓*每個元件*都能收到該預設的
+    基礎預算，而不是彼此拆分。
 
-    For slower reflection models (non-Opus/GPT-4o), the total metric calls
-    are capped at ``MAX_METRIC_CALLS_PER_PASS`` to avoid multi-hour hangs.
+    對於較慢的 reflection models（非 Opus/GPT-4o），
+    總 metric 呼叫數會限制為 ``MAX_METRIC_CALLS_PER_PASS``，以避免長達數小時的卡住。
 
-    Args:
-        name: One of "quick", "standard", "thorough"
-        reflection_lm: Override reflection LM model string
-        num_components: Number of GEPA components (used to scale budget)
-        max_metric_calls_override: Explicit cap on metric calls per pass
+    參數:
+        name: "quick"、"standard"、"thorough" 其中之一
+        reflection_lm: 覆寫 reflection LM model 字串
+        num_components: GEPA 元件數量（用於縮放預算）
+        max_metric_calls_override: 每個 pass 的明確 metric 呼叫上限
 
-    Returns:
-        GEPAConfig instance
+    回傳:
+        GEPAConfig 實例
     """
     if name not in PRESETS:
         raise KeyError(f"Unknown preset '{name}'. Choose from: {list(PRESETS.keys())}")
 
-    # Validate Databricks env if using databricks/ prefix
+    # 若使用 databricks/ 前綴則驗證 Databricks 環境變數
     effective_lm = reflection_lm or DEFAULT_REFLECTION_LM
     if isinstance(effective_lm, str) and effective_lm.startswith("databricks/"):
         validate_databricks_env()
@@ -334,16 +334,16 @@ def get_preset(
     base_calls = PRESET_BASE_CALLS[name]
     scaled_calls = base_calls * max(num_components, 1)
 
-    # Apply explicit override if provided
+    # 若提供明確覆寫則套用
     if max_metric_calls_override is not None:
         scaled_calls = max_metric_calls_override
     else:
-        # Apply per-preset cap first (safety net for multi-component modes)
+        # 先套用各預設上限（多元件模式的安全機制）
         preset_cap = PRESET_MAX_CALLS[name]
         if scaled_calls > preset_cap:
             scaled_calls = preset_cap
 
-    # Cap for slower models to avoid multi-hour hangs
+    # 對較慢的 model 設限，以避免卡住數小時
     if (
         max_metric_calls_override is None
         and effective_lm not in _FAST_REFLECTION_MODELS

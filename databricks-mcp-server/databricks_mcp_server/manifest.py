@@ -1,8 +1,8 @@
-"""Resource tracking manifest for cross-session continuity.
+"""用於跨 session 延續性的資源追蹤 manifest。
 
-Tracks Databricks resources created through the MCP server in a local
-`.databricks-resources.json` file. This allows agents to see what was
-created in previous sessions and avoid duplicates.
+追蹤透過 MCP 伺服器建立的 Databricks 資源，並記錄於本機
+`.databricks-resources.json` 檔案中。這讓代理可以看到
+先前 session 建立的資源，並避免重複建立。
 """
 
 import json
@@ -16,23 +16,26 @@ from typing import Any, Callable, Dict, List, Optional
 logger = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------------------
-# Resource deleter registry
+# 資源刪除器登錄表
 # ---------------------------------------------------------------------------
-# Each tool module registers a callable that deletes a resource given its ID.
-# This avoids hard-coding every resource type inside the manifest tool layer.
+# 各工具模組都會註冊一個 callable，根據資源 ID 刪除資源。
+# 這可避免在 manifest 工具層中硬編碼每一種資源類型。
 _RESOURCE_DELETERS: Dict[str, Callable[[str], None]] = {}
 
 
 def register_deleter(resource_type: str, fn: Callable[[str], None]) -> None:
-    """Register a delete function for a resource type.
+    """註冊某個資源類型的刪除函式。
 
-    Tool modules call this at import time so the manifest tool layer can
-    delete any tracked resource without knowing implementation details.
+    工具模組會在匯入時呼叫此函式，讓 manifest 工具層可以
+    在不知道實作細節的情況下刪除任何已追蹤的資源。
 
-    Args:
-        resource_type: The manifest resource type key (e.g. ``"job"``).
-        fn: A callable that takes a ``resource_id`` string and deletes
-            the corresponding Databricks resource.  Should raise on failure.
+    參數:
+        resource_type: manifest 的資源類型鍵值（例如 ``"job"``）。
+        fn: 一個接受 ``resource_id`` 字串並刪除對應
+            Databricks 資源的 callable。失敗時應拋出例外。
+
+    回傳:
+        None
     """
     _RESOURCE_DELETERS[resource_type] = fn
 
@@ -42,16 +45,16 @@ MANIFEST_VERSION = 1
 
 
 def _get_manifest_path() -> Path:
-    """Get the path to the manifest file.
+    """取得 manifest 檔案的路徑。
 
-    Looks for ``MANIFEST_FILENAME`` relative to CWD (MCP servers are
-    launched from the project root).
+    尋找相對於 CWD 的 ``MANIFEST_FILENAME``（MCP 伺服器
+    會從專案根目錄啟動）。
     """
     return Path(os.getcwd()) / MANIFEST_FILENAME
 
 
 def _read_manifest() -> Dict[str, Any]:
-    """Read the manifest file, returning an empty structure if missing."""
+    """讀取 manifest 檔案；若不存在則回傳空結構。"""
     path = _get_manifest_path()
     if not path.exists():
         return {"version": MANIFEST_VERSION, "resources": []}
@@ -67,10 +70,10 @@ def _read_manifest() -> Dict[str, Any]:
 
 
 def _write_manifest(data: Dict[str, Any]) -> None:
-    """Atomically write the manifest file."""
+    """以原子方式寫入 manifest 檔案。"""
     path = _get_manifest_path()
     try:
-        # Write to a temp file in the same directory, then rename
+        # 先在相同目錄寫入暫存檔，再重新命名
         fd, tmp_path = tempfile.mkstemp(dir=path.parent, prefix=".manifest-tmp-", suffix=".json")
         try:
             with os.fdopen(fd, "w") as f:
@@ -78,7 +81,7 @@ def _write_manifest(data: Dict[str, Any]) -> None:
                 f.write("\n")
             os.replace(tmp_path, path)
         except Exception:
-            # Clean up temp file on failure
+            # 發生失敗時清理暫存檔
             try:
                 os.unlink(tmp_path)
             except OSError:
@@ -89,7 +92,7 @@ def _write_manifest(data: Dict[str, Any]) -> None:
 
 
 def _now_iso() -> str:
-    """Return the current UTC time as an ISO 8601 string."""
+    """以 ISO 8601 字串回傳目前的 UTC 時間。"""
     return datetime.now(timezone.utc).isoformat()
 
 
@@ -99,21 +102,21 @@ def track_resource(
     resource_id: str,
     url: Optional[str] = None,
 ) -> None:
-    """Track a created/updated resource in the manifest.
+    """在 manifest 中追蹤已建立/已更新的資源。
 
-    Upsert logic:
-    - If a resource with the same type+id exists, update name/url/updated_at.
-    - If a resource with the same type+name exists but different id, update the id.
-    - Otherwise, append a new entry.
+    Upsert 邏輯：
+    - 若存在相同 type+id 的資源，更新 name/url/updated_at。
+    - 若存在相同 type+name 但 id 不同的資源，更新其 id。
+    - 否則，附加一筆新項目。
 
-    This is best-effort: failures are logged but never raised.
+    這是 best-effort 作法：失敗只會記錄日誌，不會拋出例外。
     """
     try:
         data = _read_manifest()
         resources: List[Dict[str, Any]] = data.get("resources", [])
         now = _now_iso()
 
-        # Try to find by type+id
+        # 嘗試以 type+id 尋找
         for r in resources:
             if r.get("type") == resource_type and r.get("id") == resource_id:
                 r["name"] = name
@@ -123,7 +126,7 @@ def track_resource(
                 _write_manifest(data)
                 return
 
-        # Try to find by type+name (handles ID changes across sessions)
+        # 嘗試以 type+name 尋找（可處理跨 session 的 ID 變更）
         for r in resources:
             if r.get("type") == resource_type and r.get("name") == name:
                 r["id"] = resource_id
@@ -133,7 +136,7 @@ def track_resource(
                 _write_manifest(data)
                 return
 
-        # New resource
+        # 新資源
         entry: Dict[str, Any] = {
             "type": resource_type,
             "name": name,
@@ -151,9 +154,9 @@ def track_resource(
 
 
 def remove_resource(resource_type: str, resource_id: str) -> bool:
-    """Remove a resource from the manifest by type+id.
+    """依 type+id 從 manifest 中移除資源。
 
-    Returns True if the resource was found and removed.
+    回傳 True 表示已找到並移除該資源。
     """
     try:
         data = _read_manifest()
@@ -172,7 +175,7 @@ def remove_resource(resource_type: str, resource_id: str) -> bool:
 
 
 def list_resources(resource_type: Optional[str] = None) -> List[Dict[str, Any]]:
-    """Return tracked resources, optionally filtered by type."""
+    """回傳已追蹤的資源，可選擇依類型篩選。"""
     data = _read_manifest()
     resources = data.get("resources", [])
     if resource_type:

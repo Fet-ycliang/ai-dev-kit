@@ -1,37 +1,37 @@
-# Lakebase (PostgreSQL) Connectivity
+# Lakebase（PostgreSQL）連線
 
-Lakebase provides low-latency transactional storage for Databricks Apps via a managed PostgreSQL interface.
+Lakebase 透過受管理的 PostgreSQL 介面，為 Databricks Apps 提供低延遲的交易性儲存。
 
-**Docs**: https://docs.databricks.com/aws/en/dev-tools/databricks-apps/lakebase
-
----
-
-## When to Use Lakebase
-
-| Use Case | Recommended Backend |
-|----------|-------------------|
-| Analytical queries on Delta tables | SQL Warehouse |
-| Low-latency transactional CRUD | **Lakebase** |
-| App-specific metadata/config | **Lakebase** |
-| User session data | **Lakebase** |
-| Large-scale data exploration | SQL Warehouse |
+**官方文件**：https://docs.databricks.com/aws/en/dev-tools/databricks-apps/lakebase
 
 ---
 
-## Setup
+## 何時使用 Lakebase
 
-1. Add Lakebase as an app resource in the Databricks UI (resource type: **Lakebase database**)
-2. Databricks auto-injects PostgreSQL connection env vars:
+| 使用情境 | 建議後端 |
+|---------|---------|
+| 對 Delta table 進行分析查詢 | SQL Warehouse |
+| 低延遲交易 CRUD | **Lakebase** |
+| 應用程式專屬的 metadata／設定 | **Lakebase** |
+| 使用者 session 資料 | **Lakebase** |
+| 大規模資料探索 | SQL Warehouse |
 
-| Variable | Description |
-|----------|-------------|
-| `PGHOST` | Database hostname |
-| `PGDATABASE` | Database name |
-| `PGUSER` | PostgreSQL role (created per app) |
-| `PGPASSWORD` | Role password |
-| `PGPORT` | Port (typically 5432) |
+---
 
-3. Reference in `app.yaml`:
+## 設定
+
+1. 在 Databricks UI 中將 Lakebase 新增為應用程式資源（資源類型：**Lakebase database**）
+2. Databricks 自動注入 PostgreSQL 連線環境變數：
+
+| 變數 | 說明 |
+|------|------|
+| `PGHOST` | 資料庫主機名稱 |
+| `PGDATABASE` | 資料庫名稱 |
+| `PGUSER` | PostgreSQL 角色（每個應用程式個別建立） |
+| `PGPASSWORD` | 角色密碼 |
+| `PGPORT` | 埠號（通常為 5432） |
+
+3. 在 `app.yaml` 中引用：
 
 ```yaml
 env:
@@ -42,9 +42,9 @@ env:
 
 ---
 
-## Connection Patterns
+## 連線模式
 
-### psycopg2 (Synchronous)
+### psycopg2（同步）
 
 ```python
 import os
@@ -65,7 +65,7 @@ with conn.cursor() as cur:
 conn.close()
 ```
 
-### asyncpg (Asynchronous)
+### asyncpg（非同步）
 
 ```python
 import os
@@ -101,7 +101,7 @@ engine = create_engine(DATABASE_URL)
 
 ---
 
-## Streamlit with Lakebase
+## Streamlit 搭配 Lakebase
 
 ```python
 import streamlit as st
@@ -119,23 +119,23 @@ def get_db_connection():
 
 ---
 
-## Critical: requirements.txt
+## 重要：requirements.txt
 
-`psycopg2` and `asyncpg` are **NOT pre-installed** in the Databricks Apps runtime. You **MUST** include them in `requirements.txt` or the app will crash on startup:
+`psycopg2` 與 `asyncpg` **未預裝**於 Databricks Apps runtime。**必須**將其加入 `requirements.txt`，否則應用程式啟動時會崩潰：
 
 ```
 psycopg2-binary
 ```
 
-For async apps:
+非同步應用程式：
 ```
 asyncpg
 ```
 
-**This is the most common cause of Lakebase app failures.**
+**這是 Lakebase 應用程式失敗最常見的原因。**
 
-## Notes
+## 注意事項
 
-- Lakebase is in **Public Preview**
-- Each app gets its own PostgreSQL role with `Can connect and create` permission
-- Lakebase is ideal alongside SQL warehouse: use Lakebase for app state, SQL warehouse for analytics
+- Lakebase 目前為**公開預覽版**
+- 每個應用程式獲得專屬的 PostgreSQL 角色，具備 `Can connect and create` 權限
+- Lakebase 與 SQL Warehouse 並用效果最佳：Lakebase 處理應用程式狀態，SQL Warehouse 處理分析查詢

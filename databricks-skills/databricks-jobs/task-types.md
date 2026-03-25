@@ -1,21 +1,21 @@
-# Task Types Reference
+# 任務類型參考
 
-## Contents
-- [Notebook Task](#notebook-task)
-- [Spark Python Task](#spark-python-task)
-- [Python Wheel Task](#python-wheel-task)
-- [SQL Task](#sql-task)
-- [dbt Task](#dbt-task)
-- [Pipeline Task](#pipeline-task)
-- [Spark JAR Task](#spark-jar-task)
-- [Run Job Task](#run-job-task)
-- [For Each Task](#for-each-task)
+## 目錄
+- [Notebook 任務](#notebook-任務)
+- [Spark Python 任務](#spark-python-任務)
+- [Python Wheel 任務](#python-wheel-任務)
+- [SQL 任務](#sql-任務)
+- [dbt 任務](#dbt-任務)
+- [Pipeline 任務](#pipeline-任務)
+- [Spark JAR 任務](#spark-jar-任務)
+- [Run Job 任務](#run-job-任務)
+- [For Each 任務](#for-each-任務)
 
 ---
 
-## Notebook Task
+## Notebook 任務
 
-Run Databricks notebooks. Most common task type.
+執行 Databricks notebook。這是最常見的任務類型。
 
 ### Python SDK
 
@@ -64,31 +64,31 @@ tasks:
 }
 ```
 
-### Parameters
+### 參數
 
-| Parameter | Required | Description |
+| 參數 | 必填 | 說明 |
 |-----------|----------|-------------|
-| `notebook_path` | Yes | Absolute path to notebook |
-| `source` | No | `WORKSPACE` (default) or `GIT` |
-| `base_parameters` | No | Key-value parameters passed to notebook |
-| `warehouse_id` | No | SQL warehouse for SQL cells (optional) |
+| `notebook_path` | 是 | Notebook 的絕對路徑 |
+| `source` | 否 | `WORKSPACE`（預設）或 `GIT` |
+| `base_parameters` | 否 | 傳遞給 notebook 的鍵值參數 |
+| `warehouse_id` | 否 | SQL cell 使用的 SQL warehouse（選用） |
 
-### Access Parameters in Notebook
+### 在 Notebook 中存取參數
 
 ```python
-# Get parameter with default
+# 取得參數（使用預設值）
 env = dbutils.widgets.get("env")
 
-# Or define widget first
+# 或先定義 widget
 dbutils.widgets.text("env", "dev")
 env = dbutils.widgets.get("env")
 ```
 
 ---
 
-## Spark Python Task
+## Spark Python 任務
 
-Run Python files directly on Spark cluster.
+直接在 Spark 叢集上執行 Python 檔案。
 
 ### Python SDK
 
@@ -130,19 +130,19 @@ tasks:
 }
 ```
 
-### Parameters
+### 參數
 
-| Parameter | Required | Description |
+| 參數 | 必填 | 說明 |
 |-----------|----------|-------------|
-| `python_file` | Yes | Path to Python file (workspace, DBFS, or Unity Catalog volume) |
-| `parameters` | No | Command-line arguments passed to script |
-| `source` | No | `WORKSPACE` (default) or `GIT` |
+| `python_file` | 是 | Python 檔案路徑（workspace、DBFS 或 Unity Catalog volume） |
+| `parameters` | 否 | 傳遞給 script 的命令列引數 |
+| `source` | 否 | `WORKSPACE`（預設）或 `GIT` |
 
 ---
 
-## Python Wheel Task
+## Python Wheel 任務
 
-Run Python packages distributed as wheels.
+執行以 wheel 發佈的 Python 套件。
 
 ### Python SDK
 
@@ -177,18 +177,18 @@ tasks:
       - whl: /Volumes/catalog/schema/libs/my_package-1.0.0-py3-none-any.whl
 ```
 
-### Parameters
+### 參數
 
-| Parameter | Required | Description |
+| 參數 | 必填 | 說明 |
 |-----------|----------|-------------|
-| `package_name` | Yes | Name of the Python package |
-| `entry_point` | Yes | Entry point function or module |
-| `parameters` | No | Command-line arguments |
-| `named_parameters` | No | Named parameters as key-value pairs |
+| `package_name` | 是 | Python 套件名稱 |
+| `entry_point` | 是 | 進入點函式或模組 |
+| `parameters` | 否 | 命令列引數 |
+| `named_parameters` | 否 | 以鍵值組表示的具名參數 |
 
-### Entry Point Configuration
+### 進入點設定
 
-In your package's `setup.py` or `pyproject.toml`:
+在套件的 `setup.py` 或 `pyproject.toml` 中：
 
 ```python
 # setup.py
@@ -201,22 +201,22 @@ entry_points={
 
 ---
 
-## SQL Task
+## SQL 任務
 
-Run SQL queries, files, or refresh dashboards/alerts.
+執行 SQL 查詢、檔案，或重新整理儀表板／警示。
 
-### Run SQL Query
+### 執行 SQL 查詢
 
 ```yaml
 tasks:
   - task_key: run_query
     sql_task:
       query:
-        query_id: "abc123-def456"  # Existing query ID
+        query_id: "abc123-def456"  # 現有查詢 ID
       warehouse_id: "1234567890abcdef"
 ```
 
-### Run SQL File
+### 執行 SQL 檔案
 
 ```yaml
 tasks:
@@ -228,7 +228,7 @@ tasks:
       warehouse_id: "1234567890abcdef"
 ```
 
-### Refresh Dashboard
+### 重新整理儀表板
 
 ```yaml
 tasks:
@@ -239,7 +239,7 @@ tasks:
       warehouse_id: "1234567890abcdef"
 ```
 
-### Refresh Alert
+### 重新整理警示
 
 ```yaml
 tasks:
@@ -267,22 +267,22 @@ Task(
 )
 ```
 
-### Parameters
+### 參數
 
-| Parameter | Required | Description |
+| 參數 | 必填 | 說明 |
 |-----------|----------|-------------|
-| `warehouse_id` | Yes | SQL warehouse ID |
-| `query` | One of | Run existing query by ID |
-| `file` | One of | Run SQL file |
-| `dashboard` | One of | Refresh dashboard |
-| `alert` | One of | Refresh alert |
-| `parameters` | No | Query parameters |
+| `warehouse_id` | 是 | SQL warehouse ID |
+| `query` | 擇一 | 依 ID 執行現有查詢 |
+| `file` | 擇一 | 執行 SQL 檔案 |
+| `dashboard` | 擇一 | 重新整理儀表板 |
+| `alert` | 擇一 | 重新整理警示 |
+| `parameters` | 否 | 查詢參數 |
 
 ---
 
-## dbt Task
+## dbt 任務
 
-Run dbt projects with Databricks.
+搭配 Databricks 執行 dbt 專案。
 
 ### DABs YAML
 
@@ -318,23 +318,23 @@ Task(
 )
 ```
 
-### Parameters
+### 參數
 
-| Parameter | Required | Description |
+| 參數 | 必填 | 說明 |
 |-----------|----------|-------------|
-| `project_directory` | Yes | Path to dbt project |
-| `commands` | Yes | List of dbt commands to run |
-| `warehouse_id` | No | SQL warehouse (required if not using cluster) |
-| `catalog` | No | Unity Catalog catalog |
-| `schema` | No | Target schema |
-| `profiles_directory` | No | Path to profiles.yml directory |
-| `source` | No | `WORKSPACE` (default) or `GIT` |
+| `project_directory` | 是 | dbt 專案路徑 |
+| `commands` | 是 | 要執行的 dbt 命令清單 |
+| `warehouse_id` | 否 | SQL warehouse（未使用 cluster 時必填） |
+| `catalog` | 否 | Unity Catalog catalog |
+| `schema` | 否 | 目標 schema |
+| `profiles_directory` | 否 | profiles.yml 目錄路徑 |
+| `source` | 否 | `WORKSPACE`（預設）或 `GIT` |
 
 ---
 
-## Pipeline Task
+## Pipeline 任務
 
-Trigger DLT or Spark Declarative Pipelines.
+觸發 DLT 或 Spark Declarative Pipelines。
 
 ### DABs YAML
 
@@ -346,18 +346,18 @@ tasks:
       full_refresh: false
 ```
 
-### With Pipeline Resource Reference (DABs)
+### 搭配 Pipeline 資源參照（DABs）
 
 ```yaml
 resources:
   pipelines:
     my_pipeline:
-      name: "My Data Pipeline"
-      # ... pipeline config
+      name: "我的資料管線"
+      # ... pipeline 設定
 
   jobs:
     my_job:
-      name: "Orchestrate Pipeline"
+      name: "協調管線"
       tasks:
         - task_key: run_pipeline
           pipeline_task:
@@ -378,18 +378,18 @@ Task(
 )
 ```
 
-### Parameters
+### 參數
 
-| Parameter | Required | Description |
+| 參數 | 必填 | 說明 |
 |-----------|----------|-------------|
-| `pipeline_id` | Yes | ID of the pipeline to trigger |
-| `full_refresh` | No | Force full refresh (default: false) |
+| `pipeline_id` | 是 | 要觸發的 pipeline ID |
+| `full_refresh` | 否 | 強制完整重新整理（預設：false） |
 
 ---
 
-## Spark JAR Task
+## Spark JAR 任務
 
-Run Scala/Java JAR files on Spark.
+在 Spark 上執行 Scala/Java JAR 檔案。
 
 ### DABs YAML
 
@@ -422,18 +422,18 @@ Task(
 )
 ```
 
-### Parameters
+### 參數
 
-| Parameter | Required | Description |
+| 參數 | 必填 | 說明 |
 |-----------|----------|-------------|
-| `main_class_name` | Yes | Main class to execute |
-| `parameters` | No | Command-line arguments |
+| `main_class_name` | 是 | 要執行的主類別 |
+| `parameters` | 否 | 命令列引數 |
 
 ---
 
-## Run Job Task
+## Run Job 任務
 
-Trigger another job as a task (job chaining).
+以任務形式觸發另一個 job（job chaining）。
 
 ### DABs YAML
 
@@ -446,20 +446,20 @@ tasks:
         source_table: "catalog.schema.table"
 ```
 
-### With Job Resource Reference (DABs)
+### 搭配 Job 資源參照（DABs）
 
 ```yaml
 resources:
   jobs:
     upstream_job:
-      name: "Upstream Job"
+      name: "上游作業"
       tasks:
         - task_key: process
           notebook_task:
             notebook_path: ../src/process.py
 
     downstream_job:
-      name: "Downstream Job"
+      name: "下游作業"
       tasks:
         - task_key: trigger_upstream
           run_job_task:
@@ -480,20 +480,20 @@ Task(
 )
 ```
 
-### Parameters
+### 參數
 
-| Parameter | Required | Description |
+| 參數 | 必填 | 說明 |
 |-----------|----------|-------------|
-| `job_id` | Yes | ID of job to trigger |
-| `job_parameters` | No | Parameters to pass to triggered job |
+| `job_id` | 是 | 要觸發的 job ID |
+| `job_parameters` | 否 | 傳遞給被觸發 job 的參數 |
 
 ---
 
-## For Each Task
+## For Each 任務
 
-Loop over a collection and run a nested task for each item.
+逐一遍歷集合，並為每個項目執行巢狀任務。
 
-### DABs YAML - Static Inputs
+### DABs YAML - 靜態輸入
 
 ```yaml
 tasks:
@@ -508,7 +508,7 @@ tasks:
             region: "{{input}}"
 ```
 
-### DABs YAML - Dynamic Inputs from Previous Task
+### DABs YAML - 來自前一個任務的動態輸入
 
 ```yaml
 tasks:
@@ -529,15 +529,15 @@ tasks:
             country: "{{input}}"
 ```
 
-### Generate Dynamic Inputs
+### 產生動態輸入
 
-In the generating notebook, return values using task values:
+在產生資料的 notebook 中，使用 task values 回傳值：
 
 ```python
 # generate_countries.py notebook
 countries = ["USA", "UK", "Germany", "France"]
 
-# Set task value for downstream for_each_task
+# 為下游 for_each_task 設定 task value
 dbutils.jobs.taskValues.set(key="countries", value=countries)
 ```
 
@@ -561,25 +561,25 @@ Task(
 )
 ```
 
-### Parameters
+### 參數
 
-| Parameter | Required | Description |
+| 參數 | 必填 | 說明 |
 |-----------|----------|-------------|
-| `inputs` | Yes | JSON array string or task value reference |
-| `task` | Yes | Nested task to run for each input |
-| `concurrency` | No | Max parallel iterations (default: 20) |
+| `inputs` | 是 | JSON 陣列字串或 task value 參照 |
+| `task` | 是 | 每個輸入都要執行的巢狀任務 |
+| `concurrency` | 否 | 最大平行迭代數（預設：20） |
 
-### Access Current Item
+### 存取目前項目
 
-Inside the nested task, access the current item:
-- In parameters: `{{input}}`
-- In notebook: Use the parameter passed via `base_parameters`
+在巢狀任務內，可存取目前項目：
+- 在參數中：`{{input}}`
+- 在 notebook 中：使用透過 `base_parameters` 傳入的參數
 
 ---
 
-## Task Libraries
+## 任務程式庫
 
-Add libraries to tasks for dependencies.
+為任務新增程式庫以提供依賴。
 
 ### DABs YAML
 
@@ -599,26 +599,25 @@ tasks:
           coordinates: "org.apache.spark:spark-avro_2.12:3.5.0"
 ```
 
-### Library Types
+### 程式庫類型
 
-| Type | Format | Example |
+| 類型 | 格式 | 範例 |
 |------|--------|---------|
 | PyPI | `pypi.package` | `pandas==2.0.0` |
-| Wheel | `whl` | Path to .whl file |
-| JAR | `jar` | Path to .jar file |
+| Wheel | `whl` | `.whl` 檔案路徑 |
+| JAR | `jar` | `.jar` 檔案路徑 |
 | Maven | `maven.coordinates` | `group:artifact:version` |
-| Egg | `egg` | Path to .egg file |
+| Egg | `egg` | `.egg` 檔案路徑 |
 
 ---
 
-## Environments
+## 環境
 
-Define reusable Python environments for serverless tasks with custom pip dependencies.
+為 serverless 任務定義可重複使用的 Python 環境，並可加入自訂 pip 依賴套件。
 
-> **IMPORTANT:** The `client` field is **required** in the environment `spec`. It specifies the
-> base serverless environment version. Use `"4"` as the value. Without it, the API returns:
-> `"Either base environment or version must be provided for environment"`.
-> The MCP `manage_jobs` tool (action="create") auto-injects `client: "4"` if omitted, but CLI/SDK calls require it explicitly.
+> **重要：** environment `spec` 中的 `client` 欄位為 **必填**。它用來指定基底 serverless 環境版本。請使用 `"4"` 作為值。若缺少此欄位，API 會回傳：
+> `"必須為 environment 提供 base environment 或 version"`。
+> MCP `manage_jobs` 工具（action="create"）在省略時會自動注入 `client: "4"`，但 CLI/SDK 呼叫必須明確提供。
 
 ### DABs YAML
 
@@ -672,10 +671,10 @@ environments = [
 ]
 ```
 
-### Parameters
+### 參數
 
-| Parameter | Required | Description |
+| 參數 | 必填 | 說明 |
 |-----------|----------|-------------|
-| `environment_key` | Yes | Unique identifier referenced by tasks via `environment_key` |
-| `spec.client` | Yes | Base serverless environment version (use `"4"`) |
-| `spec.dependencies` | No | List of pip packages (e.g., `["pandas==2.0.0", "dbldatagen"]`) |
+| `environment_key` | 是 | 任務透過 `environment_key` 參照的唯一識別碼 |
+| `spec.client` | 是 | 基底 serverless 環境版本（使用 `"4"`） |
+| `spec.dependencies` | 否 | pip 套件清單（例如 `["pandas==2.0.0", "dbldatagen"]`） |

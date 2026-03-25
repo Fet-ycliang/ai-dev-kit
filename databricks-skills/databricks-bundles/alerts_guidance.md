@@ -1,70 +1,70 @@
-# SQL Alerts Resources for Databricks Asset Bundles
+# Databricks Asset Bundles 的 SQL Alert 資源
 
-## Critical: Schema Validation First
+## 重要：先進行 Schema 驗證
 
-**ALWAYS start by inspecting the schema:**
+**務必先從檢查 schema 開始：**
 ```bash
 databricks bundle schema | grep -A 100 'sql.AlertV2'
 ```
 
-The Alert v2 API schema differs significantly from other resources. Don't assume field names.
+Alert v2 API 的 schema 與其他資源有顯著差異。不要自行假設欄位名稱。
 
-## Common Schema Mistakes to Avoid
+## 應避免的常見 Schema 錯誤
 
-### ❌ WRONG - These fields don't exist:
+### ❌ 錯誤 - 這些欄位不存在：
 ```yaml
-condition:                    # Should be "evaluation"
+condition:                    # 應為 "evaluation"
   op: LESS_THAN
   operand:
-    column:                   # Wrong nesting
+    column:                   # 巢狀層級錯誤
       name: "r"
 
 schedule:
-  cron_schedule:              # Should be direct fields under schedule
+  cron_schedule:              # 應直接放在 schedule 底下
     quartz_cron_expression: "..."
 
-subscriptions:                # Should be under evaluation.notification
+subscriptions:                # 應放在 evaluation.notification 底下
   - destination_type: "EMAIL"
 ```
 
-### ✅ CORRECT - Alerts v2 API structure:
+### ✅ 正確 - Alerts v2 API 結構：
 ```yaml
-evaluation:                   # Not "condition"
+evaluation:                   # 不是 "condition"
   comparison_operator: 'LESS_THAN_OR_EQUAL'
-  source:                     # Not nested under "operand.column"
+  source:                     # 不要巢狀放在 "operand.column" 底下
     name: 'column_name'
     display: 'column_name'
   threshold:
     value:
       double_value: 100
-  notification:               # Subscriptions nested here
+  notification:               # Subscriptions 需巢狀放在這裡
     notify_on_ok: false
     subscriptions:
       - user_email: "${workspace.current_user.userName}"
 
-schedule:                     # Fields directly under schedule
-  pause_status: 'UNPAUSED'    # REQUIRED
-  quartz_cron_schedule: '0 38 16 * * ?'  # REQUIRED
-  timezone_id: 'America/Los_Angeles'     # REQUIRED
+schedule:                     # 欄位直接位於 schedule 底下
+  pause_status: 'UNPAUSED'    # 必填
+  quartz_cron_schedule: '0 38 16 * * ?'  # 必填
+  timezone_id: 'America/Los_Angeles'     # 必填
 ```
 
-## Alert Trigger Logic
+## Alert 觸發邏輯
 
-**Critical:** Alerts trigger when condition evaluates to **TRUE**, not FALSE.
+**重要：** Alert 會在條件評估結果為 **TRUE** 時觸發，而不是 FALSE。
 
-**Wrong approach:** Using `GREATER_THAN` and expecting alert when condition is false
-**Correct approach:** Use the operator that directly matches your intent
+**錯誤做法：** 使用 `GREATER_THAN` 並期待在條件為 false 時觸發 Alert
+**正確做法：** 使用能直接表達你意圖的 operator
 
-### Example: Alert when count is NOT > 100 (i.e., ≤ 100)
+### 範例：當 count 不是 > 100（也就是 ≤ 100）時觸發 Alert
 ```yaml
-# ❌ WRONG - This triggers when count IS > 100
+# ❌ 錯誤 - 這會在 count 確實 > 100 時觸發
 comparison_operator: 'GREATER_THAN'
 
-# ✅ CORRECT - This triggers when count IS <= 100
+# ✅ 正確 - 這會在 count 確實 <= 100 時觸發
 comparison_operator: 'LESS_THAN_OR_EQUAL'
 ```
 
-## Email Notifications
+## Email 通知
 
 ```yaml
 evaluation:
@@ -75,23 +75,23 @@ evaluation:
 
 ## Quartz Cron
 
-Format: `second minute hour day-of-month month day-of-week` (use `?` for day-of-week with `*` day-of-month)
+格式：`second minute hour day-of-month month day-of-week`（當 day-of-month 使用 `*` 時，day-of-week 請使用 `?`）
 
-Examples: `'0 0 9 * * ?'` (9 AM daily), `'0 */30 * * * ?'` (every 30 min)
+範例：`'0 0 9 * * ?'`（每天上午 9 點）、`'0 */30 * * * ?'`（每 30 分鐘）
 
-## Required Fields
+## 必填欄位
 
 ```yaml
 resources:
   alerts:
     alert_name:
-      display_name: "[${bundle.target}] Alert Name"     # REQUIRED
-      query_text: "SELECT count(*) c FROM table"        # REQUIRED
-      warehouse_id: ${var.warehouse_id}                 # REQUIRED
+      display_name: "[${bundle.target}] Alert Name"     # 必填
+      query_text: "SELECT count(*) c FROM table"        # 必填
+      warehouse_id: ${var.warehouse_id}                 # 必填
 
-      evaluation:                                        # REQUIRED
-        comparison_operator: 'LESS_THAN'                # REQUIRED
-        source:                                          # REQUIRED
+      evaluation:                                        # 必填
+        comparison_operator: 'LESS_THAN'                # 必填
+        source:                                          # 必填
           name: 'c'
           display: 'c'
         threshold:
@@ -102,20 +102,20 @@ resources:
           subscriptions:
             - user_email: "${workspace.current_user.userName}"
 
-      schedule:                                          # REQUIRED
-        pause_status: 'UNPAUSED'                        # REQUIRED
-        quartz_cron_schedule: '0 0 9 * * ?'            # REQUIRED
-        timezone_id: 'America/Los_Angeles'             # REQUIRED
+      schedule:                                          # 必填
+        pause_status: 'UNPAUSED'                        # 必填
+        quartz_cron_schedule: '0 0 9 * * ?'            # 必填
+        timezone_id: 'America/Los_Angeles'             # 必填
 
       permissions:
         - level: CAN_RUN
           group_name: "users"
 ```
 
-## Comparison Operators
+## 比較運算子
 
 `EQUAL`, `NOT_EQUAL`, `GREATER_THAN`, `GREATER_THAN_OR_EQUAL`, `LESS_THAN`, `LESS_THAN_OR_EQUAL`
 
-## Permission Levels
+## 權限層級
 
-`CAN_READ`, `CAN_RUN` (recommended), `CAN_EDIT`, `CAN_MANAGE`
+`CAN_READ`, `CAN_RUN`（建議）, `CAN_EDIT`, `CAN_MANAGE`

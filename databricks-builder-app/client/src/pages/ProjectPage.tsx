@@ -37,7 +37,7 @@ import {
 import type { Cluster, Conversation, Message, Project, Warehouse, TodoItem } from '@/lib/types';
 import { cn } from '@/lib/utils';
 
-// Combined activity item for display
+// 用於顯示的整合活動項目
 interface ActivityItem {
   id: string;
   type: 'thinking' | 'tool_use' | 'tool_result';
@@ -48,7 +48,7 @@ interface ActivityItem {
   timestamp: number;
 }
 
-// Databricks logo mark SVG
+// Databricks 標誌 SVG
 function DatabricksLogo({ className }: { className?: string }) {
   return (
     <svg viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg" className={className}>
@@ -59,13 +59,13 @@ function DatabricksLogo({ className }: { className?: string }) {
   );
 }
 
-// Expandable tools list for a message
+// 訊息可展開的 tools 清單
 function ToolsUsedBadge({ tools }: { tools: string[] }) {
   const [expanded, setExpanded] = useState(false);
 
   if (tools.length === 0) return null;
 
-  // Deduplicate and clean tool names
+  // 去除重複並整理 tool 名稱
   const uniqueTools = [...new Set(tools.map(t => t.replace('mcp__databricks__', '').replace(/_/g, ' ')))];
 
   return (
@@ -75,7 +75,7 @@ function ToolsUsedBadge({ tools }: { tools: string[] }) {
         className="inline-flex items-center gap-1.5 text-[11px] text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)] transition-colors"
       >
         <Wrench className="h-3 w-3" />
-        <span>{uniqueTools.length} tool{uniqueTools.length !== 1 ? 's' : ''} used</span>
+        <span>{uniqueTools.length} 個工具已使用</span>
         <ChevronDown className={cn('h-3 w-3 transition-transform', expanded && 'rotate-180')} />
       </button>
       {expanded && (
@@ -95,7 +95,7 @@ function ToolsUsedBadge({ tools }: { tools: string[] }) {
   );
 }
 
-// Copy button for code blocks
+// 程式碼區塊的複製按鈕
 function CopyButton({ text }: { text: string }) {
   const [copied, setCopied] = useState(false);
   return (
@@ -106,14 +106,14 @@ function CopyButton({ text }: { text: string }) {
         setTimeout(() => setCopied(false), 2000);
       }}
       className="absolute top-2 right-2 p-1.5 rounded-md bg-[var(--color-bg-secondary)]/80 border border-[var(--color-border)]/50 text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)] hover:bg-[var(--color-bg-secondary)] opacity-0 group-hover/code:opacity-100 transition-all"
-      title={copied ? 'Copied!' : 'Copy code'}
+      title={copied ? '已複製！' : '複製程式碼'}
     >
       {copied ? <Check className="h-3.5 w-3.5 text-[var(--color-success)]" /> : <ClipboardCopy className="h-3.5 w-3.5" />}
     </button>
   );
 }
 
-// Activity indicator - shows current tool with animated dots
+// 活動指示器 - 以動畫圓點顯示目前 tool
 function ActivitySection({
   items,
 }: {
@@ -125,7 +125,7 @@ function ActivitySection({
   const currentTool = [...items].reverse().find((item) => item.type === 'tool_use');
   if (!currentTool) return null;
 
-  const toolName = currentTool.toolName?.replace('mcp__databricks__', '').replace(/_/g, ' ') || 'working';
+  const toolName = currentTool.toolName?.replace('mcp__databricks__', '').replace(/_/g, ' ') || '處理中';
 
   return (
     <div className="flex items-start gap-3 max-w-3xl">
@@ -147,7 +147,7 @@ function ActivitySection({
   );
 }
 
-// Custom dropdown for cluster/warehouse selection with status indicators
+// 帶狀態指示的 cluster／warehouse 自訂下拉選單
 function ResourceDropdown<T extends { state: string }>({
   label,
   items,
@@ -191,7 +191,7 @@ function ResourceDropdown<T extends { state: string }>({
             )} />
           )}
           <span className={cn('truncate', selected ? 'text-[var(--color-text-primary)]' : 'text-[var(--color-text-muted)]')}>
-            {selectedName || `Select ${label.toLowerCase()}...`}
+            {selectedName || `選擇 ${label}...`}
           </span>
         </div>
         <ChevronDown className={cn('h-4 w-4 text-[var(--color-text-muted)] transition-transform flex-shrink-0', open && 'rotate-180')} />
@@ -230,7 +230,7 @@ function ResourceDropdown<T extends { state: string }>({
   );
 }
 
-// Configuration panel component
+// 設定面板元件
 function ConfigPanel({
   isOpen,
   onClose,
@@ -273,15 +273,15 @@ function ConfigPanel({
   return (
     <div className="absolute right-0 top-full mt-2 w-96 rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg-elevated)] shadow-2xl z-50 overflow-hidden">
       <div className="flex items-center justify-between px-5 py-3.5 border-b border-[var(--color-border)]/50 bg-[var(--color-bg-secondary)]/30">
-        <h3 className="text-sm font-semibold text-[var(--color-text-heading)]">Configuration</h3>
+        <h3 className="text-sm font-semibold text-[var(--color-text-heading)]">設定</h3>
         <button onClick={onClose} className="p-1 rounded-md hover:bg-[var(--color-bg-secondary)] transition-colors">
           <X className="h-4 w-4 text-[var(--color-text-muted)]" />
         </button>
       </div>
       <div className="p-5 space-y-5">
-        {/* Catalog & Schema - stacked for more room */}
+        {/* Catalog 與 Schema - 堆疊顯示以保留更多空間 */}
         <div>
-          <label className="text-xs font-medium text-[var(--color-text-muted)] uppercase tracking-wider">Catalog / Schema</label>
+          <label className="text-xs font-medium text-[var(--color-text-muted)] uppercase tracking-wider">Catalog／Schema</label>
           <div className="mt-1.5 flex items-center gap-0 rounded-lg border border-[var(--color-border)] bg-[var(--color-background)] overflow-hidden focus-within:ring-2 focus-within:ring-[var(--color-accent-primary)]/30 focus-within:border-[var(--color-accent-primary)]/50">
             <input
               type="text"
@@ -304,7 +304,7 @@ function ConfigPanel({
                 target="_blank"
                 rel="noopener noreferrer"
                 className="flex items-center justify-center h-10 w-10 flex-shrink-0 border-l border-[var(--color-border)] text-[var(--color-text-muted)] hover:text-[var(--color-accent-primary)] hover:bg-[var(--color-bg-secondary)]/50 transition-colors"
-                title="Open in Catalog Explorer"
+                title="在 Catalog Explorer 中開啟"
               >
                 <ExternalLink className="h-3.5 w-3.5" />
               </a>
@@ -312,7 +312,7 @@ function ConfigPanel({
           </div>
         </div>
 
-        {/* Cluster - custom dropdown */}
+        {/* Cluster - 自訂下拉選單 */}
         {clusters.length > 0 && (
           <ResourceDropdown
             label="Cluster"
@@ -324,7 +324,7 @@ function ConfigPanel({
           />
         )}
 
-        {/* Warehouse - custom dropdown */}
+        {/* Warehouse - 自訂下拉選單 */}
         {warehouses.length > 0 && (
           <ResourceDropdown
             label="SQL Warehouse"
@@ -336,9 +336,9 @@ function ConfigPanel({
           />
         )}
 
-        {/* Workspace Folder */}
+        {/* Workspace Folder 設定 */}
         <div>
-          <label className="text-xs font-medium text-[var(--color-text-muted)] uppercase tracking-wider">Workspace Folder</label>
+          <label className="text-xs font-medium text-[var(--color-text-muted)] uppercase tracking-wider">工作區資料夾</label>
           <input
             type="text"
             value={workspaceFolder}
@@ -348,14 +348,14 @@ function ConfigPanel({
           />
         </div>
 
-        {/* MLflow Experiment */}
+        {/* MLflow Experiment 設定 */}
         <div>
-          <label className="text-xs font-medium text-[var(--color-text-muted)] uppercase tracking-wider">MLflow Experiment</label>
+          <label className="text-xs font-medium text-[var(--color-text-muted)] uppercase tracking-wider">MLflow 實驗</label>
           <input
             type="text"
             value={mlflowExperimentName}
             onChange={(e) => setMlflowExperimentName(e.target.value)}
-            placeholder="Experiment ID or name"
+            placeholder="實驗 ID 或名稱"
             className="mt-1.5 w-full h-10 px-3 rounded-lg border border-[var(--color-border)] bg-[var(--color-background)] text-sm text-[var(--color-text-primary)] placeholder:text-[var(--color-text-muted)]/50 focus:outline-none focus:ring-2 focus:ring-[var(--color-accent-primary)]/30 focus:border-[var(--color-accent-primary)]/50"
           />
         </div>
@@ -364,12 +364,12 @@ function ConfigPanel({
   );
 }
 
-// Sanitize string for schema name: only a-z, 0-9, _ allowed
+// 清理 schema 名稱字串：僅允許 a-z、0-9、_
 function sanitizeForSchema(str: string): string {
   return str.replace(/[^a-zA-Z0-9]/g, '_').toLowerCase();
 }
 
-// Convert email + project name to schema name: quentin.ambard@databricks.com + "My Project" -> quentin_ambard_my_project
+// 將 email 與專案名稱轉為 schema 名稱：quentin.ambard@databricks.com + "My Project" -> quentin_ambard_my_project
 function toSchemaName(email: string | null, projectName: string | null): string {
   if (!email) return '';
   const localPart = email.split('@')[0];
@@ -384,7 +384,7 @@ export default function ProjectPage() {
   const navigate = useNavigate();
   const { user, workspaceUrl } = useUser();
 
-  // State
+  // 狀態
   const [project, setProject] = useState<Project | null>(null);
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [currentConversation, setCurrentConversation] = useState<Conversation | null>(null);
@@ -408,15 +408,15 @@ export default function ProjectPage() {
   const [isReconnecting, setIsReconnecting] = useState(false);
   const [messageTools, setMessageTools] = useState<Record<string, string[]>>({});
 
-  // Calculate default schema from user email + project name once available
+  // 可用時，根據使用者 email 與專案名稱計算預設 schema
   const userDefaultSchema = useMemo(() => toSchemaName(user, project?.name ?? null), [user, project?.name]);
 
-  // Refs
+  // 參考物件
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const reconnectAttemptedRef = useRef<string | null>(null);
   const currentConvIdRef = useRef<string | undefined>(undefined);
-  // Per-conversation streaming data (supports concurrent streams)
+  // 各對話的串流資料（支援並行串流）
   const allStreamsRef = useRef<Record<string, {
     fullText: string;
     activityItems: ActivityItem[];
@@ -428,10 +428,10 @@ export default function ProjectPage() {
     pendingMessages: Message[]; // messages not yet saved to DB (user msg + partial assistant)
   }>>({});
 
-  // Keep currentConvIdRef in sync with state
+  // 讓 currentConvIdRef 與 state 保持同步
   useEffect(() => { currentConvIdRef.current = currentConversation?.id; }, [currentConversation?.id]);
 
-  // Load project and conversations
+  // 載入專案與對話
   useEffect(() => {
     if (!projectId) return;
 
@@ -449,36 +449,36 @@ export default function ProjectPage() {
         setClusters(clustersData);
         setWarehouses(warehousesData);
 
-        // Load first conversation if available
+        // 若有資料則載入第一個對話
         if (conversationsData.length > 0) {
           const conv = await fetchConversation(projectId, conversationsData[0].id);
           setCurrentConversation(conv);
           setMessages(conv.messages || []);
-          // Restore cluster selection from conversation, or default to first cluster
+          // 還原對話中的 cluster 選擇，否則預設為第一個
           if (conv.cluster_id) {
             setSelectedClusterId(conv.cluster_id);
           } else if (clustersData.length > 0) {
             setSelectedClusterId(clustersData[0].cluster_id);
           }
-          // Restore warehouse selection from conversation, or default to first warehouse
+          // 還原對話中的 warehouse 選擇，否則預設為第一個
           if (conv.warehouse_id) {
             setSelectedWarehouseId(conv.warehouse_id);
           } else if (warehousesData.length > 0) {
             setSelectedWarehouseId(warehousesData[0].warehouse_id);
           }
-          // Restore catalog/schema from conversation
+          // 還原對話中的 catalog/schema
           if (conv.default_catalog) {
             setDefaultCatalog(conv.default_catalog);
           }
           if (conv.default_schema) {
             setDefaultSchema(conv.default_schema);
           }
-          // Restore workspace folder from conversation
+          // 還原對話中的 workspace folder 設定
           if (conv.workspace_folder) {
             setWorkspaceFolder(conv.workspace_folder);
           }
         } else {
-          // No conversation yet, but still select first cluster/warehouse
+          // 尚無對話時，仍選取第一個 cluster/warehouse
           if (clustersData.length > 0) {
             setSelectedClusterId(clustersData[0].cluster_id);
           }
@@ -487,8 +487,8 @@ export default function ProjectPage() {
           }
         }
       } catch (error) {
-        console.error('Failed to load project:', error);
-        toast.error('Failed to load project');
+      console.error('載入專案失敗:', error);
+        toast.error('載入專案失敗');
         navigate('/');
       } finally {
         setIsLoading(false);
@@ -498,11 +498,11 @@ export default function ProjectPage() {
     loadData();
   }, [projectId, navigate]);
 
-  // Check for active execution when conversation loads and reconnect if needed
+  // 載入對話時檢查是否有進行中的執行，必要時重新連線
   useEffect(() => {
     if (!projectId || !currentConversation?.id || isLoading || allStreamsRef.current[currentConversation.id]) return;
 
-    // Skip if we've already checked this conversation
+    // 若已檢查過此對話則略過
     if (reconnectAttemptedRef.current === currentConversation.id) return;
     reconnectAttemptedRef.current = currentConversation.id;
 
@@ -589,8 +589,8 @@ export default function ProjectPage() {
               }
             },
             onError: (error) => {
-              console.error('Reconnect error:', error);
-              toast.error('Failed to reconnect to execution');
+              console.error('重新連線錯誤:', error);
+              toast.error('重新連線至執行階段失敗');
             },
             onDone: async () => {
               delete allStreamsRef.current[reconConvId];
@@ -611,20 +611,20 @@ export default function ProjectPage() {
           });
         }
       } catch (error) {
-        console.error('Failed to check for active executions:', error);
-        // Don't show error toast - this is a background check
+        console.error('檢查進行中執行失敗:', error);
+        // 不顯示錯誤 toast - 這是背景檢查
       }
     };
 
     checkAndReconnect();
   }, [projectId, currentConversation?.id, isLoading]);
 
-  // Scroll to bottom when messages change
+  // 訊息變更時捲動到底部
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, streamingText, activityItems]);
 
-  // Set default schema from user email once when first available
+  // 使用者 email 首次可用時設定預設 schema
   const schemaDefaultApplied = useRef(false);
   useEffect(() => {
     if (userDefaultSchema && !schemaDefaultApplied.current && !defaultSchema) {
@@ -633,7 +633,7 @@ export default function ProjectPage() {
     }
   }, [userDefaultSchema]);
 
-  // Set default workspace folder from user email and project name once when first available
+  // 使用者 email 與專案名稱首次可用時設定預設 workspace folder
   const folderDefaultApplied = useRef(false);
   useEffect(() => {
     if (user && project?.name && !folderDefaultApplied.current && !workspaceFolder) {
@@ -643,23 +643,23 @@ export default function ProjectPage() {
     }
   }, [user, project?.name]);
 
-  // Select a conversation
+  // 選取對話
   const handleSelectConversation = async (conversationId: string) => {
     if (!projectId || currentConversation?.id === conversationId) return;
 
-    // Update ref immediately so stream callbacks target the right conversation
+    // 立即更新 ref，讓串流回呼能指向正確對話
     currentConvIdRef.current = conversationId;
-    // Reset reconnect tracking for the new conversation
+    // 重設新對話的重新連線追蹤
     reconnectAttemptedRef.current = null;
 
     try {
       const conv = await fetchConversation(projectId, conversationId);
       setCurrentConversation(conv);
 
-      // Sync streaming UI state for the new conversation
+      // 同步新對話的串流 UI 狀態
       const stream = allStreamsRef.current[conversationId];
       if (stream) {
-        // Merge API messages with pending messages not yet saved to DB
+        // 將 API 訊息與尚未寫入 DB 的暫存訊息合併
         const apiMessages = conv.messages || [];
         const pending = stream.pendingMessages || [];
         const apiIds = new Set(apiMessages.map(m => m.content + m.role));
@@ -678,33 +678,33 @@ export default function ProjectPage() {
         setActiveExecutionId(null);
         setIsReconnecting(false);
       }
-      // Restore cluster selection from conversation, or default to first cluster
+      // 還原對話中的 cluster 選擇，否則預設為第一個
       setSelectedClusterId(conv.cluster_id || (clusters.length > 0 ? clusters[0].cluster_id : undefined));
-      // Restore warehouse selection from conversation, or default to first warehouse
+      // 還原對話中的 warehouse 選擇，否則預設為第一個
       setSelectedWarehouseId(conv.warehouse_id || (warehouses.length > 0 ? warehouses[0].warehouse_id : undefined));
-      // Restore catalog/schema from conversation, or use defaults
+      // 還原對話中的 catalog/schema，否則使用預設值
       setDefaultCatalog(conv.default_catalog || 'ai_dev_kit');
       setDefaultSchema(conv.default_schema || userDefaultSchema);
-      // Restore workspace folder from conversation, or use default
+      // 還原對話中的 workspace folder，否則使用預設值
       const projectFolder = project?.name ? sanitizeForSchema(project.name) : projectId;
       setWorkspaceFolder(conv.workspace_folder || (user ? `/Workspace/Users/${user}/ai_dev_kit/${projectFolder}` : ''));
     } catch (error) {
-      console.error('Failed to load conversation:', error);
-      toast.error('Failed to load conversation');
+      console.error('載入對話失敗:', error);
+      toast.error('載入對話失敗');
     }
   };
 
-  // Create new conversation
+  // 建立新對話
   const handleNewConversation = async () => {
     if (!projectId) return;
 
     try {
       const conv = await createConversation(projectId);
-      currentConvIdRef.current = conv.id; // Update ref immediately
+      currentConvIdRef.current = conv.id; // 立即更新 ref
       setConversations((prev) => [conv, ...prev]);
       setCurrentConversation(conv);
       setMessages([]);
-      // Clear streaming UI (new conv isn't streaming yet)
+      // 清除串流 UI（新對話尚未開始串流）
       setStreamingText('');
       setActivityItems([]);
       setTodos([]);
@@ -712,12 +712,12 @@ export default function ProjectPage() {
       setIsReconnecting(false);
       inputRef.current?.focus();
     } catch (error) {
-      console.error('Failed to create conversation:', error);
-      toast.error('Failed to create conversation');
+      console.error('建立對話失敗:', error);
+      toast.error('建立對話失敗');
     }
   };
 
-  // Delete conversation
+  // 刪除對話
   const handleDeleteConversation = async (conversationId: string) => {
     if (!projectId) return;
 
@@ -725,7 +725,7 @@ export default function ProjectPage() {
       await deleteConversation(projectId, conversationId);
       setConversations((prev) => prev.filter((c) => c.id !== conversationId));
 
-      // Clean up any active stream for this conversation
+      // 清理此對話的任何進行中串流
       const stream = allStreamsRef.current[conversationId];
       if (stream) {
         stream.abortController?.abort();
@@ -748,18 +748,18 @@ export default function ProjectPage() {
         setTodos([]);
         setActiveExecutionId(null);
       }
-      toast.success('Conversation deleted');
+      toast.success('對話已刪除');
     } catch (error) {
-      console.error('Failed to delete conversation:', error);
-      toast.error('Failed to delete conversation');
+      console.error('刪除對話失敗:', error);
+      toast.error('刪除對話失敗');
     }
   };
 
-  // Send message
+  // 傳送訊息
   const handleSendMessage = useCallback(async () => {
     if (!projectId || !input.trim()) return;
     const convId = currentConversation?.id;
-    // Block only if THIS conversation is already streaming
+    // 僅在此對話已經串流中時阻擋
     if (convId && allStreamsRef.current[convId]) return;
 
     const userMessage = input.trim();
@@ -768,7 +768,7 @@ export default function ProjectPage() {
     setActivityItems([]);
     setTodos([]);
 
-    // Add user message to UI immediately
+    // 立即將使用者訊息加入 UI
     const tempUserMessage: Message = {
       id: `temp-${Date.now()}`,
       conversation_id: convId || '',
@@ -779,7 +779,7 @@ export default function ProjectPage() {
     };
     setMessages((prev) => [...prev, tempUserMessage]);
 
-    // Create abort controller and initialize stream tracking
+    // 建立 abort controller 並初始化串流追蹤
     const abortController = new AbortController();
     const effectiveConvId = convId || '';
     let streamKey = effectiveConvId;
@@ -822,7 +822,7 @@ export default function ProjectPage() {
 
           if (type === 'conversation.created') {
             const newConvId = event.conversation_id as string;
-            // Move stream entry from old key to new key
+            // 將串流項目從舊 key 移至新 key
             const oldStream = allStreamsRef.current[streamKey];
             delete allStreamsRef.current[streamKey];
             const oldKey = streamKey;
@@ -833,13 +833,13 @@ export default function ProjectPage() {
               pendingMessages: [],
             };
             conversationId = newConvId;
-            // Update streamingConvIds from old key to new key
+            // 將 streamingConvIds 從舊 key 更新為新 key
             setStreamingConvIds(prev => prev.filter(id => id !== oldKey).concat(newConvId));
-            // Set currentConversation immediately so UI stays consistent
+            // 立即設定 currentConversation，讓 UI 保持一致
             setCurrentConversation((prev) => prev ?? {
               id: newConvId,
               project_id: projectId,
-              title: 'New Chat',
+              title: '新對話',
               created_at: new Date().toISOString(),
               conversation_count: 0,
             } as unknown as Conversation);
@@ -909,7 +909,7 @@ export default function ProjectPage() {
                 content = errorMatch[1].trim();
               }
               if (content === 'Stream closed' || content.includes('Stream closed')) {
-                content = 'Tool execution interrupted: The operation took too long or the connection was lost. This may happen when operations exceed the 50-second timeout window. Check backend logs for details.';
+                content = '工具執行中斷：操作耗時過長或連線中斷。若操作超過 50 秒的逾時限制可能發生此情況，請查看後端日誌以取得詳細資訊。';
               }
             }
 
@@ -925,11 +925,11 @@ export default function ProjectPage() {
           } else if (type === 'error') {
             let errorMsg = event.error as string;
             if (errorMsg === 'Stream closed' || errorMsg.includes('Stream closed')) {
-              errorMsg = 'Execution interrupted: The operation took too long or the connection was lost. Operations exceeding 50 seconds may be interrupted. Check backend logs for details.';
+              errorMsg = '執行中斷：操作耗時過長或連線中斷。超過 50 秒的操作可能被中斷，請查看後端日誌以取得詳細資訊。';
             }
             toast.error(errorMsg, { duration: 8000 });
           } else if (type === 'cancelled') {
-            toast.info('Generation stopped');
+            toast.info('已停止生成');
           } else if (type === 'todos') {
             const todoItems = event.todos as TodoItem[];
             if (todoItems) {
@@ -939,8 +939,8 @@ export default function ProjectPage() {
           }
         },
         onError: (error) => {
-          console.error('Stream error:', error);
-          const errorMessage = error.message || 'Failed to get response';
+          console.error('串流錯誤:', error);
+          const errorMessage = error.message || '取得回應失敗';
           toast.error(errorMessage, { duration: 8000 });
         },
         onDone: async () => {
@@ -958,7 +958,7 @@ export default function ProjectPage() {
               timestamp: new Date().toISOString(),
               is_error: false,
             };
-            // Only update messages if user is viewing this conversation
+            // 僅在使用者正在檢視此對話時更新訊息
             if (currentConvIdRef.current === finalStreamKey) {
               setMessages((prev) => [...prev, assistantMessage]);
             }
@@ -967,7 +967,7 @@ export default function ProjectPage() {
             }
           }
 
-          // Clean up stream
+          // 清理串流
           delete allStreamsRef.current[finalStreamKey];
           setStreamingConvIds(prev => prev.filter(id => id !== finalStreamKey));
 
@@ -978,7 +978,7 @@ export default function ProjectPage() {
             setTodos([]);
           }
 
-          // Fetch full conversation to get updated title and messages
+          // 取得完整對話以拿到更新後的標題與訊息
           if (conversationId) {
             const conv = await fetchConversation(projectId, conversationId);
             if (currentConvIdRef.current === finalStreamKey) {
@@ -990,10 +990,10 @@ export default function ProjectPage() {
       });
     } catch (error) {
       if (error instanceof Error && error.name === 'AbortError') return;
-      console.error('Failed to send message:', error);
-      const errorMessage = error instanceof Error ? error.message : 'Failed to send message';
+      console.error('傳送訊息失敗:', error);
+      const errorMessage = error instanceof Error ? error.message : '傳送訊息失敗';
       toast.error(errorMessage, { duration: 8000 });
-      // Clean up stream on error
+      // 發生錯誤時清理串流
       delete allStreamsRef.current[streamKey];
       setStreamingConvIds(prev => prev.filter(id => id !== streamKey));
       if (currentConvIdRef.current === streamKey) {
@@ -1005,7 +1005,7 @@ export default function ProjectPage() {
     }
   }, [projectId, input, currentConversation?.id, selectedClusterId, defaultCatalog, defaultSchema, selectedWarehouseId, workspaceFolder, mlflowExperimentName]);
 
-  // Stop generation - abort client stream AND tell backend to cancel
+  // 停止生成 - 中止客戶端串流並通知後端取消
   const handleStopGeneration = useCallback(async () => {
     const targetId = currentConversation?.id;
     if (!targetId) return;
@@ -1013,19 +1013,19 @@ export default function ProjectPage() {
     const stream = allStreamsRef.current[targetId];
     if (!stream) return;
 
-    // Abort the fetch
+    // 中止 fetch
     stream.abortController?.abort();
 
-    // Tell the backend to cancel the agent execution
+    // 通知後端取消 agent 執行
     if (stream.executionId) {
       try {
         await stopExecution(stream.executionId);
       } catch (error) {
-        console.error('Failed to stop execution on backend:', error);
+        console.error('在後端停止執行失敗:', error);
       }
     }
 
-    // Save partial response
+    // 儲存部分回應
     if (stream.fullText) {
       const msgId = `msg-stopped-${Date.now()}`;
       setMessages((prev) => [
@@ -1044,7 +1044,7 @@ export default function ProjectPage() {
       }
     }
 
-    // Clean up stream
+    // 清理串流
     delete allStreamsRef.current[targetId];
     setStreamingConvIds(prev => prev.filter(id => id !== targetId));
     setStreamingText('');
@@ -1053,7 +1053,7 @@ export default function ProjectPage() {
     setTodos([]);
   }, [currentConversation?.id]);
 
-  // Handle keyboard submit
+  // 處理鍵盤送出
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
@@ -1061,16 +1061,16 @@ export default function ProjectPage() {
     }
   };
 
-  // Open skills explorer
+  // 開啟 Skills Explorer 面板
   const handleViewSkills = () => {
     setSkillsExplorerOpen(true);
   };
 
-  // Config panel state
+  // 設定面板狀態
   const [configPanelOpen, setConfigPanelOpen] = useState(false);
   const configPanelRef = useRef<HTMLDivElement>(null);
 
-  // Close config panel on outside click
+  // 點擊外部時關閉設定面板
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (configPanelRef.current && !configPanelRef.current.contains(event.target as Node)) {
@@ -1083,7 +1083,7 @@ export default function ProjectPage() {
     }
   }, [configPanelOpen]);
 
-  // Auto-resize textarea
+  // 自動調整 textarea 高度
   const handleInputChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     setInput(e.target.value);
     const el = e.target;
@@ -1091,7 +1091,7 @@ export default function ProjectPage() {
     el.style.height = Math.min(el.scrollHeight, 200) + 'px';
   };
 
-  // Markdown components shared between messages and streaming
+  // 訊息與串流共用的 Markdown 元件
   const markdownComponents = useMemo(() => ({
     a: ({ href, children }: { href?: string; children?: React.ReactNode }) => (
       <a
@@ -1104,7 +1104,7 @@ export default function ProjectPage() {
       </a>
     ),
     pre: ({ children }: { children?: React.ReactNode }) => {
-      // Extract text content from children for copy button
+      // 從 children 擷取文字內容供複製按鈕使用
       const getTextContent = (node: React.ReactNode): string => {
         if (typeof node === 'string') return node;
         if (!node) return '';
@@ -1125,7 +1125,7 @@ export default function ProjectPage() {
       );
     },
     code: ({ children, className }: { children?: React.ReactNode; className?: string }) => {
-      // Inline code (no language class)
+      // 行內程式碼（無 language class）
       if (!className) {
         return (
           <code className="px-1.5 py-0.5 rounded-md bg-[var(--color-bg-tertiary)] border border-[var(--color-border)]/30 text-[0.875em] font-mono">
@@ -1133,7 +1133,7 @@ export default function ProjectPage() {
           </code>
         );
       }
-      // Block code inside pre
+      // pre 內的區塊程式碼
       return <code className={cn(className, 'font-mono text-[12px]')}>{children}</code>;
     },
     table: ({ children }: { children?: React.ReactNode }) => (
@@ -1153,7 +1153,7 @@ export default function ProjectPage() {
     ),
   }), []);
 
-  // Config summary for header chips
+  // 標頭 chips 的設定摘要
   const configChips = useMemo(() => {
     const chips: { label: string; color: string }[] = [];
     if (defaultCatalog && defaultSchema) {
@@ -1171,7 +1171,7 @@ export default function ProjectPage() {
     return chips;
   }, [defaultCatalog, defaultSchema, clusters, selectedClusterId, warehouses, selectedWarehouseId]);
 
-  // Only show streaming UI if viewing a conversation that is actively streaming
+  // 僅在正在檢視且處於串流中的對話時顯示串流 UI
   const isStreamingHere = streamingConvIds.includes(currentConversation?.id || '');
 
   if (isLoading) {
@@ -1199,18 +1199,18 @@ export default function ProjectPage() {
   return (
     <MainLayout projectName={project?.name} sidebar={sidebar}>
       <div className="flex flex-1 flex-col h-full">
-        {/* Chat Header */}
+        {/* 聊天標頭 */}
         <div className="flex h-14 items-center justify-between border-b border-[var(--color-border)]/60 px-6 bg-[var(--color-bg-secondary)]/20">
           <div className="flex items-center gap-3 min-w-0">
             <div className="flex-shrink-0 w-8 h-8 rounded-lg bg-gradient-to-br from-[var(--color-accent-primary)]/10 to-[var(--color-accent-secondary)]/10 flex items-center justify-center">
               <Sparkles className="h-4 w-4 text-[var(--color-accent-primary)]" />
             </div>
             <h2 className="font-semibold text-[15px] text-[var(--color-text-heading)] truncate">
-              {currentConversation?.title || 'New Chat'}
+              {currentConversation?.title || '新對話'}
             </h2>
           </div>
           <div className="flex items-center gap-2.5">
-            {/* Config summary chips */}
+            {/* 設定摘要 chips */}
             <div className="hidden md:flex items-center gap-1.5">
               {configChips.map((chip, i) => (
                 <span
@@ -1221,7 +1221,7 @@ export default function ProjectPage() {
                 </span>
               ))}
             </div>
-            {/* Settings button */}
+            {/* 設定按鈕 */}
             <div className="relative" ref={configPanelRef}>
               <button
                 onClick={() => setConfigPanelOpen(!configPanelOpen)}
@@ -1231,7 +1231,7 @@ export default function ProjectPage() {
                     ? 'bg-[var(--color-accent-primary)]/10 text-[var(--color-accent-primary)] ring-2 ring-[var(--color-accent-primary)]/20'
                     : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)] hover:bg-[var(--color-bg-secondary)]'
                 )}
-                title="Configuration"
+                title="設定"
               >
                 <Settings2 className="h-4.5 w-4.5" />
               </button>
@@ -1258,13 +1258,13 @@ export default function ProjectPage() {
           </div>
         </div>
 
-        {/* Messages */}
+        {/* 訊息 */}
         <div className="flex-1 overflow-y-auto">
           {messages.length === 0 && !isStreamingHere ? (
-            /* Empty State */
+            /* 空白狀態 */
             <div className="flex h-full items-center justify-center px-6">
               <div className="text-center max-w-xl w-full">
-                {/* Decorative gradient orb */}
+                {/* 裝飾性漸層光球 */}
                 <div className="relative inline-flex items-center justify-center w-20 h-20 mb-6">
                   <div className="absolute inset-0 rounded-3xl bg-gradient-to-br from-[var(--color-accent-primary)]/15 to-[var(--color-accent-secondary)]/10 blur-md" />
                   <div className="relative w-16 h-16 rounded-2xl bg-gradient-to-br from-[var(--color-accent-primary)]/10 to-[var(--color-accent-secondary)]/5 border border-[var(--color-accent-primary)]/10 flex items-center justify-center">
@@ -1272,19 +1272,19 @@ export default function ProjectPage() {
                   </div>
                 </div>
                 <h3 className="text-2xl font-bold text-[var(--color-text-heading)]">
-                  What can I help you build?
+                  我可以幫你建置什麼？
                 </h3>
                 <p className="mt-3 text-sm text-[var(--color-text-muted)] max-w-md mx-auto leading-relaxed">
-                  Build data pipelines, generate synthetic data, create dashboards, and more on Databricks.
+                  在 Databricks 上建置資料管線、產生合成資料、建立儀表板等更多功能。
                 </p>
 
-                {/* Example prompts - 2x2 grid */}
+                {/* 範例提示 - 2x2 格狀排列 */}
                 <div className="mt-10 grid grid-cols-2 gap-3 text-left">
                   {[
-                    { title: 'Generate synthetic data', desc: 'Realistic test datasets with customers, orders, and tickets', prompt: 'Generate synthetic customer data with orders and support tickets' },
-                    { title: 'Build a data pipeline', desc: 'ETL workflows with medallion architecture', prompt: 'Create a data pipeline to transform raw data into bronze, silver, and gold layers' },
-                    { title: 'Create a dashboard', desc: 'Interactive AI/BI visualizations', prompt: 'Create a dashboard to visualize customer metrics and trends' },
-                    { title: 'Explore my data', desc: 'Tables, volumes, and resources in your project', prompt: 'What tables and data do I have in my project?' },
+                    { title: '產生合成資料', desc: '包含客戶、訂單與支援工單的逼真測試資料集', prompt: '產生包含訂單與支援工單的合成客戶資料' },
+                    { title: '建置資料管線', desc: '採用獎章式架構的 ETL 工作流程', prompt: '建立資料管線，將原始資料轉換為 bronze、silver 與 gold 層' },
+                    { title: '建立儀表板', desc: '互動式 AI/BI 視覺化圖表', prompt: '建立儀表板，用於視覺化客戶指標與趨勢' },
+                    { title: '探索我的資料', desc: '查看專案中的資料表、Volume 與資源', prompt: '我的專案中有哪些資料表與資料？' },
                   ].map((item) => (
                     <button
                       key={item.title}
@@ -1299,19 +1299,19 @@ export default function ProjectPage() {
               </div>
             </div>
           ) : (
-            /* Message Thread */
+            /* 訊息串 */
             <div className="mx-auto max-w-3xl px-6 py-8 space-y-1">
               {messages.map((message) => (
                 <div key={message.id}>
                   {message.role === 'assistant' ? (
-                    /* Assistant message - left aligned with Databricks avatar */
+                    /* 助手訊息 — 靠左對齊，顯示 Databricks 頭像 */
                     <div className="flex items-start gap-3 group/msg mb-4">
                       <div className="flex-shrink-0 w-8 h-8 rounded-full bg-gradient-to-br from-[var(--color-accent-primary)] to-[var(--color-accent-secondary)] flex items-center justify-center shadow-sm shadow-[var(--color-accent-primary)]/20 mt-0.5">
                         <DatabricksLogo className="h-4 w-4 text-white" />
                       </div>
                       <div className={cn('flex-1 min-w-0', message.is_error && 'text-[var(--color-error)]')}>
                         <div className="mb-1 flex items-center gap-2">
-                          <span className="text-xs font-semibold text-[var(--color-text-heading)]">Assistant</span>
+                          <span className="text-xs font-semibold text-[var(--color-text-heading)]">助手</span>
                           {message.timestamp && (
                             <span className="text-[10px] text-[var(--color-text-muted)]/60 opacity-0 group-hover/msg:opacity-100 transition-opacity">
                               {new Date(message.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
@@ -1327,7 +1327,7 @@ export default function ProjectPage() {
                       </div>
                     </div>
                   ) : (
-                    /* User message - right aligned like iMessage */
+                    /* 使用者訊息 - 如 iMessage 般靠右對齊 */
                     <div className="flex justify-end mb-4 group/msg">
                       <div className="max-w-[80%]">
                         <div className="mb-1 flex items-center justify-end gap-2">
@@ -1346,7 +1346,7 @@ export default function ProjectPage() {
                 </div>
               ))}
 
-              {/* Streaming response */}
+              {/* 串流回應 */}
               {isStreamingHere && streamingText && (
                 <div className="flex items-start gap-3 mb-4">
                   <div className="flex-shrink-0 w-8 h-8 rounded-full bg-gradient-to-br from-[var(--color-accent-primary)] to-[var(--color-accent-secondary)] flex items-center justify-center shadow-sm shadow-[var(--color-accent-primary)]/20 mt-0.5">
@@ -1355,7 +1355,7 @@ export default function ProjectPage() {
                   <div className="flex-1 min-w-0">
                     <div className="mb-1">
                       <span className="text-xs font-semibold text-[var(--color-text-heading)]">
-                        Assistant
+                        助手
                       </span>
                     </div>
                     <div className="prose prose-xs max-w-none text-[var(--color-text-primary)] text-[14px] leading-[1.7]">
@@ -1367,12 +1367,12 @@ export default function ProjectPage() {
                 </div>
               )}
 
-              {/* Activity section */}
+              {/* 活動區段 */}
               {isStreamingHere && activityItems.length > 0 && (
                 <ActivitySection items={activityItems} isStreaming={isStreamingHere} />
               )}
 
-              {/* Loader */}
+              {/* 載入器 */}
               {isStreamingHere && !streamingText && (
                 <div className="flex items-start gap-3 mb-4">
                   <div className="flex-shrink-0 w-8 h-8 rounded-full bg-gradient-to-br from-[var(--color-accent-primary)] to-[var(--color-accent-secondary)] flex items-center justify-center shadow-sm shadow-[var(--color-accent-primary)]/20 mt-0.5">
@@ -1381,13 +1381,13 @@ export default function ProjectPage() {
                   <div className="flex-1">
                     <div className="mb-1">
                       <span className="text-xs font-semibold text-[var(--color-text-heading)]">
-                        Assistant
+                        助手
                       </span>
                     </div>
                     {isReconnecting ? (
                       <div className="flex items-center gap-2 text-sm text-[var(--color-text-muted)] py-2">
                         <Loader2 className="h-4 w-4 animate-spin" />
-                        <span>Reconnecting to agent...</span>
+                        <span>正在重新連線至代理程式...</span>
                       </div>
                     ) : (
                       <FunLoader todos={todos} className="py-1" />
@@ -1401,7 +1401,7 @@ export default function ProjectPage() {
           )}
         </div>
 
-        {/* Input Area */}
+        {/* 輸入區域 */}
         <div className="px-6 pb-5 pt-3">
           <div className="mx-auto max-w-3xl">
             <div className="relative rounded-2xl border border-[var(--color-border)] bg-[var(--color-background)] shadow-sm shadow-black/[0.03] focus-within:border-[var(--color-accent-primary)]/40 focus-within:shadow-lg focus-within:shadow-[var(--color-accent-primary)]/[0.06] transition-all duration-300">
@@ -1410,7 +1410,7 @@ export default function ProjectPage() {
                 value={input}
                 onChange={handleInputChange}
                 onKeyDown={handleKeyDown}
-                placeholder="Message the assistant..."
+                placeholder="傳送訊息給助手..."
                 rows={1}
                 className="w-full resize-none bg-transparent px-5 pt-4 pb-14 text-[14px] text-[var(--color-text-primary)] placeholder:text-[var(--color-text-muted)]/50 focus:outline-none disabled:cursor-not-allowed disabled:opacity-50"
                 style={{ maxHeight: 200 }}
@@ -1418,13 +1418,13 @@ export default function ProjectPage() {
               />
               <div className="absolute bottom-3 left-5 right-3 flex items-center justify-between">
                 <span className="text-[11px] text-[var(--color-text-muted)]/40 select-none">
-                  <kbd className="px-1.5 py-0.5 rounded border border-[var(--color-border)]/40 bg-[var(--color-bg-secondary)]/50 text-[10px] font-mono">Enter</kbd> to send
+                  <kbd className="px-1.5 py-0.5 rounded border border-[var(--color-border)]/40 bg-[var(--color-bg-secondary)]/50 text-[10px] font-mono">Enter</kbd> 傳送
                 </span>
                 {isStreamingHere ? (
                   <button
                     onClick={handleStopGeneration}
                     className="flex items-center justify-center h-9 w-9 rounded-xl bg-[var(--color-destructive)] hover:bg-[var(--color-destructive)]/90 text-white transition-all shadow-sm hover:shadow-md"
-                    title="Stop generation"
+                    title="停止生成"
                   >
                     <Square className="h-3.5 w-3.5" />
                   </button>
@@ -1438,7 +1438,7 @@ export default function ProjectPage() {
                         ? 'bg-[var(--color-accent-primary)] hover:bg-[var(--color-accent-primary)]/90 text-white shadow-sm shadow-[var(--color-accent-primary)]/30 hover:shadow-md hover:shadow-[var(--color-accent-primary)]/40'
                         : 'bg-[var(--color-bg-tertiary)] text-[var(--color-text-muted)]/40 cursor-not-allowed'
                     )}
-                    title="Send message"
+                    title="傳送訊息"
                   >
                     <ArrowUp className="h-4.5 w-4.5" />
                   </button>
@@ -1449,7 +1449,7 @@ export default function ProjectPage() {
         </div>
       </div>
 
-      {/* Skills Explorer */}
+      {/* Skills Explorer 面板 */}
       {skillsExplorerOpen && projectId && (
         <SkillsExplorer
           projectId={projectId}

@@ -1,46 +1,46 @@
 ---
 name: databricks-lakebase-provisioned
-description: "Patterns and best practices for Lakebase Provisioned (Databricks managed PostgreSQL) for OLTP workloads. Use when creating Lakebase instances, connecting applications or Databricks Apps to PostgreSQL, implementing reverse ETL via synced tables, storing agent or chat memory, or configuring OAuth authentication for Lakebase."
+description: "Lakebase Provisioned（Databricks 代管 PostgreSQL）在 OLTP 工作負載上的模式與最佳實務。適用於建立 Lakebase 實例、讓應用程式或 Databricks Apps 連線 PostgreSQL、透過同步資料表實作 reverse ETL、儲存代理或聊天記憶、或設定 Lakebase 的 OAuth 驗證。"
 ---
 
 # Lakebase Provisioned
 
-Patterns and best practices for using Lakebase Provisioned (Databricks managed PostgreSQL) for OLTP workloads.
+本技能說明如何在 OLTP 工作負載中運用 Lakebase Provisioned（Databricks 代管 PostgreSQL）的模式與最佳實務。
 
-## When to Use
+## 適用時機
 
-Use this skill when:
-- Building applications that need a PostgreSQL database for transactional workloads
-- Adding persistent state to Databricks Apps
-- Implementing reverse ETL from Delta Lake to an operational database
-- Storing chat/agent memory for LangChain applications
+在以下情境使用此技能：
+- 建置需要 PostgreSQL 資料庫處理交易工作負載的應用程式
+- 為 Databricks Apps 加入持久化狀態
+- 從 Delta Lake 實作 reverse ETL 至作業型資料庫
+- 為 LangChain 應用程式儲存聊天/代理記憶
 
-## Overview
+## 概觀
 
-Lakebase Provisioned is Databricks' managed PostgreSQL database service for OLTP (Online Transaction Processing) workloads. It provides a fully managed PostgreSQL-compatible database that integrates with Unity Catalog and supports OAuth token-based authentication.
+Lakebase Provisioned 是 Databricks 提供的 OLTP（Online Transaction Processing）代管 PostgreSQL 服務，整合 Unity Catalog，並支援 OAuth token 驗證。
 
-| Feature | Description |
-|---------|-------------|
-| **Managed PostgreSQL** | Fully managed instances with automatic provisioning |
-| **OAuth Authentication** | Token-based auth via Databricks SDK (1-hour expiry) |
-| **Unity Catalog** | Register databases for governance |
-| **Reverse ETL** | Sync data from Delta tables to PostgreSQL |
-| **Apps Integration** | First-class support in Databricks Apps |
+| 功能 | 說明 |
+|------|------|
+| **Managed PostgreSQL** | 具自動布建的全代管實例 |
+| **OAuth Authentication** | 透過 Databricks SDK 使用 token 驗證（有效 1 小時） |
+| **Unity Catalog** | 可註冊資料庫以利治理 |
+| **Reverse ETL** | 將 Delta 資料表同步至 PostgreSQL |
+| **Apps Integration** | 與 Databricks Apps 深度整合 |
 
-**Available Regions (AWS):** us-east-1, us-east-2, us-west-2, eu-central-1, eu-west-1, ap-south-1, ap-southeast-1, ap-southeast-2
+**可用 AWS 區域：** us-east-1、us-east-2、us-west-2、eu-central-1、eu-west-1、ap-south-1、ap-southeast-1、ap-southeast-2
 
-## Quick Start
+## 快速開始
 
-Create and connect to a Lakebase Provisioned instance:
+建立並連線到 Lakebase Provisioned 實例：
 
 ```python
 from databricks.sdk import WorkspaceClient
 import uuid
 
-# Initialize client
+# 初始化客戶端
 w = WorkspaceClient()
 
-# Create a database instance
+# 建立資料庫實例
 instance = w.database.create_database_instance(
     name="my-lakebase-instance",
     capacity="CU_1",  # CU_1, CU_2, CU_4, CU_8
@@ -50,9 +50,9 @@ print(f"Instance created: {instance.name}")
 print(f"DNS endpoint: {instance.read_write_dns}")
 ```
 
-## Common Patterns
+## 常見模式
 
-### Generate OAuth Token
+### 產生 OAuth Token
 
 ```python
 from databricks.sdk import WorkspaceClient
@@ -60,32 +60,32 @@ import uuid
 
 w = WorkspaceClient()
 
-# Generate OAuth token for database connection
+# 產生連線資料庫用的 OAuth token
 cred = w.database.generate_database_credential(
     request_id=str(uuid.uuid4()),
     instance_names=["my-lakebase-instance"]
 )
-token = cred.token  # Use this as password in connection string
+token = cred.token  # 於連線字串中當作密碼使用
 ```
 
-### Connect from Notebook
+### 從 Notebook 連線
 
 ```python
 import psycopg
 from databricks.sdk import WorkspaceClient
 import uuid
 
-# Get instance details
+# 取得實例詳細資訊
 w = WorkspaceClient()
 instance = w.database.get_database_instance(name="my-lakebase-instance")
 
-# Generate token
+# 產生 token
 cred = w.database.generate_database_credential(
     request_id=str(uuid.uuid4()),
     instance_names=["my-lakebase-instance"]
 )
 
-# Connect using psycopg3
+# 使用 psycopg3 連線
 conn_string = f"host={instance.read_write_dns} dbname=postgres user={w.current_user.me().user_name} password={cred.token} sslmode=require"
 with psycopg.connect(conn_string) as conn:
     with conn.cursor() as cur:
@@ -93,9 +93,9 @@ with psycopg.connect(conn_string) as conn:
         print(cur.fetchone())
 ```
 
-### SQLAlchemy with Token Refresh (Production)
+### SQLAlchemy 搭配 Token 重新整理（正式環境）
 
-For long-running applications, tokens must be refreshed (expire after 1 hour):
+長時間執行的應用程式必須重新整理 token（1 小時過期）：
 
 ```python
 import asyncio
@@ -106,13 +106,13 @@ from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
 from sqlalchemy.orm import sessionmaker
 from databricks.sdk import WorkspaceClient
 
-# Token refresh state
+# Token 重新整理狀態
 _current_token = None
 _token_refresh_task = None
-TOKEN_REFRESH_INTERVAL = 50 * 60  # 50 minutes (before 1-hour expiry)
+TOKEN_REFRESH_INTERVAL = 50 * 60  # 50 分鐘（早於 1 小時失效）
 
 def _generate_token(instance_name: str) -> str:
-    """Generate fresh OAuth token."""
+    """產生最新 OAuth token。"""
     w = WorkspaceClient()
     cred = w.database.generate_database_credential(
         request_id=str(uuid.uuid4()),
@@ -121,23 +121,23 @@ def _generate_token(instance_name: str) -> str:
     return cred.token
 
 async def _token_refresh_loop(instance_name: str):
-    """Background task to refresh token every 50 minutes."""
+    """背景工作，每 50 分鐘重新整理 token。"""
     global _current_token
     while True:
         await asyncio.sleep(TOKEN_REFRESH_INTERVAL)
         _current_token = await asyncio.to_thread(_generate_token, instance_name)
 
 def init_database(instance_name: str, database_name: str, username: str) -> AsyncEngine:
-    """Initialize database with OAuth token injection."""
+    """初始化資料庫並注入 OAuth token。"""
     global _current_token
     
     w = WorkspaceClient()
     instance = w.database.get_database_instance(name=instance_name)
     
-    # Generate initial token
+    # 產生初始 token
     _current_token = _generate_token(instance_name)
     
-    # Build URL (password injected via do_connect)
+    # 建立 URL（密碼透過 do_connect 注入）
     url = f"postgresql+psycopg://{username}@{instance.read_write_dns}:5432/{database_name}"
     
     engine = create_async_engine(
@@ -148,7 +148,7 @@ def init_database(instance_name: str, database_name: str, username: str) -> Asyn
         connect_args={"sslmode": "require"}
     )
     
-    # Inject token on each connection
+    # 每次連線時注入 token
     @event.listens_for(engine.sync_engine, "do_connect")
     def provide_token(dialect, conn_rec, cargs, cparams):
         cparams["password"] = _current_token
@@ -156,20 +156,20 @@ def init_database(instance_name: str, database_name: str, username: str) -> Asyn
     return engine
 ```
 
-### Databricks Apps Integration
+### Databricks Apps 整合
 
-For Databricks Apps, use environment variables for configuration:
+於 Databricks Apps 中透過環境變數設定：
 
 ```python
-# Environment variables set by Databricks Apps:
-# - LAKEBASE_INSTANCE_NAME: Instance name
-# - LAKEBASE_DATABASE_NAME: Database name
-# - LAKEBASE_USERNAME: Username (optional, defaults to service principal)
+# Databricks Apps 會設定以下環境變數：
+# - LAKEBASE_INSTANCE_NAME: 實例名稱
+# - LAKEBASE_DATABASE_NAME: 資料庫名稱
+# - LAKEBASE_USERNAME: 使用者名稱（選用，預設為 service principal）
 
 import os
 
 def is_lakebase_configured() -> bool:
-    """Check if Lakebase is configured for this app."""
+    """檢查此 App 是否已設定 Lakebase。"""
     return bool(
         os.environ.get("LAKEBASE_PG_URL") or
         (os.environ.get("LAKEBASE_INSTANCE_NAME") and 
@@ -177,7 +177,7 @@ def is_lakebase_configured() -> bool:
     )
 ```
 
-Add Lakebase as an app resource via CLI:
+透過 CLI 將 Lakebase 加入 App 資源：
 
 ```bash
 databricks apps add-resource $APP_NAME \
@@ -186,14 +186,14 @@ databricks apps add-resource $APP_NAME \
     --database-instance my-lakebase-instance
 ```
 
-### Register with Unity Catalog
+### 向 Unity Catalog 註冊
 
 ```python
 from databricks.sdk import WorkspaceClient
 
 w = WorkspaceClient()
 
-# Register database in Unity Catalog
+# 在 Unity Catalog 註冊資料庫
 w.database.register_database_instance(
     name="my-lakebase-instance",
     catalog="my_catalog",
@@ -203,7 +203,7 @@ w.database.register_database_instance(
 
 ### MLflow Model Resources
 
-Declare Lakebase as a model resource for automatic credential provisioning:
+將 Lakebase 宣告為模型資源，便於自動配置憑證：
 
 ```python
 from mlflow.models.resources import DatabricksLakebase
@@ -212,7 +212,7 @@ resources = [
     DatabricksLakebase(database_instance_name="my-lakebase-instance"),
 ]
 
-# When logging model
+# 註冊模型時
 mlflow.langchain.log_model(
     model,
     artifact_path="model",
@@ -223,86 +223,86 @@ mlflow.langchain.log_model(
 
 ## MCP Tools
 
-The following MCP tools are available for managing Lakebase infrastructure. Use `type="provisioned"` for Lakebase Provisioned.
+以下 MCP 工具可管理 Lakebase 基礎設施。針對 Lakebase Provisioned，請使用 `type="provisioned"`。
 
 ### Database Management
 
-| Tool | Description |
-|------|-------------|
-| `create_or_update_lakebase_database` | Create or update a database. Finds by name, creates if new, updates if existing. Use `type="provisioned"`, `capacity` (CU_1-CU_8), `stopped` params. |
-| `get_lakebase_database` | Get database details or list all. Pass `name` to get one, omit to list all. Use `type="provisioned"` to filter. |
-| `delete_lakebase_database` | Delete a database and its resources. Use `type="provisioned"`, `force=True` to cascade. |
-| `generate_lakebase_credential` | Generate OAuth token for PostgreSQL connections (1-hour expiry). Pass `instance_names` for provisioned. |
+| 工具 | 說明 |
+|------|------|
+| `create_or_update_lakebase_database` | 建立或更新資料庫；若存在即更新，否則新建。需設定 `type="provisioned"`、`capacity`（CU_1-CU_8）、`stopped` 等參數。 |
+| `get_lakebase_database` | 取得資料庫詳細資訊或列出全部。提供 `name` 取得特定實例，若省略則列出全部並可用 `type="provisioned"` 篩選。 |
+| `delete_lakebase_database` | 刪除資料庫及其資源；使用 `type="provisioned"`，可搭配 `force=True` 連同相依資源移除。 |
+| `generate_lakebase_credential` | 產生 PostgreSQL 連線用 OAuth token（有效 1 小時）；於 provisioned 模式傳入 `instance_names`。 |
 
-### Reverse ETL (Catalog + Synced Tables)
+### Reverse ETL（Catalog + Synced Tables）
 
-| Tool | Description |
-|------|-------------|
-| `create_or_update_lakebase_sync` | Set up reverse ETL: ensures UC catalog registration exists, then creates a synced table from Delta to Lakebase. Params: `instance_name`, `source_table_name`, `target_table_name`, `scheduling_policy` ("TRIGGERED"/"SNAPSHOT"/"CONTINUOUS"). |
-| `delete_lakebase_sync` | Remove a synced table and optionally its UC catalog registration. |
+| 工具 | 說明 |
+|------|------|
+| `create_or_update_lakebase_sync` | 設定 reverse ETL：確保 UC catalog 註冊存在後，從 Delta 建立同步表至 Lakebase。參數含 `instance_name`、`source_table_name`、`target_table_name`、`scheduling_policy`（"TRIGGERED"/"SNAPSHOT"/"CONTINUOUS"）。 |
+| `delete_lakebase_sync` | 移除同步表並可選擇刪除 UC catalog 註冊。 |
 
-## Reference Files
+## 參考文件
 
-- [connection-patterns.md](connection-patterns.md) - Detailed connection patterns for different use cases
-- [reverse-etl.md](reverse-etl.md) - Syncing data from Delta Lake to Lakebase
+- [connection-patterns.md](connection-patterns.md) - 各使用情境的詳細連線模式
+- [reverse-etl.md](reverse-etl.md) - 從 Delta Lake 同步資料到 Lakebase
 
-## CLI Quick Reference
+## CLI 快速查詢
 
 ```bash
-# Create instance
+# 建立實例
 databricks database create-database-instance \
     --name my-lakebase-instance \
     --capacity CU_1
 
-# Get instance details
+# 取得實例詳細資訊
 databricks database get-database-instance --name my-lakebase-instance
 
-# Generate credentials
+# 產生憑證
 databricks database generate-database-credential \
     --request-id $(uuidgen) \
     --json '{"instance_names": ["my-lakebase-instance"]}'
 
-# List instances
+# 列出實例
 databricks database list-database-instances
 
-# Stop instance (saves cost)
+# 停止實例（節省成本）
 databricks database stop-database-instance --name my-lakebase-instance
 
-# Start instance
+# 啟動實例
 databricks database start-database-instance --name my-lakebase-instance
 ```
 
-## Common Issues
+## 常見問題
 
-| Issue | Solution |
-|-------|----------|
-| **Token expired during long query** | Implement token refresh loop (see SQLAlchemy with Token Refresh section); tokens expire after 1 hour |
-| **DNS resolution fails on macOS** | Use `dig` command to resolve hostname, pass `hostaddr` to psycopg |
-| **Connection refused** | Ensure instance is not stopped; check `instance.state` |
-| **Permission denied** | User must be granted access to the Lakebase instance |
-| **SSL required error** | Always use `sslmode=require` in connection string |
+| 問題 | 解法 |
+|------|------|
+| **長時間查詢時 token 過期** | 實作 token 重新整理迴圈（參考 SQLAlchemy 節）；token 1 小時後過期 |
+| **macOS DNS 解析失敗** | 改用 `dig` 解析主機名稱並將 `hostaddr` 傳給 psycopg |
+| **Connection refused** | 確認實例未被停止，檢查 `instance.state` |
+| **Permission denied** | 確保使用者已獲得 Lakebase 實例的存取權 |
+| **需使用 SSL 的錯誤** | 連線字串中務必設定 `sslmode=require` |
 
-## SDK Version Requirements
+## SDK 版本需求
 
-- **Databricks SDK for Python**: >= 0.61.0 (0.81.0+ recommended for full API support)
-- **psycopg**: 3.x (supports `hostaddr` parameter for DNS workaround)
-- **SQLAlchemy**: 2.x with `postgresql+psycopg` driver
+- **Databricks SDK for Python**：>= 0.61.0（建議 0.81.0+ 以完整支援 API）
+- **psycopg**：3.x（支援 DNS 替代方案的 `hostaddr` 參數）
+- **SQLAlchemy**：2.x，搭配 `postgresql+psycopg` 驅動
 
 ```python
 %pip install -U "databricks-sdk>=0.81.0" "psycopg[binary]>=3.0" sqlalchemy
 ```
 
-## Notes
+## 備註
 
-- **Capacity values** use compute unit sizing: `CU_1`, `CU_2`, `CU_4`, `CU_8`.
-- **Lakebase Autoscaling** is a newer offering with automatic scaling but limited regional availability. This skill focuses on **Lakebase Provisioned** which is more widely available.
-- For memory/state in LangChain agents, use `databricks-langchain[memory]` which includes Lakebase support.
-- Tokens are short-lived (1 hour) - production apps MUST implement token refresh.
+- **Capacity 值** 以 compute unit 表示：`CU_1`、`CU_2`、`CU_4`、`CU_8`
+- **Lakebase Autoscaling** 為新服務，具自動擴縮但區域有限；本技能聚焦較廣泛可用的 **Lakebase Provisioned**
+- LangChain 代理的記憶/狀態建議使用 `databricks-langchain[memory]`，內含 Lakebase 支援
+- Token 壽命短（1 小時），正式環境應用務必實作 token 重新整理
 
-## Related Skills
+## 相關技能
 
-- **[databricks-app-apx](../databricks-app-apx/SKILL.md)** - full-stack apps that can use Lakebase for persistence
-- **[databricks-app-python](../databricks-app-python/SKILL.md)** - Python apps with Lakebase backend
-- **[databricks-python-sdk](../databricks-python-sdk/SKILL.md)** - SDK used for instance management and token generation
-- **[databricks-bundles](../databricks-bundles/SKILL.md)** - deploying apps with Lakebase resources
-- **[databricks-jobs](../databricks-jobs/SKILL.md)** - scheduling reverse ETL sync jobs
+- **[databricks-app-apx](../databricks-app-apx/SKILL.md)** - 可使用 Lakebase 儲存的全端 App
+- **[databricks-app-python](../databricks-app-python/SKILL.md)** - 以 Lakebase 作為後端的 Python App
+- **[databricks-python-sdk](../databricks-python-sdk/SKILL.md)** - 用於管理實例與產生 token 的 SDK
+- **[databricks-bundles](../databricks-bundles/SKILL.md)** - 部署含 Lakebase 資源的應用
+- **[databricks-jobs](../databricks-jobs/SKILL.md)** - 排程 reverse ETL 同步作業

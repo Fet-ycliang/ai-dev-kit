@@ -1,8 +1,8 @@
 """
-Lakebase Autoscaling Operations
+Lakebase Autoscaling 操作
 
-Functions for managing Databricks Lakebase Autoscaling projects, branches,
-computes (endpoints), and database credentials.
+用於管理 Databricks Lakebase Autoscaling 專案、分支、
+compute（端點）與資料庫認證的函式。
 """
 
 from .projects import (
@@ -31,24 +31,24 @@ from .credentials import (
 )
 
 __all__ = [
-    # Projects
+    # 專案
     "create_project",
     "get_project",
     "list_projects",
     "update_project",
     "delete_project",
-    # Branches
+    # 分支
     "create_branch",
     "get_branch",
     "list_branches",
     "update_branch",
     "delete_branch",
-    # Computes (Endpoints)
+    # Compute（端點）
     "create_endpoint",
     "get_endpoint",
     "list_endpoints",
     "update_endpoint",
     "delete_endpoint",
-    # Credentials
+    # 認證
     "generate_credential",
 ]

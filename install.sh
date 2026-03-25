@@ -507,7 +507,7 @@ detect_tools() {
     command -v claude >/dev/null 2>&1 && has_claude=true
     { [ -d "/Applications/Cursor.app" ] || command -v cursor >/dev/null 2>&1; } && has_cursor=true
     command -v codex >/dev/null 2>&1 && has_codex=true
-    { [ -d "/Applications/Visual Studio Code.app" ] || command -v code >/dev/null 2>&1; } && has_copilot=true
+    { [ -d "/Applications/Visual Studio Code.app" ] || command -v copilot >/dev/null 2>&1; } && has_copilot=true
     { command -v gemini >/dev/null 2>&1 || [ -f "$HOME/.gemini/local/gemini" ]; } && has_gemini=true
     { [ -d "/Applications/Antigravity.app" ] || command -v antigravity >/dev/null 2>&1; } && has_antigravity=true
 

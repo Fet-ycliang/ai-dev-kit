@@ -1,22 +1,22 @@
-"""Agent-based evaluator: run real Claude Code agent and score behavior.
+"""以 Agent 為基礎的評估器：執行真實 Claude Code Agent 並為其行為評分。
 
-GEPA-compatible evaluator that runs a Claude Code instance via the Agent SDK,
-captures the full execution trace, and scores using focused field-based MLflow
-judges plus deterministic scorers.
+與 GEPA 相容的評估器，會透過 Agent SDK 執行 Claude Code 實例，
+擷取完整執行 trace，並以聚焦的欄位式 MLflow 評判器
+加上決定性評分器進行評分。
 
-Each focused judge asks ONE clear question and makes 1 LLM call using
-``{{ inputs }}/{{ outputs }}`` templates (no agentic tool-calling loop).
-Eval criteria are loaded on-demand via ``skills=`` parameter when supported.
+每個聚焦評判器都只問一個明確問題，並使用
+``{{ inputs }}/{{ outputs }}`` 範本進行 1 次 LLM 呼叫（沒有 agentic tool-calling loop）。
+支援時會透過 ``skills=`` 參數按需載入 eval criteria。
 
-Scoring weights:
-  20% Effectiveness delta (WITH vs WITHOUT, per-dimension)
-  20% Correctness (field-based judge: facts, APIs, code syntax)
-  15% Completeness (field-based judge: task completion, coverage)
-  15% Guideline adherence (field-based judge: patterns, conventions)
-  15% Assertion coverage (deterministic: expected_facts + expected_patterns)
-   5% Execution success (deterministic: tool call success ratio)
-   5% Token efficiency (deterministic: candidate size)
-  -5% Regression penalty (conditional: regression judge)
+評分權重：
+  20% 效能差值（含技能 vs 不含技能，依各維度）
+  20% Correctness（欄位式評判器：事實、API、程式碼語法）
+  15% Completeness（欄位式評判器：任務完成度、覆蓋範圍）
+  15% 準則遵循率（欄位式評判器：模式、慣例）
+  15% 斷言覆蓋率（決定性：expected_facts + expected_patterns）
+   5% 執行成功率（決定性：工具呼叫成功比例）
+   5% Token 效率（決定性：候選內容大小）
+  -5% 回歸懲罰（條件式：regression judge）
 """
 
 from __future__ import annotations
@@ -58,10 +58,10 @@ def _run_behavioral_scorers(
     trace_dict: dict[str, Any],
     trace_expectations: dict[str, Any],
 ) -> tuple[float, dict[str, Any]]:
-    """Run deterministic trace scorers and return composite score + details.
+    """執行決定性 trace 評分器，並回傳綜合分數 + 詳細資料。
 
-    Runs: required_tools, banned_tools, tool_sequence.
-    Returns (score 0-1, details dict).
+    執行：required_tools、banned_tools、tool_sequence。
+    回傳 (0-1 分數, details dict)。
     """
     scorers = [
         ("required_tools", required_tools_scorer),
@@ -82,22 +82,22 @@ def _run_behavioral_scorers(
                 total += 1
             elif fb.value == "no":
                 total += 1
-            # "skip" doesn't count toward total
+            # "skip" 不計入總數
         except Exception as e:
             results[name] = {"value": "error", "rationale": str(e)}
 
-    score = passed / total if total > 0 else 0.5  # No expectations = neutral
+    score = passed / total if total > 0 else 0.5  # 沒有 expectations = 中立
     return score, results
 
 
 def _compute_execution_success(agent_result: AgentResult) -> float:
-    """Score based on whether tool calls succeeded.
+    """根據工具呼叫是否成功進行評分。
 
-    Returns ratio of successful tool calls (0-1).
+    回傳成功工具呼叫的比例（0-1）。
     """
     tool_calls = agent_result.trace_metrics.tool_calls
     if not tool_calls:
-        return 0.5  # No tool calls = neutral
+        return 0.5  # 沒有工具呼叫 = 中立
 
     successful = sum(1 for tc in tool_calls if tc.success is True)
     total = sum(1 for tc in tool_calls if tc.success is not None)
@@ -109,27 +109,27 @@ def _compute_execution_success(agent_result: AgentResult) -> float:
 
 
 class AgentEvaluator:
-    """GEPA-compatible evaluator using real Claude Code agent + focused judges.
+    """使用真實 Claude Code Agent + 聚焦評判器的 GEPA 相容評估器。
 
-    Three focused field-based judges (correctness, completeness, guideline
-    adherence) each ask ONE clear question and make 1 LLM call.  They use
-    ``{{ inputs }}/{{ outputs }}`` templates — no agentic tool-calling loop.
+    三個聚焦的欄位式評判器（correctness、completeness、
+    guideline adherence）各只問一個明確問題，並進行 1 次 LLM 呼叫。它們使用
+    ``{{ inputs }}/{{ outputs }}`` 範本——沒有 agentic tool-calling loop。
 
-    Eval criteria are loaded on-demand via ``skills=`` parameter on
-    ``make_judge()`` when supported by MLflow (PR #21725).
+    支援時，eval criteria 會透過 ``make_judge()`` 的
+    ``skills=`` 參數按需載入（MLflow PR #21725）。
 
-    Deterministic assertions and trace scorers remain as the static spine.
+    決定性斷言與 trace 評分器仍然是靜態骨幹。
 
-    Args:
-        original_token_counts: Token counts of original artifacts for efficiency scoring.
-        token_budget: Hard token ceiling.
-        skill_guidelines: Guidelines from ground_truth.yaml and manifest.yaml.
-        judge_model: LLM model for judges (from ``--judge-model``).
-        mcp_config: MCP server configuration for the agent.
-        allowed_tools: Allowed tools for the agent.
-        agent_model: Model to use for the agent execution (from ``--agent-model``).
-        agent_timeout: Timeout for each agent run in seconds.
-        tool_modules: MCP tool modules from manifest.yaml for criteria filtering.
+    參數:
+        original_token_counts: 原始成品的 Token 計數，用於效率評分。
+        token_budget: 硬性 Token 上限。
+        skill_guidelines: 來自 ground_truth.yaml 與 manifest.yaml 的 guidelines。
+        judge_model: 評判器使用的 LLM model（來自 ``--judge-model``）。
+        mcp_config: Agent 的 MCP server 配置。
+        allowed_tools: Agent 可用的工具。
+        agent_model: 用於執行 Agent 的 model（來自 ``--agent-model``）。
+        agent_timeout: 每次 Agent 執行的 timeout 秒數。
+        tool_modules: 來自 manifest.yaml、供 criteria 篩選使用的 MCP tool modules。
     """
 
     def __init__(
@@ -156,21 +156,21 @@ class AgentEvaluator:
         self._mlflow_experiment = mlflow_experiment
         self._skill_name = skill_name
 
-        # Cache WITH-skill evaluation results keyed on (prompt_hash, candidate_hash)
+        # 以 (prompt_hash, candidate_hash) 為鍵快取含技能的評估結果
         self._with_skill_cache: dict[str, tuple[float, dict]] = {}
 
-        # Caches for WITHOUT-skill runs (keyed by prompt hash)
+        # 不含技能執行的快取（以 prompt hash 為鍵）
         self._baseline_response_cache: dict[str, str] = {}
         self._baseline_trace_cache: dict[str, dict] = {}
-        # Per-judge baseline caches (WITHOUT results are stable per prompt)
+        # 各評判器的基準快取（不含技能結果對每個 prompt 都是穩定的）
         self._baseline_correctness_cache: dict[str, JudgeFeedback] = {}
         self._baseline_completeness_cache: dict[str, JudgeFeedback] = {}
         self._cache_lock = threading.Lock()
 
-        # --- Skill discovery (static spine + adaptive layer) ---
+        # --- 技能探索（靜態骨幹 + 自適應層）---
         skill_paths = discover_skill_paths(tool_modules=tool_modules)
 
-        # --- Focused field-based judges (1 LLM call each) ---
+        # --- 聚焦的欄位式評判器（每個 1 次 LLM 呼叫）---
         self._correctness_judge = create_correctness_judge(skill_paths=skill_paths, judge_model=judge_model)
         self._completeness_judge = create_completeness_judge(skill_paths=skill_paths, judge_model=judge_model)
         self._guideline_judge = create_guideline_adherence_judge(
@@ -181,7 +181,7 @@ class AgentEvaluator:
         self._regression_judge = create_regression_judge(judge_model=judge_model)
 
     def _run_agent(self, prompt: str, skill_md: str | None = None) -> AgentResult:
-        """Run the agent and return result. Synchronous wrapper."""
+        """執行 Agent 並回傳結果。同步包裝。"""
         return run_agent_sync_wrapper(
             prompt=prompt,
             skill_md=skill_md,
@@ -194,7 +194,7 @@ class AgentEvaluator:
         )
 
     def _get_baseline(self, prompt: str) -> tuple[str, dict]:
-        """Get WITHOUT-skill baseline response and trace dict, cached by prompt hash."""
+        """取得不含技能的基準回應與 trace dict，依 prompt hash 快取。"""
         key = _prompt_hash(prompt)
         with self._cache_lock:
             if key in self._baseline_response_cache:
@@ -202,7 +202,7 @@ class AgentEvaluator:
                     self._baseline_response_cache[key],
                     self._baseline_trace_cache[key],
                 )
-        # Agent run is expensive — release lock while running
+        # Agent 執行成本高——執行時釋放鎖
         result = self._run_agent(prompt, skill_md=None)
         with self._cache_lock:
             if key not in self._baseline_response_cache:
@@ -218,12 +218,12 @@ class AgentEvaluator:
         candidate: dict[str, str],
         example: dict,
     ) -> tuple[float, dict]:
-        """Evaluate a candidate skill against a single task using agent execution.
+        """使用 Agent 執行來評估候選技能與單一任務。
 
-        GEPA-compatible signature: (candidate, example) -> (score, side_info)
+        GEPA 相容簽章：(candidate, example) -> (score, side_info)
 
-        Wrapped in try-except so that any uncaught exception (timeout, network
-        error, etc.) returns a fallback zero score instead of crashing GEPA.
+        包在 try-except 中，因此任何未攔截的例外（timeout、網路
+        錯誤等）都會回傳備援的零分，而不會讓 GEPA 崩潰。
         """
         try:
             return self._evaluate(candidate, example)
@@ -236,17 +236,17 @@ class AgentEvaluator:
         candidate: dict[str, str],
         example: dict,
     ) -> tuple[float, dict]:
-        """Inner evaluation logic, called by __call__ with error handling."""
+        """由 __call__ 以錯誤處理包裝後呼叫的內部評估邏輯。"""
         skill_md = candidate.get("skill_md", "")
         prompt = example.get("input", "")
 
-        # Check candidate-level cache
+        # 檢查候選內容層級的快取
         candidate_hash = hashlib.sha256(json.dumps(candidate, sort_keys=True).encode()).hexdigest()[:16]
         cache_key = f"{_prompt_hash(prompt)}:{candidate_hash}"
         if cache_key in self._with_skill_cache:
             return self._with_skill_cache[cache_key]
 
-        # Decode expectations
+        # 解碼 expectations
         expectations: dict[str, Any] = {}
         expectations_json = example.get("additional_context", {}).get("expectations", "")
         if expectations_json:
@@ -260,21 +260,21 @@ class AgentEvaluator:
         if not prompt:
             return 0.0, {"_error": "No prompt for this task"}
 
-        # Phase 1: Run agent WITH skill
+        # Phase 1：執行含技能的 Agent
         logger.info("Running agent WITH skill...")
         start = time.monotonic()
         with_result = self._run_agent(prompt, skill_md=skill_md)
         with_duration = time.monotonic() - start
         logger.info("WITH-skill agent completed in %.1fs", with_duration)
 
-        # Phase 2: Run agent WITHOUT skill (cached)
+        # Phase 2：執行不含技能的 Agent（已快取）
         logger.info("Running agent WITHOUT skill (cached if available)...")
         without_response, without_trace = self._get_baseline(prompt)
 
         with_response = with_result.response_text
         with_trace = with_result.trace_metrics.to_dict()
 
-        # Build expectations text for judges
+        # 為評判器建立 expectations 文字
         facts = expectations.get("expected_facts", [])
         patterns = expectations.get("expected_patterns", [])
         guidelines = expectations.get("guidelines", [])
@@ -295,9 +295,9 @@ class AgentEvaluator:
 
         baseline_key = _prompt_hash(prompt)
 
-        # Phase 3: Focused judge scoring (1 LLM call each, no trace/field fallback)
+        # Phase 3：聚焦評判器評分（每個 1 次 LLM 呼叫，無 trace/field fallback）
 
-        # Correctness: WITH + WITHOUT (WITHOUT cached)
+        # Correctness：含技能 + 不含技能（不含技能已快取）
         correctness_with_fb = run_judge_safe(
             self._correctness_judge,
             inputs=prompt,
@@ -321,7 +321,7 @@ class AgentEvaluator:
         with self._cache_lock:
             correctness_without_fb = self._baseline_correctness_cache[baseline_key]
 
-        # Completeness: WITH + WITHOUT (WITHOUT cached)
+        # Completeness：含技能 + 不含技能（不含技能已快取）
         completeness_with_fb = run_judge_safe(
             self._completeness_judge,
             inputs=prompt,
@@ -345,7 +345,7 @@ class AgentEvaluator:
         with self._cache_lock:
             completeness_without_fb = self._baseline_completeness_cache[baseline_key]
 
-        # Guideline adherence: WITH only
+        # 準則遵循：僅含技能
         guideline_adherence_fb = run_judge_safe(
             self._guideline_judge,
             inputs=prompt,
@@ -354,14 +354,14 @@ class AgentEvaluator:
             name="guideline_adherence",
         )
 
-        # Convert binary yes/no verdicts to float scores
+        # 將二元 yes/no 判決轉換為 float 分數
         correctness_with = _safe_parse_score(correctness_with_fb.value)
         correctness_without = _safe_parse_score(correctness_without_fb.value)
         completeness_with = _safe_parse_score(completeness_with_fb.value)
         completeness_without = _safe_parse_score(completeness_without_fb.value)
         guideline_adherence_score = _safe_parse_score(guideline_adherence_fb.value)
 
-        # Per-dimension effectiveness deltas
+        # 各維度的效能差值
         correctness_delta = correctness_with - correctness_without
         completeness_delta = completeness_with - completeness_without
         effectiveness_delta = (correctness_delta + completeness_delta) / 2.0
@@ -373,7 +373,7 @@ class AgentEvaluator:
         else:
             effectiveness_verdict = "same"
 
-        # Regression judge (conditional on delta < -0.05)
+        # Regression 評判器（僅在 delta < -0.05 時）
         regression_penalty = 0.0
         regression_fb = None
         if effectiveness_delta < -0.05:
@@ -397,7 +397,7 @@ class AgentEvaluator:
             ):
                 regression_penalty = 1.0
 
-        # Phase 4: Deterministic fact/pattern assertions (zero LLM cost — static spine)
+        # Phase 4：決定性的事實/模式斷言（LLM 成本為 0——靜態骨幹）
         with_assertion_results = run_all_assertions(with_response, expectations)
         without_assertion_results = run_all_assertions(without_response, expectations)
 
@@ -408,11 +408,11 @@ class AgentEvaluator:
 
         failure_summary = summarize_failures(with_assertion_results, without_assertion_results)
 
-        # Phase 5: Deterministic trace scorers (static spine)
+        # Phase 5：決定性的 trace 評分器（靜態骨幹）
         behavioral_score, behavioral_details = _run_behavioral_scorers(with_trace, trace_expectations)
         execution_success = _compute_execution_success(with_result)
 
-        # Phase 6: Token efficiency
+        # Phase 6：Token 效率
         total_candidate_tokens = sum(count_tokens(v) for v in candidate.values())
         if self._total_original_tokens > 0:
             ratio = total_candidate_tokens / self._total_original_tokens
@@ -427,11 +427,11 @@ class AgentEvaluator:
         else:
             token_efficiency = 1.0
 
-        # Composite score
+        # 綜合分數
         quality_composite = (correctness_with + completeness_with + guideline_adherence_score) / 3.0
         assertion_coverage = 0.5 * fact_score + 0.5 * pattern_score
 
-        # Updated weights: assertion_coverage 10%→15%, effectiveness_delta 25%→20%
+        # 更新後的權重：assertion_coverage 10%→15%，effectiveness_delta 25%→20%
         final_score = max(
             0.0,
             min(
@@ -447,13 +447,13 @@ class AgentEvaluator:
             ),
         )
 
-        # Build rich side_info for GEPA reflection
+        # 為 GEPA reflection 建立豐富的 side_info
         side_info: dict[str, Any] = {}
 
         if prompt:
             side_info["Task"] = prompt[:500]
 
-        # Per-dimension judge feedback (GEPA renders each key as a markdown header)
+        # 各維度評判器回饋（GEPA 會將每個鍵渲染為 Markdown 標題）
         side_info["Judge_correctness_with"] = {
             "verdict": str(correctness_with_fb.value),
             "score": correctness_with,
@@ -480,7 +480,7 @@ class AgentEvaluator:
             "rationale": guideline_adherence_fb.rationale,
         }
 
-        # Per-dimension effectiveness deltas
+        # 各維度的效能差值
         side_info["Judge_effectiveness"] = {
             "verdict": effectiveness_verdict,
             "correctness_delta": correctness_delta,
@@ -488,13 +488,13 @@ class AgentEvaluator:
             "overall_delta": effectiveness_delta,
         }
 
-        # Regression analysis (only when regression detected)
+        # Regression 分析（僅在偵測到 regression 時）
         if regression_fb and regression_penalty > 0:
             side_info["Regression_Analysis"] = {
                 "rationale": regression_fb.rationale,
             }
 
-        # Assertion-based structured feedback
+        # 基於斷言的結構化回饋
         side_info["Missing_Facts"] = [r.rationale for r in fact_results if not r.passed]
         side_info["Missing_Patterns"] = [r.rationale for r in pattern_results if not r.passed]
         side_info["Passed_Facts"] = [r.rationale for r in fact_results if r.passed]
@@ -506,7 +506,7 @@ class AgentEvaluator:
                 "Regressions": failure_summary.get("Regressions", ""),
             }
 
-        # Agent-specific trace details
+        # Agent 專屬 trace 詳細資料
         side_info["agent_trace"] = {
             "total_tool_calls": with_trace.get("tools", {}).get("total_calls", 0),
             "tool_counts": with_trace.get("tools", {}).get("by_name", {}),
@@ -524,7 +524,7 @@ class AgentEvaluator:
         if with_response:
             side_info["Actual"] = with_response[:2000]
 
-        # Score breakdown (feeds GEPA's Pareto frontier)
+        # 分數明細（會送入 GEPA 的 Pareto frontier）
         side_info["scores"] = {
             "correctness_with": correctness_with,
             "correctness_without": correctness_without,
@@ -550,7 +550,7 @@ class AgentEvaluator:
         if self._token_budget:
             side_info["token_counts"]["budget"] = self._token_budget
 
-        # Diagnostic labels
+        # 診斷標籤
         weakest_dim = "correctness" if correctness_with <= completeness_with else "completeness"
         weakest_score = min(correctness_with, completeness_with)
 
@@ -575,7 +575,7 @@ class AgentEvaluator:
                 f"guideline_adherence={guideline_adherence_score:.2f}"
             )
 
-        # Store in candidate-level cache
+        # 存入候選內容層級的快取
         self._with_skill_cache[cache_key] = (final_score, side_info)
 
         return final_score, side_info
@@ -593,15 +593,15 @@ def create_agent_evaluator(
     mlflow_experiment: str | None = None,
     tool_modules: list[str] | None = None,
 ) -> Callable:
-    """Factory for agent-based evaluator with focused judges.
+    """建立含聚焦評判器的 Agent 型評估器工廠函式。
 
-    Returns a GEPA-compatible callable: (candidate, example) -> (score, side_info)
+    回傳一個與 GEPA 相容的 callable：(candidate, example) -> (score, side_info)
 
-    Args:
-        skill_name: Name of the skill being evaluated.
-        judge_model: LLM model for judges (from ``--judge-model``).
-        agent_model: Model for Claude Code execution (from ``--agent-model``).
-        tool_modules: MCP tool modules from manifest.yaml for criteria filtering.
+    參數:
+        skill_name: 正在評估的技能名稱。
+        judge_model: 評判器使用的 LLM model（來自 ``--judge-model``）。
+        agent_model: Claude Code 執行使用的 model（來自 ``--agent-model``）。
+        tool_modules: 來自 manifest.yaml、供 criteria 篩選使用的 MCP tool modules。
     """
     from .skillbench_evaluator import _collect_skill_guidelines
 
@@ -631,9 +631,9 @@ def build_agent_eval_background(
     baseline_side_info: dict[str, dict] | None = None,
     focus_areas: list[str] | None = None,
 ) -> str:
-    """Build GEPA reflection context specific to agent evaluation.
+    """建立專屬於 Agent 評估的 GEPA reflection context。
 
-    Highlights focused judge signals and skill discovery.
+    會凸顯聚焦評判器訊號與技能探索。
     """
     baseline_desc = ""
     if baseline_scores:

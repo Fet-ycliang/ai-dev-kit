@@ -1,4 +1,4 @@
-"""Pydantic models for PDF generation."""
+"""用於 PDF 產生的 Pydantic 模型。"""
 
 from enum import Enum
 from typing import Optional
@@ -7,32 +7,32 @@ from pydantic import BaseModel, ConfigDict, Field
 
 
 class DocSize(str, Enum):
-    """Document size options for PDF generation."""
+    """PDF 產生的文件大小選項。"""
 
-    SMALL = "SMALL"  # ~1 page
-    MEDIUM = "MEDIUM"  # ~5 pages (default)
-    LARGE = "LARGE"  # ~10+ pages
+    SMALL = "SMALL"  # 約 1 頁
+    MEDIUM = "MEDIUM"  # 約 5 頁（預設）
+    LARGE = "LARGE"  # 約 10 頁以上
 
 
 class DocumentSpecification(BaseModel):
-    """Specification for a single document to generate."""
+    """單一待產生文件的規格。"""
 
     model_config = ConfigDict(extra="forbid")
 
-    title: str = Field(description="A descriptive, professional title for the document")
-    category: str = Field(description="Document category (e.g., Technical, Procedures, Guides, Templates, Reference)")
-    model: str = Field(description="A unique identifier/code for the document")
+    title: str = Field(description="文件具描述性且專業的標題")
+    category: str = Field(description="文件類別（例如：Technical、Procedures、Guides、Templates、Reference）")
+    model: str = Field(description="文件的唯一識別碼／代碼")
     description: str = Field(
-        description="Detailed summary of document contents, referencing specific tasks and context"
+        description="文件內容的詳細摘要，需參照特定任務與脈絡"
     )
-    question: str = Field(description="A specific question that can be answered by reading this document")
+    question: str = Field(description="可透過閱讀此文件回答的具體問題")
     guideline: str = Field(
-        description="Guideline for how to evaluate the answer - sets expectations for tone, structure, and behavior"
+        description="用於評估答案的準則──定義語氣、結構與行為的期待"
     )
 
 
 class DocumentSpecifications(BaseModel):
-    """Collection of document specifications."""
+    """文件規格集合。"""
 
     model_config = ConfigDict(extra="forbid")
 
@@ -40,7 +40,7 @@ class DocumentSpecifications(BaseModel):
 
 
 class PDFGenerationResult(BaseModel):
-    """Result from generating a single PDF."""
+    """產生單一 PDF 的結果。"""
 
     pdf_path: str
     question_path: Optional[str] = None
@@ -49,7 +49,7 @@ class PDFGenerationResult(BaseModel):
 
 
 class PDFBatchResult(BaseModel):
-    """Result from generating a batch of PDFs."""
+    """批次產生 PDF 的結果。"""
 
     success: bool
     volume_path: str

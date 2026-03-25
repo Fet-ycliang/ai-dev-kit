@@ -1,8 +1,7 @@
 """
-Lakebase Autoscaling Branch Operations
+Lakebase Autoscaling 分支操作
 
-Functions for creating, managing, and deleting branches within
-Lakebase Autoscaling projects.
+用於在 Lakebase Autoscaling 專案中建立、管理與刪除分支的函式。
 """
 
 import logging
@@ -21,33 +20,33 @@ def create_branch(
     no_expiry: bool = False,
 ) -> Dict[str, Any]:
     """
-    Create a branch in a Lakebase Autoscaling project.
+    在 Lakebase Autoscaling 專案中建立分支。
 
-    Args:
-        project_name: Project resource name (e.g., "projects/my-app")
-        branch_id: Branch identifier (1-63 chars, lowercase letters, digits, hyphens)
-        source_branch: Source branch to fork from. If not specified,
-            automatically uses the project's default branch.
-        ttl_seconds: Time-to-live in seconds (max 30 days = 2592000s).
-            Set to create an expiring branch.
-        no_expiry: If True, branch never expires. One of ttl_seconds
-            or no_expiry must be specified.
+    參數:
+        project_name: 專案資源名稱（例如："projects/my-app"）
+        branch_id: 分支識別子（1-63 個字元，限小寫字母、數字與連字號）
+        source_branch: 要分岔的來源分支。若未指定，
+            會自動使用專案的預設分支。
+        ttl_seconds: 存活時間（秒）（最長 30 天 = 2592000 秒）。
+            設定後可建立會過期的分支。
+        no_expiry: 若為 True，分支永不過期。ttl_seconds
+            或 no_expiry 必須指定其一。
 
-    Returns:
-        Dictionary with:
-        - name: Branch resource name
-        - status: Creation status
-        - expire_time: Expiration time (if TTL set)
+    回傳:
+        包含以下欄位的字典：
+        - name: 分支資源名稱
+        - status: 建立狀態
+        - expire_time: 到期時間（若有設定 TTL）
 
-    Raises:
-        Exception: If creation fails
+    引發:
+        Exception: 當建立失敗時
     """
     client = get_workspace_client()
 
     if not project_name.startswith("projects/"):
         project_name = f"projects/{project_name}"
 
-    # Resolve the source branch: use the provided one, or find the default branch
+    # 解析來源分支：使用傳入值，或找出預設分支
     if source_branch is None:
         branches = list_branches(project_name)
         default_branches = [b for b in branches if b.get("is_default") is True]
@@ -56,7 +55,7 @@ def create_branch(
         elif branches:
             source_branch = branches[0]["name"]
         else:
-            raise Exception(f"No branches found in project '{project_name}' to fork from")
+            raise Exception(f"在專案 '{project_name}' 中找不到可供分岔的分支")
 
     try:
         from databricks.sdk.service.postgres import Branch, BranchSpec, Duration
@@ -70,7 +69,7 @@ def create_branch(
         elif no_expiry:
             spec_kwargs["no_expiry"] = True
         else:
-            # Default to no expiry if neither is specified
+            # 若兩者皆未指定，預設為永不過期
             spec_kwargs["no_expiry"] = True
 
         operation = client.postgres.create_branch(
@@ -107,30 +106,30 @@ def create_branch(
             return {
                 "name": f"{project_name}/branches/{branch_id}",
                 "status": "ALREADY_EXISTS",
-                "error": f"Branch '{branch_id}' already exists",
+                "error": f"分支 '{branch_id}' 已存在",
             }
-        raise Exception(f"Failed to create branch '{branch_id}': {error_msg}")
+        raise Exception(f"建立分支 '{branch_id}' 失敗：{error_msg}")
 
 
 def get_branch(name: str) -> Dict[str, Any]:
     """
-    Get Lakebase Autoscaling branch details.
+    取得 Lakebase Autoscaling 分支詳細資料。
 
-    Args:
-        name: Branch resource name
-            (e.g., "projects/my-app/branches/production")
+    參數:
+        name: 分支資源名稱
+            （例如："projects/my-app/branches/production"）
 
-    Returns:
-        Dictionary with:
-        - name: Branch resource name
-        - state: Current state
-        - is_default: Whether this is the default branch
-        - is_protected: Whether the branch is protected
-        - expire_time: Expiration time (if set)
-        - logical_size_bytes: Logical data size
+    回傳:
+        包含以下欄位的字典：
+        - name: 分支資源名稱
+        - state: 目前狀態
+        - is_default: 是否為預設分支
+        - is_protected: 分支是否受保護
+        - expire_time: 到期時間（若有設定）
+        - logical_size_bytes: 邏輯資料大小
 
-    Raises:
-        Exception: If API request fails
+    引發:
+        Exception: 當 API 請求失敗時
     """
     client = get_workspace_client()
 
@@ -142,9 +141,9 @@ def get_branch(name: str) -> Dict[str, Any]:
             return {
                 "name": name,
                 "state": "NOT_FOUND",
-                "error": f"Branch '{name}' not found",
+                "error": f"找不到分支 '{name}'",
             }
-        raise Exception(f"Failed to get branch '{name}': {error_msg}")
+        raise Exception(f"取得分支 '{name}' 失敗：{error_msg}")
 
     result: Dict[str, Any] = {"name": branch.name}
 
@@ -169,16 +168,16 @@ def get_branch(name: str) -> Dict[str, Any]:
 
 def list_branches(project_name: str) -> List[Dict[str, Any]]:
     """
-    List all branches in a Lakebase Autoscaling project.
+    列出 Lakebase Autoscaling 專案中的所有分支。
 
-    Args:
-        project_name: Project resource name (e.g., "projects/my-app")
+    參數:
+        project_name: 專案資源名稱（例如："projects/my-app"）
 
-    Returns:
-        List of branch dictionaries with name, state, is_default, is_protected.
+    回傳:
+        包含 name、state、is_default、is_protected 的分支字典清單。
 
-    Raises:
-        Exception: If API request fails
+    引發:
+        Exception: 當 API 請求失敗時
     """
     client = get_workspace_client()
 
@@ -188,7 +187,7 @@ def list_branches(project_name: str) -> List[Dict[str, Any]]:
     try:
         response = client.postgres.list_branches(parent=project_name)
     except Exception as e:
-        raise Exception(f"Failed to list branches for '{project_name}': {str(e)}")
+        raise Exception(f"列出 '{project_name}' 的分支失敗：{str(e)}")
 
     result = []
     branches = list(response) if response else []
@@ -221,20 +220,20 @@ def update_branch(
     no_expiry: Optional[bool] = None,
 ) -> Dict[str, Any]:
     """
-    Update a Lakebase Autoscaling branch (protect or set expiration).
+    更新 Lakebase Autoscaling 分支（保護設定或到期設定）。
 
-    Args:
-        name: Branch resource name
-            (e.g., "projects/my-app/branches/production")
-        is_protected: Set branch protection status
-        ttl_seconds: New TTL in seconds (max 30 days)
-        no_expiry: If True, remove expiration
+    參數:
+        name: 分支資源名稱
+            （例如："projects/my-app/branches/production"）
+        is_protected: 設定分支保護狀態
+        ttl_seconds: 新的 TTL（秒）（最長 30 天）
+        no_expiry: 若為 True，移除到期設定
 
-    Returns:
-        Dictionary with updated branch details
+    回傳:
+        包含更新後分支詳細資料的字典
 
-    Raises:
-        Exception: If update fails
+    引發:
+        Exception: 當更新失敗時
     """
     client = get_workspace_client()
 
@@ -259,7 +258,7 @@ def update_branch(
             return {
                 "name": name,
                 "status": "NO_CHANGES",
-                "error": "No fields specified for update",
+                "error": "未指定要更新的欄位",
             }
 
         operation = client.postgres.update_branch(
@@ -289,27 +288,27 @@ def update_branch(
 
         return result
     except Exception as e:
-        raise Exception(f"Failed to update branch '{name}': {str(e)}")
+        raise Exception(f"更新分支 '{name}' 失敗：{str(e)}")
 
 
 def delete_branch(name: str) -> Dict[str, Any]:
     """
-    Delete a Lakebase Autoscaling branch.
+    刪除 Lakebase Autoscaling 分支。
 
-    This permanently deletes all databases, roles, computes, and data
-    specific to this branch.
+    注意：
+        此操作會永久刪除此分支專屬的所有資料庫、角色、compute 與資料。
 
-    Args:
-        name: Branch resource name
-            (e.g., "projects/my-app/branches/development")
+    參數:
+        name: 分支資源名稱
+            （例如："projects/my-app/branches/development"）
 
-    Returns:
-        Dictionary with:
-        - name: Branch resource name
-        - status: "deleted" or error info
+    回傳:
+        包含以下欄位的字典：
+        - name: 分支資源名稱
+        - status: "deleted" 或錯誤資訊
 
-    Raises:
-        Exception: If deletion fails
+    引發:
+        Exception: 當刪除失敗時
     """
     client = get_workspace_client()
 
@@ -326,10 +325,10 @@ def delete_branch(name: str) -> Dict[str, Any]:
             return {
                 "name": name,
                 "status": "NOT_FOUND",
-                "error": f"Branch '{name}' not found",
+                "error": f"找不到分支 '{name}'",
             }
-        raise Exception(f"Failed to delete branch '{name}': {error_msg}")
+        raise Exception(f"刪除分支 '{name}' 失敗：{error_msg}")
 
 
-# NOTE: reset_branch is not yet available in the Databricks SDK.
-# It may be added in a future SDK release.
+# 注意：Databricks SDK 尚未提供 reset_branch。
+# 未來的 SDK 版本可能會加入。

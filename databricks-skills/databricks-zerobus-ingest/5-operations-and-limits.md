@@ -1,29 +1,29 @@
-# Operations and Limits
+# 操作與限制
 
-ACK handling, retry and reconnection patterns, throughput limits, delivery semantics, and operational constraints for Zerobus Ingest.
+ACK 處理、重試與重新連線模式、吞吐量限制、傳遞語義和 Zerobus 擷取的操作限制。
 
 ---
 
-## Acknowledgment (ACK) Handling
+## 確認（ACK）處理
 
-Every ingested record returns a durability acknowledgment. An ACK indicates that **all records up to that offset** have been durably written to the target Delta table.
+每個擷取的記錄都會傳回耐久性確認。ACK 表示**該偏移量之前的所有記錄**都已被持久寫入到目標 Delta table。
 
-### Strategies
+### 策略
 
-| Strategy | When to Use | Trade-off |
+| 策略 | 使用時機 | 權衡 |
 |----------|-------------|-----------|
-| **`ingest_record_offset` + `wait_for_offset`** | Low-volume, strict ordering | Simplest; lower throughput |
-| **`ingest_record_nowait` + `AckCallback`** | High-volume producers | Higher throughput; more complex |
-| **`ingest_record_nowait` + periodic `flush`** | Batch-oriented workloads | Best throughput; eventual consistency |
+| **`ingest_record_offset` + `wait_for_offset`** | 低量、嚴格排序 | 最簡單；吞吐量較低 |
+| **`ingest_record_nowait` + `AckCallback`** | 高量生產者 | 吞吐量更高；更複雜 |
+| **`ingest_record_nowait` + 定期 `flush`** | 批次導向工作負載 | 最佳吞吐量；最終一致 |
 
-### Sync Block (Python)
+### 同步區塊（Python）
 
 ```python
 offset = stream.ingest_record_offset(record)
-stream.wait_for_offset(offset)  # Blocks until durable
+stream.wait_for_offset(offset)  # 阻塞直到耐久
 ```
 
-### ACK Callback (Python)
+### ACK 回呼（Python）
 
 ```python
 from zerobus.sdk.shared import AckCallback
@@ -36,7 +36,7 @@ class MyAckHandler(AckCallback):
         self.last_acked_offset = offset
 
     def on_error(self, offset: int, message: str) -> None:
-        print(f"Error at offset {offset}: {message}")
+        print(f"偏移 {offset} 的錯誤：{message}")
 
 options = StreamConfigurationOptions(
     record_type=RecordType.JSON,
@@ -44,36 +44,36 @@ options = StreamConfigurationOptions(
 )
 ```
 
-### Flush-Based
+### 清空型
 
 ```python
-# Send many records without blocking (fire-and-forget)
+# 傳送許多記錄而不阻塞（火力與遺忘）
 for record in batch:
     stream.ingest_record_nowait(record)
 
-# Flush ensures all buffered records are sent
+# 清空確保所有緩衝記錄已傳送
 stream.flush()
 ```
 
 ---
 
-## Retry and Reconnection
+## 重試與重新連線
 
-Zerobus streams can close due to server maintenance, network issues, or zone failures. Implement retry with exponential backoff and stream reinitialization.
+Zerobus 串流可能因伺服器維護、網路問題或區域故障而關閉。使用指數退避和串流重新初始化實施重試。
 
-### Pattern (Any Language)
+### 模式（任何語言）
 
 ```
-1. Attempt ingest
-2. On connection/closed error:
-   a. Close the current stream
-   b. Wait with exponential backoff (1s, 2s, 4s, ...)
-   c. Reinitialize the stream
-   d. Retry the record
-3. After max retries, log failure and escalate
+1. 嘗試擷取
+2. 在連線/關閉錯誤時：
+   a. 關閉目前串流
+   b. 以指數退避等待（1 秒、2 秒、4 秒、...）
+   c. 重新初始化串流
+   d. 重試記錄
+3. 超過最大重試次數後，記錄失敗並上報
 ```
 
-### Python Implementation
+### Python 實作
 
 ```python
 import time
@@ -82,12 +82,12 @@ import logging
 logger = logging.getLogger(__name__)
 
 def ingest_with_retry(stream_factory, record, max_retries=5):
-    """Ingest a record with retry and stream reinitialization.
+    """使用重試和串流重新初始化擷取記錄。
 
-    Args:
-        stream_factory: Callable that returns a new stream.
-        record: The record to ingest.
-        max_retries: Maximum retry attempts.
+    參數：
+        stream_factory：傳回新串流的可呼叫對象。
+        record：要擷取的記錄。
+        max_retries：最大重試次數。
     """
     stream = stream_factory()
 
@@ -95,17 +95,17 @@ def ingest_with_retry(stream_factory, record, max_retries=5):
         try:
             offset = stream.ingest_record_offset(record)
             stream.wait_for_offset(offset)
-            return stream  # Return the (possibly new) stream
+            return stream  # 傳回（可能是新的）串流
         except Exception as e:
             err = str(e).lower()
-            logger.warning("Attempt %d/%d failed: %s", attempt + 1, max_retries, e)
+            logger.warning("嘗試 %d/%d 失敗：%s", attempt + 1, max_retries, e)
 
             if "closed" in err or "connection" in err or "unavailable" in err:
                 try:
                     stream.close()
                 except Exception:
                     pass
-                backoff = min(2 ** attempt, 30)  # Cap at 30s
+                backoff = min(2 ** attempt, 30)  # 上限 30 秒
                 time.sleep(backoff)
                 stream = stream_factory()
             elif attempt < max_retries - 1:
@@ -116,140 +116,140 @@ def ingest_with_retry(stream_factory, record, max_retries=5):
     return stream
 ```
 
-### Key Points
+### 重點
 
-- **Always reinitialize the stream** on connection errors, not just retry the same stream
-- **Cap backoff** at a reasonable maximum (e.g., 30 seconds)
-- **Log failures** with enough context to diagnose (endpoint, table, error message)
-- **Design for at-least-once**: your downstream consumers should handle duplicate records
-
----
-
-## Delivery Semantics
-
-Zerobus provides **at-least-once** delivery guarantees:
-
-- Records may be delivered more than once (e.g., after a retry where the original was actually persisted)
-- There is **no exactly-once** semantics
-- Design your target table and downstream consumers to handle duplicates (e.g., deduplication via `MERGE` or unique constraints)
+- **在連線錯誤時始終重新初始化串流**，而不是只重試相同串流
+- **設定退避上限**為合理的最大值（例如 30 秒）
+- **記錄失敗**具有足夠的內容以診斷（端點、table、錯誤訊息）
+- **針對至少一次設計**：下游使用者應處理重複記錄
 
 ---
 
-## Throughput Limits
+## 傳遞語義
 
-| Limit | Value | Notes |
+Zerobus 提供**至少一次**傳遞保證：
+
+- 記錄可能被傳遞多次（例如，重試後原始記錄實際上已持久化）
+- **沒有恰好一次**語義
+- 設計目標 table 和下游使用者以處理重複（例如透過 `MERGE` 或唯一限制的去重）
+
+---
+
+## 吞吐量限制
+
+| 限制 | 值 | 備註 |
 |-------|-------|-------|
-| **Throughput per stream** | 100 MB/s | Based on 1 KB messages |
-| **Rows per stream** | 15,000 rows/s | |
-| **Max message size** | 10 MB (10,485,760 bytes) | Per individual record |
-| **Max columns** | 2,000 | Per proto schema / table |
+| **每個串流吞吐量** | 100 MB/秒 | 基於 1 KB 訊息 |
+| **每個串流的列** | 15,000 列/秒 | |
+| **最大訊息大小** | 10 MB（10,485,760 位元組） | 每個記錄 |
+| **最大欄數** | 2,000 | 每個 proto 架構 / table |
 
-### Scaling Beyond One Stream
+### 超越單個串流的擴展
 
-If you need higher throughput than a single stream provides:
+如果需要高於單個串流提供的吞吐量：
 
-- Open **multiple streams** to the same table from different clients
-- Zerobus supports **thousands of concurrent clients** writing to the same table
-- Partition your data across streams by key (e.g., device ID, region)
-- Contact Databricks for custom throughput requirements
+- 從不同用戶端開啟**多個串流**到相同 table
+- Zerobus 支援**數千個並行用戶端**寫入相同 table
+- 按鍵分割資料跨串流（例如裝置 ID、區域）
+- 聯絡 Databricks 以了解自訂吞吐量需求
 
 ---
 
-## Regional Availability
+## 區域可用性
 
-Workspace and target tables must be in a supported region for your cloud provider.
+Workspace 和目標 tables 必須在雲端供應商支援的區域中。
 
-### AWS Supported Regions
+### AWS 支援的區域
 
-| Region | Code |
+| 區域 | 代碼 |
 |--------|------|
-| US East (N. Virginia) | `us-east-1` |
-| US East (Ohio) | `us-east-2` |
-| US West (Oregon) | `us-west-2` |
-| Europe (Frankfurt) | `eu-central-1` |
-| Europe (Ireland) | `eu-west-1` |
-| Asia Pacific (Singapore) | `ap-southeast-1` |
-| Asia Pacific (Sydney) | `ap-southeast-2` |
-| Asia Pacific (Tokyo) | `ap-northeast-1` |
-| Canada (Central) | `ca-central-1` |
+| 美國東部（維吉尼亞北部） | `us-east-1` |
+| 美國東部（俄亥俄州） | `us-east-2` |
+| 美國西部（俄勒岡州） | `us-west-2` |
+| 歐洲（法蘭克福） | `eu-central-1` |
+| 歐洲（愛爾蘭） | `eu-west-1` |
+| 亞太（新加坡） | `ap-southeast-1` |
+| 亞太（雪梨） | `ap-southeast-2` |
+| 亞太（東京） | `ap-northeast-1` |
+| 加拿大（中部） | `ca-central-1` |
 
-### Azure Supported Regions
+### Azure 支援的區域
 
-| Region | Code |
+| 區域 | 代碼 |
 |--------|------|
-| Canada Central | `canadacentral` |
-| West US | `westus` |
-| East US | `eastus` |
-| East US 2 | `eastus2` |
-| Central US | `centralus` |
-| North Central US | `northcentralus` |
-| Sweden Central | `swedencentral` |
-| West Europe | `westeurope` |
-| North Europe | `northeurope` |
-| Australia East | `australiaeast` |
-| Southeast Asia | `southeastasia` |
+| 加拿大中部 | `canadacentral` |
+| 美國西部 | `westus` |
+| 美國東部 | `eastus` |
+| 美國東部 2 | `eastus2` |
+| 美國中部 | `centralus` |
+| 美國中北部 | `northcentralus` |
+| 瑞典中部 | `swedencentral` |
+| 西歐 | `westeurope` |
+| 北歐 | `northeurope` |
+| 澳洲東部 | `australiaeast` |
+| 東南亞 | `southeastasia` |
 
-**Performance note:** Optimal throughput requires the client application and Zerobus endpoint to be in the **same region**.
-
----
-
-## Durability and Availability
-
-- **Single-AZ only**: Zerobus runs in a single availability zone. The service may experience downtime if that zone is unavailable.
-- **No geographic redundancy**: Plan for zone outages in your producer's retry logic.
-- **Maintenance windows**: The server may close streams during maintenance. Your client should handle reconnection gracefully.
+**效能注意：** 最佳吞吐量需要用戶端應用程式和 Zerobus 端點位於**相同區域**。
 
 ---
 
-## Target Table Constraints
+## 耐久性和可用性
 
-| Constraint | Details |
+- **單一 AZ 僅限**：Zerobus 在單一可用性區域中運行。如果該區域不可用，服務可能經歷停機時間。
+- **無地理冗餘**：在生產者的重試邏輯中規劃區域停機。
+- **維護時段**：伺服器可能在維護期間關閉串流。用戶端應優雅地處理重新連線。
+
+---
+
+## 目標 Table 限制
+
+| 限制 | 詳細資訊 |
 |------------|---------|
-| **Table type** | Managed Delta tables only (no external storage) |
-| **Table names** | ASCII letters, digits, underscores only |
-| **Schema changes** | No auto-evolution; regenerate proto and redeploy |
-| **Table creation** | Zerobus does not create tables; pre-create via SQL DDL |
-| **Table recreation** | Cannot recreate an existing target table via Zerobus |
+| **Table 型別** | 受管 Delta tables 僅限（無外部存儲） |
+| **Table 名稱** | 僅 ASCII 字母、數字、底線 |
+| **Schema 變更** | 無自動演進；重新產生 proto 並重新部署 |
+| **Table 建立** | Zerobus 不建立 tables；透過 SQL DDL 預先建立 |
+| **Table 重建** | 無法透過 Zerobus 重建現有目標 table |
 
 ---
 
-## Supported Data Types
+## 支援的資料型別
 
-| Delta Type | Protobuf Type | Conversion Notes |
+| Delta 型別 | Protobuf 型別 | 轉換備註 |
 |------------|---------------|------------------|
-| STRING | string | Direct mapping |
-| INT / INTEGER | int32 | Direct mapping |
-| LONG / BIGINT | int64 | Direct mapping |
-| FLOAT | float | Direct mapping |
-| DOUBLE | double | Direct mapping |
-| BOOLEAN | bool | Direct mapping |
-| BINARY | bytes | Direct mapping |
-| ARRAY\<T\> | repeated T | Recursive mapping |
-| MAP\<K,V\> | map\<K,V\> | Key must be string or integer |
-| STRUCT | nested message | Recursive mapping |
-| DATE | int32 | Epoch days since 1970-01-01 |
-| TIMESTAMP | int64 | Epoch microseconds |
-| VARIANT | string | JSON-encoded string |
+| STRING | string | 直接對應 |
+| INT / INTEGER | int32 | 直接對應 |
+| LONG / BIGINT | int64 | 直接對應 |
+| FLOAT | float | 直接對應 |
+| DOUBLE | double | 直接對應 |
+| BOOLEAN | bool | 直接對應 |
+| BINARY | bytes | 直接對應 |
+| ARRAY\<T\> | repeated T | 遞迴對應 |
+| MAP\<K,V\> | map\<K,V\> | 鍵必須是字串或整數 |
+| STRUCT | nested message | 遞迴對應 |
+| DATE | int32 | 1970-01-01 以來的時代日期 |
+| TIMESTAMP | int64 | 時代微秒 |
+| VARIANT | string | JSON 編碼的字串 |
 
 ---
 
-## Monitoring and Observability
+## 監控和可觀測性
 
-Zerobus does not currently expose built-in metrics dashboards. Monitor your producers with:
+Zerobus 目前不公開內建計量儀表板。使用以下方式監控生產者：
 
-- **Application-level logging**: Log ACK offsets, retry counts, and error rates
-- **ACK callback tracking**: Track the last-acked offset to measure ingestion lag
-- **Table row counts**: Periodically query the target table to verify data is arriving
-- **Health checks**: Attempt a lightweight ingest (or stream creation) to verify connectivity
+- **應用程式層級日誌記錄**：記錄 ACK 偏移量、重試計數和錯誤率
+- **ACK 回呼追蹤**：追蹤最後確認的偏移量以測量擷取延遲
+- **Table 列計數**：定期查詢目標 table 以驗證資料正在到達
+- **健康檢查**：嘗試輕量級擷取（或串流建立）以驗證連線
 
 ```python
-# Simple health check
+# 簡單的健康檢查
 def check_zerobus_health(sdk, client_id, client_secret, table_props, options):
     try:
         stream = sdk.create_stream(client_id, client_secret, table_props, options)
         stream.close()
         return True
     except Exception as e:
-        logger.error("Zerobus health check failed: %s", e)
+        logger.error("Zerobus 健康檢查失敗：%s", e)
         return False
 ```

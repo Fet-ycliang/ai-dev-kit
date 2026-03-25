@@ -1,26 +1,26 @@
-# CRITICAL MLflow 3 GenAI Interfaces
+# MLflow 3 GenAI 關鍵介面參考
 
-**Version**: MLflow 3.1.0+ (mlflow[databricks]>=3.1.0)
-**Last Updated**: Based on official Databricks documentation
+**版本**：MLflow 3.1.0+（mlflow[databricks]>=3.1.0）
+**最後更新**：依據 Databricks 官方文件
 
-## Table of Contents
+## 目錄
 
-- [Core Evaluation API](#core-evaluation-api)
-- [Data Schema](#data-schema)
-- [Built-in Scorers (Prebuilt)](#built-in-scorers-prebuilt)
-- [Custom Scorers](#custom-scorers)
-- [Judges API (Low-level)](#judges-api-low-level)
-- [Trace APIs](#trace-apis)
-- [Evaluation Datasets (MLflow-managed)](#evaluation-datasets-mlflow-managed)
-- [Trace Ingestion in Unity Catalog](#trace-ingestion-in-unity-catalog)
-- [Production Monitoring](#production-monitoring)
-- [Key Constants](#key-constants)
-- [Installation](#installation)
-- [Setup](#setup)
+- [核心評估 API](#核心評估-api)
+- [資料 Schema](#資料-schema)
+- [內建 Scorer（預建）](#內建-scorer預建)
+- [自訂 Scorer](#自訂-scorer)
+- [Judges API（低階）](#judges-api低階)
+- [Trace API](#trace-api)
+- [評估 Dataset（MLflow 管理）](#評估-datasetmlflow-管理)
+- [Unity Catalog 中的 Trace 攝取](#unity-catalog-中的-trace-攝取)
+- [生產監控](#生產監控)
+- [關鍵常數](#關鍵常數)
+- [安裝](#安裝)
+- [設定](#設定)
 
 ---
 
-## Core Evaluation API
+## 核心評估 API
 
 ### mlflow.genai.evaluate()
 
@@ -28,38 +28,38 @@
 import mlflow
 
 results = mlflow.genai.evaluate(
-    data=eval_dataset,        # List[dict], DataFrame, or EvalDataset
-    predict_fn=my_app,        # Callable that takes **inputs and returns outputs
-    scorers=[scorer1, scorer2] # List of Scorer objects
+    data=eval_dataset,        # List[dict]、DataFrame 或 EvalDataset
+    predict_fn=my_app,        # 接收 **inputs 並回傳 outputs 的 Callable
+    scorers=[scorer1, scorer2] # Scorer 物件清單
 )
 
-# Returns: EvaluationResult with:
-#   - results.run_id: str - MLflow run ID containing results
-#   - results.metrics: dict - Aggregate metrics
+# 回傳：EvaluationResult，包含：
+#   - results.run_id: str — MLflow run ID（存放評估結果）
+#   - results.metrics: dict — 彙總指標
 ```
 
-**CRITICAL**: 
-- `predict_fn` receives **unpacked** `inputs` dict as kwargs
-- If `data` has pre-computed `outputs`, `predict_fn` is optional
-- Traces are automatically created for each row
+**重要事項**：
+- `predict_fn` 接收 **解包後** 的 `inputs` dict 作為 kwargs
+- 若 `data` 已包含預先計算的 `outputs`，`predict_fn` 為選填
+- 每筆資料列都會自動建立 trace
 
 ---
 
-## Data Schema
+## 資料 Schema
 
-### Evaluation Dataset Record
+### 評估 Dataset 記錄格式
 
 ```python
-# CORRECT format
+# 正確格式
 record = {
-    "inputs": {                    # REQUIRED - passed to predict_fn
+    "inputs": {                    # 必填——傳入 predict_fn
         "customer_name": "Acme",
         "query": "What is X?"
     },
-    "outputs": {                   # OPTIONAL - pre-computed outputs
+    "outputs": {                   # 選填——預先計算的輸出
         "response": "X is..."
     },
-    "expectations": {              # OPTIONAL - ground truth for scorers
+    "expectations": {              # 選填——供 scorer 使用的基準答案
         "expected_facts": ["fact1", "fact2"],
         "expected_response": "X is...",
         "guidelines": ["Must be concise"]
@@ -67,16 +67,16 @@ record = {
 }
 ```
 
-**CRITICAL Schema Rules**:
-- `inputs` is REQUIRED - contains what's passed to your app
-- `outputs` is OPTIONAL - if provided, predict_fn is skipped
-- `expectations` is OPTIONAL - used by Correctness, ExpectationsGuidelines
+**重要的 Schema 規則**：
+- `inputs` 為**必填**——包含傳入應用程式的資料
+- `outputs` 為**選填**——若提供，則跳過 predict_fn
+- `expectations` 為**選填**——供 Correctness、ExpectationsGuidelines 使用
 
 ---
 
-## Built-in Scorers (Prebuilt)
+## 內建 Scorer（預建）
 
-### Import Path
+### Import 路徑
 ```python
 from mlflow.genai.scorers import (
     Guidelines,
@@ -91,20 +91,20 @@ from mlflow.genai.scorers import (
 ### Guidelines Scorer
 ```python
 Guidelines(
-    name="my_guideline",              # REQUIRED - unique name
-    guidelines="Response must...",     # REQUIRED - str or List[str]
-    model="databricks:/endpoint-name"  # OPTIONAL - custom judge model
+    name="my_guideline",              # 必填——唯一名稱
+    guidelines="Response must...",     # 必填——str 或 List[str]
+    model="databricks:/endpoint-name"  # 選填——自訂 judge 模型
 )
 
-# Guidelines auto-extracts 'request' and 'response' from trace
-# Reference them in guidelines: "The response must address the request"
+# Guidelines 會自動從 trace 中提取 'request' 與 'response'
+# 在 guidelines 中參照：「The response must address the request」
 ```
 
 ### ExpectationsGuidelines Scorer
 ```python
-ExpectationsGuidelines()  # No parameters needed
+ExpectationsGuidelines()  # 無需參數
 
-# REQUIRES expectations.guidelines in each data row:
+# 需要每筆資料列的 expectations.guidelines：
 record = {
     "inputs": {...},
     "outputs": {...},
@@ -117,16 +117,16 @@ record = {
 ### Correctness Scorer
 ```python
 Correctness(
-    model="databricks:/endpoint-name"  # OPTIONAL
+    model="databricks:/endpoint-name"  # 選填
 )
 
-# REQUIRES expectations.expected_facts OR expectations.expected_response:
+# 需要 expectations.expected_facts 或 expectations.expected_response：
 record = {
     "inputs": {...},
     "outputs": {...},
     "expectations": {
         "expected_facts": ["MLflow is open-source", "Manages ML lifecycle"]
-        # OR
+        # 或
         "expected_response": "MLflow is an open-source platform..."
     }
 }
@@ -135,33 +135,33 @@ record = {
 ### Safety Scorer
 ```python
 Safety(
-    model="databricks:/endpoint-name"  # OPTIONAL
+    model="databricks:/endpoint-name"  # 選填
 )
-# No expectations required - evaluates outputs for harmful content
+# 無需 expectations——評估輸出是否含有有害內容
 ```
 
 ### RelevanceToQuery Scorer
 ```python
 RelevanceToQuery(
-    model="databricks:/endpoint-name"  # OPTIONAL
+    model="databricks:/endpoint-name"  # 選填
 )
-# Checks if response addresses the user's request
+# 檢查回應是否有回應使用者的請求
 ```
 
 ### RetrievalGroundedness Scorer
 ```python
 RetrievalGroundedness(
-    model="databricks:/endpoint-name"  # OPTIONAL
+    model="databricks:/endpoint-name"  # 選填
 )
-# REQUIRES: Trace with RETRIEVER span type
-# Checks if response is grounded in retrieved documents
+# 需要：trace 中有 RETRIEVER span 類型
+# 檢查回應是否以檢索到的文件為根據
 ```
 
 ---
 
-## Custom Scorers
+## 自訂 Scorer
 
-### Function-based Scorer (Decorator)
+### 函式型 Scorer（裝飾器）
 
 ```python
 from mlflow.genai.scorers import scorer
@@ -169,32 +169,32 @@ from mlflow.entities import Feedback
 
 @scorer
 def my_scorer(
-    inputs: dict,          # From data record
-    outputs: dict,         # App outputs or pre-computed
-    expectations: dict,    # From data record (optional)
-    trace: Trace = None    # Full MLflow Trace object (optional)
+    inputs: dict,          # 來自資料記錄
+    outputs: dict,         # 應用程式輸出或預先計算值
+    expectations: dict,    # 來自資料記錄（選填）
+    trace: Trace = None    # 完整的 MLflow Trace 物件（選填）
 ) -> Feedback | bool | int | float | str | list[Feedback]:
-    """Custom scorer implementation"""
-    
-    # Return options:
-    # 1. Simple value (metric name = function name)
+    """自訂 scorer 實作"""
+
+    # 回傳選項：
+    # 1. 簡單值（指標名稱 = 函式名稱）
     return True
-    
-    # 2. Feedback object with custom name
+
+    # 2. 含自訂名稱的 Feedback 物件
     return Feedback(
         name="custom_metric",
-        value="yes",  # or "no", True/False, int, float
-        rationale="Explanation of score"
+        value="yes",  # 或 "no"、True/False、int、float
+        rationale="分數說明"
     )
-    
-    # 3. Multiple feedbacks
+
+    # 3. 多個 Feedback
     return [
         Feedback(name="metric_1", value=True),
         Feedback(name="metric_2", value=0.85)
     ]
 ```
 
-### Class-based Scorer
+### 類別型 Scorer
 
 ```python
 from mlflow.genai.scorers import Scorer
@@ -202,29 +202,29 @@ from mlflow.entities import Feedback
 from typing import Optional
 
 class MyScorer(Scorer):
-    name: str = "my_scorer"  # REQUIRED
-    threshold: int = 50      # Custom fields allowed (Pydantic)
-    
+    name: str = "my_scorer"  # 必填
+    threshold: int = 50      # 自訂欄位（Pydantic）
+
     def __call__(
-        self, 
+        self,
         outputs: str,
         inputs: dict = None,
         expectations: dict = None,
         trace = None
     ) -> Feedback:
         if len(outputs) > self.threshold:
-            return Feedback(value=True, rationale="Meets length requirement")
-        return Feedback(value=False, rationale="Too short")
+            return Feedback(value=True, rationale="符合長度要求")
+        return Feedback(value=False, rationale="太短")
 
-# Usage
+# 使用方式
 my_scorer = MyScorer(threshold=100)
 ```
 
 ---
 
-## Judges API (Low-level)
+## Judges API（低階）
 
-### Import Path
+### Import 路徑
 ```python
 from mlflow.genai.judges import (
     meets_guidelines,
@@ -241,16 +241,16 @@ from mlflow.genai.judges import (
 from mlflow.genai.judges import meets_guidelines
 
 feedback = meets_guidelines(
-    name="my_check",                    # Optional display name
-    guidelines="Must be professional",   # str or List[str]
-    context={                           # Dict with data to evaluate
-        "request": "user question",
-        "response": "app response",
-        "retrieved_documents": [...]     # Can include any keys
+    name="my_check",                    # 選填，顯示名稱
+    guidelines="Must be professional",   # str 或 List[str]
+    context={                           # 包含待評估資料的 dict
+        "request": "使用者問題",
+        "response": "應用程式回應",
+        "retrieved_documents": [...]     # 可包含任意鍵值
     },
-    model="databricks:/endpoint"        # Optional custom model
+    model="databricks:/endpoint"        # 選填，自訂模型
 )
-# Returns: Feedback(value="yes"|"no", rationale="...")
+# 回傳：Feedback(value="yes"|"no", rationale="...")
 ```
 
 ### is_correct()
@@ -260,12 +260,12 @@ from mlflow.genai.judges import is_correct
 feedback = is_correct(
     request="What is MLflow?",
     response="MLflow is an open-source platform...",
-    expected_facts=["MLflow is open-source"],  # OR expected_response
-    model="databricks:/endpoint"               # Optional
+    expected_facts=["MLflow is open-source"],  # 或 expected_response
+    model="databricks:/endpoint"               # 選填
 )
 ```
 
-### make_judge() - Custom LLM Judge
+### make_judge() — 自訂 LLM Judge
 ```python
 from mlflow.genai.judges import make_judge
 
@@ -275,16 +275,16 @@ issue_judge = make_judge(
     Evaluate if the customer's issue was resolved.
     User's messages: {{ inputs }}
     Agent's responses: {{ outputs }}
-    
+
     Rate and respond with exactly one of:
     - 'fully_resolved'
-    - 'partially_resolved' 
+    - 'partially_resolved'
     - 'needs_follow_up'
     """,
-    model="databricks:/databricks-gpt-5-mini"  # Optional
+    model="databricks:/databricks-gpt-5-mini"  # 選填
 )
 
-# Use in evaluation
+# 用於評估
 results = mlflow.genai.evaluate(
     data=eval_dataset,
     predict_fn=my_app,
@@ -292,24 +292,24 @@ results = mlflow.genai.evaluate(
 )
 ```
 
-### Trace-based Judge (with {{ trace }})
+### 基於 Trace 的 Judge（含 {{ trace }}）
 ```python
-# Including {{ trace }} in instructions enables trace exploration
+# instructions 中包含 {{ trace }} 可啟用 trace 探索
 tool_judge = make_judge(
     name="tool_correctness",
     instructions="""
     Analyze the execution {{ trace }} to determine if appropriate tools were called.
     Respond with true or false.
     """,
-    model="databricks:/databricks-gpt-5-mini"  # REQUIRED for trace judges
+    model="databricks:/databricks-gpt-5-mini"  # trace judge 必填
 )
 ```
 
 ---
 
-## Trace APIs
+## Trace API
 
-### Search Traces
+### 搜尋 Trace
 ```python
 import mlflow
 
@@ -317,28 +317,28 @@ traces_df = mlflow.search_traces(
     filter_string="attributes.status = 'OK'",
     order_by=["attributes.timestamp_ms DESC"],
     max_results=100,
-    run_id="optional-run-id"  # Filter to specific evaluation run
+    run_id="optional-run-id"  # 篩選特定評估 run
 )
 
-# Common filters:
-# "attributes.status = 'OK'" or "attributes.status = 'ERROR'"
-# "attributes.timestamp_ms > {milliseconds}"
+# 常用篩選條件：
+# "attributes.status = 'OK'" 或 "attributes.status = 'ERROR'"
+# "attributes.timestamp_ms > {毫秒時間戳}"
 # "attributes.execution_time_ms > 5000"
 # "tags.environment = 'production'"
 # "tags.`mlflow.traceName` = 'my_function'"
 ```
 
-### Trace Object Access
+### 存取 Trace 物件
 ```python
 from mlflow.entities import Trace, SpanType
 
 @scorer
 def trace_scorer(trace: Trace) -> Feedback:
-    # Search spans by type
+    # 依類型搜尋 span
     llm_spans = trace.search_spans(span_type=SpanType.CHAT_MODEL)
     retriever_spans = trace.search_spans(span_type=SpanType.RETRIEVER)
-    
-    # Access span data
+
+    # 存取 span 資料
     for span in llm_spans:
         duration = (span.end_time_ns - span.start_time_ns) / 1e9
         inputs = span.inputs
@@ -347,14 +347,14 @@ def trace_scorer(trace: Trace) -> Feedback:
 
 ---
 
-## Evaluation Datasets (MLflow-managed)
+## 評估 Dataset（MLflow 管理）
 
-### Create Dataset
+### 建立 Dataset
 ```python
 import mlflow.genai.datasets
 from databricks.connect import DatabricksSession
 
-# Required for MLflow-managed datasets
+# MLflow 管理的 dataset 必須先初始化 Spark
 spark = DatabricksSession.builder.remote(serverless=True).getOrCreate()
 
 eval_dataset = mlflow.genai.datasets.create_dataset(
@@ -362,23 +362,23 @@ eval_dataset = mlflow.genai.datasets.create_dataset(
 )
 ```
 
-### Add Records
+### 新增記錄
 ```python
-# From list of dicts
+# 從 dict 清單新增
 records = [
     {"inputs": {"query": "..."}, "expectations": {"expected_facts": [...]}},
 ]
 eval_dataset.merge_records(records)
 
-# From traces
+# 從 trace 新增
 traces_df = mlflow.search_traces(filter_string="...")
 eval_dataset.merge_records(traces_df)
 ```
 
-### Use in Evaluation
+### 用於評估
 ```python
 results = mlflow.genai.evaluate(
-    data=eval_dataset,  # Pass dataset object directly
+    data=eval_dataset,  # 直接傳入 dataset 物件
     predict_fn=my_app,
     scorers=[...]
 )
@@ -386,11 +386,11 @@ results = mlflow.genai.evaluate(
 
 ---
 
-## Trace Ingestion in Unity Catalog
+## Unity Catalog 中的 Trace 攝取
 
-**Version**: MLflow 3.9.0+ (`mlflow[databricks]>=3.9.0`)
+**版本**：MLflow 3.9.0+（`mlflow[databricks]>=3.9.0`）
 
-### Setup - Link UC Schema to Experiment
+### 設定 — 將 UC Schema 連結至 Experiment
 ```python
 import os
 import mlflow
@@ -409,12 +409,12 @@ set_experiment_trace_location(
     ),
     experiment_id=experiment_id,
 )
-# Creates: mlflow_experiment_trace_otel_logs, _metrics, _spans
+# 建立：mlflow_experiment_trace_otel_logs、_metrics、_spans
 ```
 
-### Set Trace Destination
+### 設定 Trace Destination
 ```python
-# Option A: Python API
+# 方式 A：Python API
 from mlflow.entities import UCSchemaLocation
 mlflow.tracing.set_destination(
     destination=UCSchemaLocation(
@@ -423,112 +423,112 @@ mlflow.tracing.set_destination(
     )
 )
 
-# Option B: Environment variable
+# 方式 B：環境變數
 os.environ["MLFLOW_TRACING_DESTINATION"] = "<CATALOG>.<SCHEMA>"
 ```
 
-### Permissions Required
-- `USE_CATALOG` on catalog
-- `USE_SCHEMA` on schema
-- `MODIFY` and `SELECT` on each `mlflow_experiment_trace_*` table
-- **CRITICAL**: `ALL_PRIVILEGES` is NOT sufficient
+### 所需權限
+- 在 catalog 上：`USE_CATALOG`
+- 在 schema 上：`USE_SCHEMA`
+- 在每個 `mlflow_experiment_trace_*` 資料表上：`MODIFY` 與 `SELECT`
+- **重要**：`ALL_PRIVILEGES` **不足以**提供所需權限
 
 ---
 
-## Production Monitoring
+## 生產監控
 
-### Configure Monitoring SQL Warehouse
+### 設定監控 SQL Warehouse
 ```python
 from mlflow.tracing import set_databricks_monitoring_sql_warehouse_id
 
 set_databricks_monitoring_sql_warehouse_id(
     warehouse_id="<SQL_WAREHOUSE_ID>",
-    experiment_id="<EXPERIMENT_ID>"  # Optional
+    experiment_id="<EXPERIMENT_ID>"  # 選填
 )
-# Alternative: os.environ["MLFLOW_TRACING_SQL_WAREHOUSE_ID"] = "<ID>"
+# 替代方式：os.environ["MLFLOW_TRACING_SQL_WAREHOUSE_ID"] = "<ID>"
 ```
 
-### Register and Start Scorer
+### Register 並 Start Scorer
 ```python
 from mlflow.genai.scorers import Safety, Guidelines, ScorerSamplingConfig
 
-# Register scorer to experiment
+# 將 scorer register 至 experiment
 safety = Safety().register(name="safety_monitor")
 
-# Start monitoring with sample rate
+# 以取樣率啟動監控
 safety = safety.start(
-    sampling_config=ScorerSamplingConfig(sample_rate=0.5)  # 50% of traces
+    sampling_config=ScorerSamplingConfig(sample_rate=0.5)  # 50% 的 trace
 )
 ```
 
-### Manage Scorers
+### 管理 Scorer
 ```python
 from mlflow.genai.scorers import list_scorers, get_scorer, delete_scorer
 
-# List all registered scorers
+# 列出所有已 register 的 scorer
 scorers = list_scorers()
 
-# Get specific scorer
+# 取得特定 scorer
 my_scorer = get_scorer(name="safety_monitor")
 
-# Update sample rate
+# 更新取樣率
 my_scorer = my_scorer.update(
     sampling_config=ScorerSamplingConfig(sample_rate=0.8)
 )
 
-# Stop monitoring (keeps registration)
+# 停止監控（保留 registration）
 my_scorer = my_scorer.stop()
 
-# Delete entirely
+# 完全刪除
 delete_scorer(name="safety_monitor")
 ```
 
 ---
 
-## Key Constants
+## 關鍵常數
 
-### Span Types
+### Span 類型
 ```python
 from mlflow.entities import SpanType
 
-SpanType.CHAT_MODEL      # LLM calls
-SpanType.RETRIEVER       # RAG retrieval
-SpanType.TOOL            # Tool/function calls
-SpanType.AGENT           # Agent execution
-SpanType.CHAIN           # Chain execution
+SpanType.CHAT_MODEL      # LLM 呼叫
+SpanType.RETRIEVER       # RAG 檢索
+SpanType.TOOL            # 工具／函式呼叫
+SpanType.AGENT           # Agent 執行
+SpanType.CHAIN           # Chain 執行
 ```
 
-### Feedback Values
+### Feedback 值
 ```python
-# LLM judges typically return:
-"yes" | "no"     # For pass/fail assessments
+# LLM judge 通常回傳：
+"yes" | "no"     # 通過／失敗評估
 
-# Custom scorers can return:
-True | False     # Boolean
-0.0 - 1.0        # Float scores
-int              # Integer scores
-str              # Categorical values
+# 自訂 scorer 可回傳：
+True | False     # 布林值
+0.0 - 1.0        # 浮點數分數
+int              # 整數分數
+str              # 類別值
 ```
 
 ---
 
-## Installation
+## 安裝
 
 ```bash
 pip install --upgrade "mlflow[databricks]>=3.1.0" openai
 ```
 
-## Setup
+## 設定
 
 ```python
 import mlflow
 
-# Enable auto-tracing
-mlflow.openai.autolog()  # or mlflow.langchain.autolog(), etc.
+# 啟用自動 tracing
+mlflow.openai.autolog()  # 或 mlflow.langchain.autolog() 等
 
-# Set tracking URI
+# 設定 tracking URI
 mlflow.set_tracking_uri("databricks")
 
-# Set experiment
+# 設定 experiment
 mlflow.set_experiment("/Shared/my-experiment")
 ```

@@ -1,107 +1,107 @@
-# Iceberg REST Catalog (IRC)
+# Iceberg REST Catalog（IRC）
 
-The Iceberg REST Catalog (IRC) is a REST API endpoint that lets external engines read and write Databricks-managed Iceberg data using the standard Apache Iceberg REST Catalog protocol. External tools connect to the IRC endpoint, authenticate, and receive vended credentials for direct cloud storage access.
+Iceberg REST Catalog（IRC）是一個 REST API 端點，可讓外部引擎使用標準 Apache Iceberg REST Catalog protocol 讀寫 Databricks 管理的 Iceberg 資料。外部工具會連線至 IRC 端點、完成驗證，並取得授予的憑證，以便直接存取雲端儲存體。
 
-**Endpoint**: `https://<workspace-url>/api/2.1/unity-catalog/iceberg-rest`
+**端點**：`https://<workspace-url>/api/2.1/unity-catalog/iceberg-rest`
 
-> **Legacy endpoint warning**: The older `/api/2.1/unity-catalog/iceberg` endpoint is in maintenance mode and should not be used for new integrations. It was the original read-only endpoint documented for UniForm. All new integrations — both UniForm (Delta with Iceberg reads) and managed Iceberg tables — must use `/api/2.1/unity-catalog/iceberg-rest`.
+> **舊版端點警告**：較舊的 `/api/2.1/unity-catalog/iceberg` 端點目前處於 maintenance mode，不應再用於新的整合。那是最早為 UniForm 文件化的唯讀端點。所有新的整合 —— 無論是 UniForm（具備 Iceberg 讀取能力的 Delta）或受管 Iceberg 資料表 —— 都必須使用 `/api/2.1/unity-catalog/iceberg-rest`。
 
-**Requirements**: Unity Catalog, external data access enabled on the workspace, DBR 16.1+
+**需求**：Unity Catalog、工作區已啟用 external data access、DBR 16.1+
 
 ---
 
-## Prerequisites
+## 前置條件
 
-### 1. Enable External Data Access
+### 1. 啟用 External Data Access
 
-External data access must be enabled for your workspace. This is typically configured by a workspace admin.
+你的工作區必須啟用 external data access。這通常由工作區管理員進行設定。
 
-### 2. Network Access to the IRC Endpoint
+### 2. 具備對 IRC 端點的網路存取能力
 
-External engines must reach the Databricks workspace over HTTPS (port 443). If the workspace has **IP access lists** enabled, the CIDR range(s) of the Iceberg client must be explicitly allowed — otherwise connections will fail regardless of correct credentials or grants.
+外部引擎必須能透過 HTTPS（port 443）連到 Databricks 工作區。若工作區已啟用 **IP 存取清單**，則必須明確允許 Iceberg client 的 CIDR 範圍 —— 否則即使憑證或權限都正確，連線仍會失敗。
 
-Check and manage IP access lists:
-- Admin console: **Settings → Security → IP access list**
-- REST API: `GET /api/2.0/ip-access-lists` to inspect, `POST /api/2.0/ip-access-lists` to add ranges
+檢查與管理 IP 存取清單：
+- 管理主控台：**Settings → Security → IP access list**
+- REST API：使用 `GET /api/2.0/ip-access-lists` 檢查，使用 `POST /api/2.0/ip-access-lists` 新增範圍
 
-> **Common symptom**: Connections time out or return `403 Forbidden` even with valid credentials and correct grants. IP access list misconfiguration is a frequent root cause — check this before debugging auth.
+> **常見症狀**：即使憑證有效且權限正確，連線仍會逾時或回傳 `403 Forbidden`。IP 存取清單設定錯誤是常見根因 —— 在除錯 auth 之前，請先檢查這一點。
 
-### 3. Grant EXTERNAL USE SCHEMA
+### 3. 授予 EXTERNAL USE SCHEMA
 
-The connecting principal (user or service principal) must have the `EXTERNAL USE SCHEMA` grant on each schema they want to access:
+連線使用的 principal（使用者或 service principal）必須在欲存取的每個 schema 上具備 `EXTERNAL USE SCHEMA` 權限：
 
 ```sql
--- Grant to a user
+-- 授權給使用者
 GRANT EXTERNAL USE SCHEMA ON SCHEMA my_catalog.my_schema TO `user@example.com`;
 
--- Grant to a service principal
+-- 授權給 service principal
 GRANT EXTERNAL USE SCHEMA ON SCHEMA my_catalog.my_schema TO `my-service-principal`;
 
--- Grant to a group
+-- 授權給群組
 GRANT EXTERNAL USE SCHEMA ON SCHEMA my_catalog.my_schema TO `data-engineers`;
 ```
 
-> **Important**: `EXTERNAL USE SCHEMA` is separate from `SELECT` or `MODIFY` grants. A user needs both data permissions AND the external use grant.
+> **重要**：`EXTERNAL USE SCHEMA` 與 `SELECT` 或 `MODIFY` 權限是分開的。使用者必須同時具備資料權限與 external use grant。
 
 ---
 
-## Authentication
+## 驗證
 
-### Personal Access Token (PAT)
+### PAT（個人存取權杖）
 
 ```
 Authorization: Bearer <pat-token>
 ```
 
-### OAuth (M2M)
+### OAuth（M2M）
 
-For service-to-service authentication, use OAuth with a service principal:
+對於服務對服務驗證，請搭配 service principal 使用 OAuth：
 
-1. Create a service principal in the Databricks account
-2. Generate an OAuth secret
-3. Use the OAuth token endpoint to get an access token
-4. Pass the access token as a Bearer token
+1. 在 Databricks account 中建立 service principal
+2. 產生 OAuth secret
+3. 使用 OAuth token 端點取得 access token
+4. 將 access token 作為 Bearer token 傳遞
 
 ---
 
-## Read/Write Capability Matrix
+## 讀寫能力矩陣
 
-| Table Type | IRC Read | IRC Write |
+| 資料表類型 | IRC 讀取 | IRC 寫入 |
 |------------|:-:|:-:|
-| Managed Iceberg (`USING ICEBERG`) | Yes | Yes |
-| Delta + UniForm | Yes | No |
-| Delta + Compatibility Mode | Yes | No |
-| Foreign Iceberg Table | No | No |
+| 受管 Iceberg（`USING ICEBERG`） | 是 | 是 |
+| Delta + UniForm | 是 | 否 |
+| Delta + 相容性模式 | 是 | 否 |
+| Foreign Iceberg 資料表 | 否 | 否 |
 
-> **Key insight**: Only managed Iceberg tables support writes via IRC. UniForm and Compatibility Mode tables are read-only because the underlying format is Delta.
-
----
-
-## Credential Vending
-
-When an external engine connects via IRC, Databricks **vends temporary cloud credentials** (short-lived STS tokens for AWS, SAS tokens for Azure) so the engine can read/write data files directly in cloud storage. This is transparent to the client — the IRC protocol handles it automatically.
-
-Benefits:
-- No need to configure cloud credentials in the external engine
-- Credentials are scoped to the specific table and operation
-- Credentials automatically expire (typically 1 hour)
+> **核心觀念**：只有受管 Iceberg 資料表支援透過 IRC 寫入。UniForm 與相容性模式資料表都是唯讀，因為其底層格式仍是 Delta。
 
 ---
 
-## Common Configuration Reference
+## 憑證授予
 
-| Parameter | Value |
+當外部引擎透過 IRC 連線時，Databricks 會**授予臨時雲端憑證**（AWS 的短效 STS token、Azure 的 SAS token），讓引擎能直接在雲端儲存體中讀寫資料檔。這對 client 來說是透明的 —— IRC protocol 會自動處理。
+
+優點：
+- 不需要在外部引擎中設定雲端憑證
+- 憑證的範圍會限縮在特定資料表與操作
+- 憑證會自動過期（通常為 1 小時）
+
+---
+
+## 常見設定參考
+
+| 參數 | 值 |
 |-----------|-------|
 | **Catalog type** | `rest` |
 | **URI** | `https://<workspace-url>/api/2.1/unity-catalog/iceberg-rest` |
-| **Warehouse** | Unity Catalog catalog name (e.g., `my_catalog`) |
-| **Token** | Databricks PAT or OAuth access token |
-| **Credential vending** | Automatic (handled by the REST protocol) |
+| **Warehouse** | Unity Catalog catalog 名稱（例如 `my_catalog`） |
+| **Token** | Databricks PAT 或 OAuth access token |
+| **憑證授予** | 自動（由 REST protocol 處理） |
 
 
 ---
 
-## Related
+## 相關內容
 
-- [4-snowflake-interop.md](4-snowflake-interop.md) — Snowflake reading Databricks via catalog integration (uses IRC)
-- [5-external-engine-interop.md](5-external-engine-interop.md) — Per-engine connection configs: PyIceberg, OSS Spark, EMR, Flink, Kafka Connect, DuckDB, Trino
+- [4-snowflake-interop.md](4-snowflake-interop.md) —— Snowflake 透過 catalog integration 讀取 Databricks（使用 IRC）
+- [5-external-engine-interop.md](5-external-engine-interop.md) —— 各引擎的連線設定：PyIceberg、OSS Spark、EMR、Flink、Kafka Connect、DuckDB、Trino

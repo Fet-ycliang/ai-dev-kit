@@ -1,16 +1,16 @@
 # Databricks Builder App
 
-A web application that provides a Claude Code agent interface with integrated Databricks tools. Users interact with Claude through a chat interface, and the agent can execute SQL queries, manage pipelines, upload files, and more on their Databricks workspace.
+一個提供 Claude Code 代理介面並整合 Databricks 工具的網頁應用程式。使用者可透過聊天介面與 Claude 互動，代理程式能在其 Databricks 工作區執行 SQL 查詢、管理 Pipeline、上傳檔案等操作。
 
-> **✅ Event Loop Fix Implemented**
+> **✅ 事件迴圈修復已實作**
 >
-> We've implemented a workaround for `claude-agent-sdk` [issue #462](https://github.com/anthropics/claude-agent-sdk-python/issues/462) that was preventing the agent from executing Databricks tools in FastAPI contexts.
+> 我們已針對 `claude-agent-sdk` [問題 #462](https://github.com/anthropics/claude-agent-sdk-python/issues/462) 實作修補方案，該問題曾導致代理程式在 FastAPI 環境中無法執行 Databricks 工具。
 >
-> **Solution:** The agent now runs in a fresh event loop in a separate thread, with `contextvars` properly copied to preserve Databricks authentication. See [EVENT_LOOP_FIX.md](./EVENT_LOOP_FIX.md) for details.
+> **解決方案：** 代理程式現在於獨立執行緒中的全新事件迴圈執行，並正確複製 `contextvars` 以保留 Databricks 驗證資訊。詳情請參閱 [EVENT_LOOP_FIX.md](./EVENT_LOOP_FIX.md)。
 >
-> **Status:** ✅ Fully functional - agent can execute all Databricks tools successfully
+> **狀態：** ✅ 完全正常運作 — 代理程式可成功執行所有 Databricks 工具
 
-## Architecture Overview
+## 架構概覽
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────┐
@@ -54,11 +54,11 @@ A web application that provides a Claude Code agent interface with integrated Da
 └─────────────────────────────────────────────────────────────────────────────┘
 ```
 
-## How It Works
+## 運作原理
 
-### 1. Claude Code Sessions
+### 1. Claude Code 工作階段
 
-When a user sends a message, the backend creates a Claude Code session using the `claude-agent-sdk`:
+當使用者傳送訊息時，後端會透過 `claude-agent-sdk` 建立一個 Claude Code 工作階段：
 
 ```python
 from claude_agent_sdk import ClaudeAgentOptions, query
@@ -77,14 +77,14 @@ async for msg in query(prompt=message, options=options):
     yield msg  # Stream to frontend
 ```
 
-Key features:
-- **Session Resumption**: Each conversation stores a `claude_session_id` for context continuity
-- **Streaming**: All events (text, thinking, tool_use, tool_result) stream to the frontend in real-time
-- **Project Isolation**: Each project has its own working directory with sandboxed file access
+主要特性：
+- **工作階段續接**：每個對話儲存 `claude_session_id`，以維持上下文連續性
+- **串流傳輸**：所有事件（文字、思考、工具呼叫、工具結果）均即時串流至前端
+- **專案隔離**：每個專案擁有獨立的工作目錄，具備沙盒式檔案存取控制
 
-### 2. Authentication Flow
+### 2. 驗證流程
 
-The app supports multi-user authentication using per-request credentials:
+本應用程式支援多使用者驗證，採用每次請求的個人憑證：
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────┐
@@ -115,13 +115,13 @@ The app supports multi-user authentication using per-request credentials:
 └─────────────────────────────────────────────────────────────────────────────┘
 ```
 
-**How it works:**
+**運作方式：**
 
-1. **Request arrives** - The FastAPI backend extracts credentials:
-   - **Production**: `X-Forwarded-User` and `X-Forwarded-Access-Token` headers (set by Databricks Apps proxy)
-   - **Development**: Falls back to `DATABRICKS_HOST` and `DATABRICKS_TOKEN` env vars
+1. **接收請求** — FastAPI 後端擷取憑證：
+   - **正式環境**：`X-Forwarded-User` 與 `X-Forwarded-Access-Token` 標頭（由 Databricks Apps Proxy 設定）
+   - **開發環境**：退而使用 `DATABRICKS_HOST` 與 `DATABRICKS_TOKEN` 環境變數
 
-2. **Auth context set** - Before invoking the agent:
+2. **設定驗證情境** — 呼叫代理程式前：
    ```python
    from databricks_tools_core.auth import set_databricks_auth, clear_databricks_auth
 
@@ -134,15 +134,15 @@ The app supports multi-user authentication using per-request credentials:
        clear_databricks_auth()
    ```
 
-3. **Tools use context** - All Databricks tools call `get_workspace_client()` which:
-   - First checks contextvars for per-request credentials
-   - Falls back to environment variables if no context set
+3. **工具使用情境** — 所有 Databricks 工具呼叫 `get_workspace_client()`，該函式會：
+   - 優先從 contextvars 取得每次請求的憑證
+   - 若未設定情境，則退而使用環境變數
 
-This ensures each user's requests use their own Databricks credentials, enabling proper access control and audit logging.
+這確保每位使用者的請求都採用其 Databricks 憑證，實現妥善的存取控制與稽核日誌記錄。
 
-### 3. MCP Integration (Databricks Tools)
+### 3. MCP 整合（Databricks 工具）
 
-Databricks tools are loaded in-process using the Claude Agent SDK's MCP server feature:
+Databricks 工具透過 Claude Agent SDK 的 MCP Server 功能以同程序方式載入：
 
 ```python
 from claude_agent_sdk import tool, create_sdk_mcp_server
@@ -156,34 +156,34 @@ options = ClaudeAgentOptions(
 )
 ```
 
-Tools are exposed as `mcp__databricks__<tool_name>` and include:
-- SQL execution (`execute_sql`, `execute_sql_multi`)
-- Warehouse management (`list_warehouses`, `get_best_warehouse`)
-- Cluster execution (`execute_databricks_command`, `run_python_file_on_databricks`)
-- Pipeline management (`create_or_update_pipeline`, `start_update`, etc.)
-- File operations (`upload_file`, `upload_folder`)
+工具以 `mcp__databricks__<tool_name>` 形式公開，包含：
+- SQL 執行（`execute_sql`、`execute_sql_multi`）
+- Warehouse 管理（`list_warehouses`、`get_best_warehouse`）
+- Cluster 執行（`execute_databricks_command`、`run_python_file_on_databricks`）
+- Pipeline 管理（`create_or_update_pipeline`、`start_update` 等）
+- 檔案操作（`upload_file`、`upload_folder`）
 
-### 4. Skills System
+### 4. Skills 系統
 
-Skills provide specialized guidance for Databricks development tasks. They are markdown files with instructions and examples that Claude can load on demand.
+Skills 為 Databricks 開發任務提供專業指導，是包含指令與範例的 Markdown 檔案，供 Claude 按需載入。
 
-**Skill loading flow:**
-1. On startup, skills are copied from `../databricks-skills/` to `./skills/`
-2. When a project is created, skills are copied to `project/.claude/skills/`
-3. The agent can invoke skills using the `Skill` tool: `skill: "sdp"`
+**Skills 載入流程：**
+1. 啟動時，Skills 從 `../databricks-skills/` 複製至 `./skills/`
+2. 建立專案時，Skills 複製至 `project/.claude/skills/`
+3. 代理程式可使用 `Skill` 工具載入：`skill: "sdp"`
 
-Skills include:
-- **databricks-bundles**: DABs configuration
-- **databricks-app-apx**: Full-stack apps with APX framework (FastAPI + React)
-- **databricks-app-python**: Python apps with Dash, Streamlit, Flask
-- **databricks-python-sdk**: Python SDK patterns
-- **databricks-mlflow-evaluation**: MLflow evaluation and trace analysis
-- **databricks-spark-declarative-pipelines**: Spark Declarative Pipelines (SDP) development
-- **databricks-synthetic-data-gen**: Creating test datasets
+可用 Skills：
+- **databricks-bundles**：DABs 設定
+- **databricks-app-apx**：APX 框架全端應用程式（FastAPI + React）
+- **databricks-app-python**：Dash、Streamlit、Flask Python 應用程式
+- **databricks-python-sdk**：Python SDK 使用模式
+- **databricks-mlflow-evaluation**：MLflow 評估與追蹤分析
+- **databricks-spark-declarative-pipelines**：Spark 宣告式管線（SDP）開發
+- **databricks-synthetic-data-gen**：建立測試資料集
 
-### 5. Project Persistence
+### 5. 專案持久化
 
-Projects are stored in the local filesystem with automatic backup to PostgreSQL:
+專案儲存於本機檔案系統，並自動備份至 PostgreSQL：
 
 ```
 projects/
@@ -194,109 +194,109 @@ projects/
     ...
 ```
 
-**Backup system:**
-- After each agent interaction, the project is marked for backup
-- A background worker runs every 10 minutes
-- Projects are zipped and stored in PostgreSQL (Lakebase)
-- On access, missing projects are restored from backup
+**備份機制：**
+- 每次代理程式互動後，專案被標記為待備份
+- 背景工作者每 10 分鐘執行一次
+- 專案打包成 ZIP 儲存至 PostgreSQL（Lakebase）
+- 存取時，缺失的專案會從備份還原
 
-## Setup
+## 安裝設定
 
-### Prerequisites
+### 前置需求
 
 - Python 3.11+
 - Node.js 18+
-- [uv](https://github.com/astral-sh/uv) package manager
-- Databricks workspace with:
-  - SQL warehouse (for SQL queries)
-  - Cluster (for Python/PySpark execution)
-  - Unity Catalog enabled (recommended)
-- PostgreSQL database (Lakebase) for project persistence — autoscale or provisioned
+- [uv](https://github.com/astral-sh/uv) 套件管理工具
+- Databricks 工作區，需包含：
+  - SQL Warehouse（執行 SQL 查詢）
+  - Cluster（執行 Python/PySpark）
+  - 已啟用 Unity Catalog（建議）
+- PostgreSQL 資料庫（Lakebase）用於專案持久化 — 自動擴充或固定容量
 
-### Quick Start
+### 快速開始
 
-#### 1. Run the Setup Script
+#### 1. 執行安裝腳本
 
-From the repository root:
+從倉庫根目錄執行：
 
 ```bash
 cd databricks-builder-app
 ./scripts/setup.sh
 ```
 
-This will:
+此腳本會：
 
-- Verify prerequisites (uv, Node.js, npm)
-- Create a `.env.local` file from `.env.example` (if one doesn't already exist)
-- Install backend Python dependencies via `uv sync`
-- Install sibling packages (`databricks-tools-core`, `databricks-mcp-server`)
-- Install frontend Node.js dependencies
+- 確認前置需求（uv、Node.js、npm）
+- 從 `.env.example` 建立 `.env.local`（若尚不存在）
+- 透過 `uv sync` 安裝後端 Python 相依套件
+- 安裝同層套件（`databricks-tools-core`、`databricks-mcp-server`）
+- 安裝前端 Node.js 相依套件
 
-#### 2. Configure Your `.env.local` File
+#### 2. 設定您的 `.env.local` 檔案
 
-> **You must do this before running the app.** The setup script creates a `.env.local` file from `.env.example`, but all values are placeholders. Open `.env.local` and fill in your actual values.
+> **在啟動應用程式前必須完成此步驟。** 安裝腳本會從 `.env.example` 建立 `.env.local`，但所有值均為佔位符。請開啟 `.env.local` 並填入實際值。
 
-The `.env.local` file is gitignored and will never be committed. At a minimum, you need to set these:
+`.env.local` 已加入 .gitignore，永遠不會被提交。至少需要設定以下項目：
 
 ```bash
-# Required: Your Databricks workspace
+# 必填：您的 Databricks 工作區
 DATABRICKS_HOST=https://your-workspace.cloud.databricks.com
 DATABRICKS_TOKEN=dapi...
 
-# Required: Database for project persistence (pick ONE option)
+# 必填：專案持久化資料庫（選擇一種方式）
 
-# Option A — Autoscale Lakebase (recommended, scales to zero):
+# 方式 A — 自動擴充 Lakebase（建議，閒置時縮減至零）：
 LAKEBASE_ENDPOINT=projects/<project-name>/branches/production/endpoints/primary
 LAKEBASE_DATABASE_NAME=databricks_postgres
 
-# Option B — Provisioned Lakebase (fixed capacity):
+# 方式 B — 固定容量 Lakebase：
 # LAKEBASE_INSTANCE_NAME=your-lakebase-instance
 # LAKEBASE_DATABASE_NAME=databricks_postgres
 
-# Option C — Static connection URL (any type, simplest for local dev):
+# 方式 C — 靜態連線 URL（任何類型，本機開發最簡便）：
 # LAKEBASE_PG_URL=postgresql://user:password@host:5432/database?sslmode=require
 ```
 
-The app auto-detects the mode based on which variable is set:
-- `LAKEBASE_ENDPOINT` → autoscale mode (`client.postgres` API, host looked up automatically)
-- `LAKEBASE_INSTANCE_NAME` → provisioned mode (`client.database` API)
-- `LAKEBASE_PG_URL` → static URL mode (no OAuth token refresh)
+應用程式會根據設定的變數自動偵測模式：
+- `LAKEBASE_ENDPOINT` → 自動擴充模式（`client.postgres` API，主機自動查詢）
+- `LAKEBASE_INSTANCE_NAME` → 固定容量模式（`client.database` API）
+- `LAKEBASE_PG_URL` → 靜態 URL 模式（不需 OAuth token 重新整理）
 
-See `.env.example` for the full list of available settings including LLM provider, skills configuration, and MLflow tracing. The app loads `.env.local` (not `.env`) at startup.
+所有可用設定（包含 LLM 提供者、Skills 設定與 MLflow 追蹤）請參閱 `.env.example`。應用程式啟動時載入 `.env.local`（非 `.env`）。
 
-**Getting your Databricks token:**
-1. Go to your Databricks workspace
-2. Click your username → User Settings
-3. Go to Developer → Access Tokens → Generate New Token
-4. Copy the token value
+**取得 Databricks Token：**
+1. 進入您的 Databricks 工作區
+2. 點選使用者名稱 → 使用者設定
+3. 前往 Developer → Access Tokens → Generate New Token
+4. 複製 Token 值
 
-#### 3. Start the Development Servers
+#### 3. 啟動開發伺服器
 
 ```bash
 ./scripts/start_dev.sh
 ```
 
-This starts both the backend and frontend in one terminal.
+此指令在同一個終端機視窗同時啟動後端與前端。
 
-You can also start them separately if you prefer:
+若您希望分開啟動：
 
 ```bash
-# Terminal 1 — Backend
+# 終端機 1 — 後端
 uvicorn server.app:app --reload --port 8000 --reload-dir server
 
-# Terminal 2 — Frontend
+# 終端機 2 — 前端
 cd client && npm run dev
 ```
 
-#### 4. Access the App
+#### 4. 存取應用程式
 
-- **Frontend**: <http://localhost:3000>
-- **Backend API**: <http://localhost:8000>
-- **API Docs**: <http://localhost:8000/docs>
+- **前端**：<http://localhost:3000>
+- **後端 API**：<http://localhost:8000>
+- **API 文件**：<http://localhost:8000/docs>
 
-#### 5. (Optional) Configure Claude via Databricks Model Serving
+#### 5. （選用）透過 Databricks Model Serving 設定 Claude
 
-If you're routing Claude API calls through Databricks Model Serving instead of directly to Anthropic, create `.claude/settings.json` in the **repository root** (not in the app directory):
+若您要將 Claude API 呼叫透過 Databricks Model Serving 路由（而非直接呼叫 Anthropic），請在**倉庫根目錄**（非應用程式目錄）建立 `.claude/settings.json`：
 
 ```json
 {
@@ -310,266 +310,266 @@ If you're routing Claude API calls through Databricks Model Serving instead of d
 }
 ```
 
-Notes:
+注意事項：
 
-- `ANTHROPIC_AUTH_TOKEN` should be a Databricks PAT, not an Anthropic API key
-- `ANTHROPIC_BASE_URL` should point to your Databricks Model Serving endpoint
-- If this file doesn't exist, the app uses your `ANTHROPIC_API_KEY` from `.env.local`
+- `ANTHROPIC_AUTH_TOKEN` 應填入 Databricks PAT，而非 Anthropic API Key
+- `ANTHROPIC_BASE_URL` 應指向您的 Databricks Model Serving 端點
+- 若此檔案不存在，應用程式將使用 `.env.local` 中的 `ANTHROPIC_API_KEY`
 
-### Configuration Details
+### 設定說明
 
-#### Databricks Authentication Modes
+#### Databricks 驗證模式
 
-The app supports two authentication modes:
+本應用程式支援兩種驗證模式：
 
-**1. Local Development (Environment Variables)**
-- Uses `DATABRICKS_HOST` and `DATABRICKS_TOKEN` from `.env.local`
-- All users share the same credentials
-- Good for local development and testing
+**1. 本機開發（環境變數）**
+- 使用 `.env.local` 中的 `DATABRICKS_HOST` 與 `DATABRICKS_TOKEN`
+- 所有使用者共用相同憑證
+- 適合本機開發與測試
 
-**2. Production (Request Headers)**
-- Uses `X-Forwarded-User` and `X-Forwarded-Access-Token` headers
-- Set automatically by Databricks Apps proxy
-- Each user has their own credentials
-- Proper multi-user isolation
+**2. 正式環境（請求標頭）**
+- 使用 `X-Forwarded-User` 與 `X-Forwarded-Access-Token` 標頭
+- 由 Databricks Apps Proxy 自動設定
+- 每位使用者擁有各自的憑證
+- 完善的多使用者隔離
 
-#### Skills Configuration
+#### Skills 設定
 
-Skills are loaded from `../databricks-skills/` and filtered by the `ENABLED_SKILLS` environment variable:
+Skills 從 `../databricks-skills/` 載入，並由 `ENABLED_SKILLS` 環境變數篩選：
 
-- `databricks-python-sdk`: Patterns for using the Databricks Python SDK
-- `databricks-spark-declarative-pipelines`: SDP/DLT pipeline development
-- `databricks-synthetic-data-gen`: Creating test datasets
-- `databricks-app-apx`: Full-stack apps with React (APX framework)
-- `databricks-app-python`: Python apps with Dash, Streamlit, Flask
+- `databricks-python-sdk`：Databricks Python SDK 使用模式
+- `databricks-spark-declarative-pipelines`：SDP/DLT Pipeline 開發
+- `databricks-synthetic-data-gen`：建立測試資料集
+- `databricks-app-apx`：APX 框架的全端應用程式（含 React）
+- `databricks-app-python`：Dash、Streamlit、Flask Python 應用程式
 
-**Adding custom skills:**
-1. Create a new directory in `../databricks-skills/`
-2. Add a `SKILL.md` file with frontmatter:
+**新增自訂 Skills：**
+1. 在 `../databricks-skills/` 中建立新目錄
+2. 新增包含前置資訊的 `SKILL.md` 檔案：
    ```markdown
    ---
    name: my-skill
-   description: "Description of the skill"
+   description: "技能說明"
    ---
    
-   # Skill content here
+   # 技能內容
    ```
-3. Add the skill name to `ENABLED_SKILLS` in `.env.local`
+3. 將技能名稱加入 `.env.local` 的 `ENABLED_SKILLS`
 
-#### Database Setup
+#### 資料庫設定
 
-The app uses PostgreSQL (Lakebase) for:
-- Project metadata
-- Conversation history
-- Message storage
-- Project backups (zipped project files)
+本應用程式使用 PostgreSQL（Lakebase）儲存：
+- 專案 Metadata
+- 對話歷史
+- 訊息記錄
+- 專案備份（打包的專案檔案）
 
-**Migrations:**
+**資料庫遷移：**
 ```bash
-# Run migrations (done automatically on startup)
+# 執行遷移（應用程式啟動時自動執行）
 alembic upgrade head
 
-# Create a new migration
+# 建立新的遷移
 alembic revision --autogenerate -m "description"
 ```
 
-### Troubleshooting
+### 疑難排解
 
-#### "MCP connection unstable" or agent not executing tools
+#### 「MCP 連線不穩定」或代理程式未執行工具
 
-This was a known issue with `claude-agent-sdk` in FastAPI contexts. We've implemented a fix:
+此為 `claude-agent-sdk` 在 FastAPI 環境中的已知問題，我們已實作修復：
 
-- ✅ Agent runs in a fresh event loop in a separate thread
-- ✅ Context variables (Databricks auth) are properly propagated
-- ✅ All MCP tools work correctly
+- ✅ 代理程式在獨立執行緒的全新事件迴圈中執行
+- ✅ 上下文變數（Databricks 驗證）正確傳播
+- ✅ 所有 MCP 工具運作正常
 
-See [EVENT_LOOP_FIX.md](./EVENT_LOOP_FIX.md) for technical details.
+技術細節請參閱 [EVENT_LOOP_FIX.md](./EVENT_LOOP_FIX.md)。
 
-#### Skills not loading
+#### Skills 未載入
 
-Check:
-1. `ENABLED_SKILLS` environment variable in `.env.local`
-2. Skill names match directory names in `../databricks-skills/`
-3. Each skill has a `SKILL.md` file with proper frontmatter
-4. Check logs: `Copied X skills to ./skills`
+請確認：
+1. `.env.local` 中的 `ENABLED_SKILLS` 環境變數
+2. Skill 名稱與 `../databricks-skills/` 中的目錄名稱相符
+3. 每個 Skill 目錄包含具有正確前置資訊的 `SKILL.md` 檔案
+4. 查看日誌：`Copied X skills to ./skills`
 
-#### Databricks authentication failing
+#### Databricks 驗證失敗
 
-Check:
-1. `DATABRICKS_HOST` is correct (no trailing slash)
-2. `DATABRICKS_TOKEN` is valid and not expired
-3. Token has proper permissions (cluster access, SQL warehouse access, etc.)
-4. If using Databricks Model Serving, check `.claude/settings.json` configuration
+請確認：
+1. `DATABRICKS_HOST` 正確（末尾無斜線）
+2. `DATABRICKS_TOKEN` 有效且未過期
+3. Token 具備適當權限（Cluster 存取、SQL Warehouse 存取等）
+4. 若使用 Databricks Model Serving，請確認 `.claude/settings.json` 設定
 
-#### Port already in use
+#### 埠號已被佔用
 
 ```bash
-# Kill processes on ports 8000 and 3000
+# 終止佔用 8000 與 3000 埠號的程序
 lsof -ti:8000 | xargs kill -9
 lsof -ti:3000 | xargs kill -9
 ```
 
-### Production Build
+### 正式版建置
 
 ```bash
-# Build frontend
+# 建置前端
 cd client && npm run build && cd ..
 
-# Run with uvicorn
+# 以 uvicorn 執行
 uvicorn server.app:app --host 0.0.0.0 --port 8000
 ```
 
-## Project Structure
+## 專案結構
 
 ```
 databricks-builder-app/
-├── server/                 # FastAPI backend
-│   ├── app.py             # Main FastAPI app
-│   ├── db/                # Database models and migrations
-│   │   ├── models.py      # SQLAlchemy models
-│   │   └── database.py    # Session management
-│   ├── routers/           # API endpoints
-│   │   ├── agent.py       # /api/agent/* (invoke, etc.)
+├── server/                 # FastAPI 後端
+│   ├── app.py             # FastAPI 主程式
+│   ├── db/                # 資料庫模型與遷移
+│   │   ├── models.py      # SQLAlchemy 模型
+│   │   └── database.py    # 工作階段管理
+│   ├── routers/           # API 端點
+│   │   ├── agent.py       # /api/agent/*（invoke 等）
 │   │   ├── projects.py    # /api/projects/*
 │   │   └── conversations.py
-│   └── services/          # Business logic
-│       ├── agent.py       # Claude Code session management
-│       ├── databricks_tools.py  # MCP tool loading from SDK
-│       ├── user.py        # User auth (headers/env vars)
+│   └── services/          # 業務邏輯
+│       ├── agent.py       # Claude Code 工作階段管理
+│       ├── databricks_tools.py  # 從 SDK 載入 MCP 工具
+│       ├── user.py        # 使用者驗證（標頭/環境變數）
 │       ├── skills_manager.py
 │       ├── backup_manager.py
 │       └── system_prompt.py
-├── client/                # React frontend
+├── client/                # React 前端
 │   ├── src/
-│   │   ├── pages/         # Main pages (ProjectPage, etc.)
-│   │   └── components/    # UI components
+│   │   ├── pages/         # 主要頁面（ProjectPage 等）
+│   │   └── components/    # UI 元件
 │   └── package.json
-├── alembic/               # Database migrations
-├── scripts/               # Utility scripts
-│   └── start_dev.sh       # Development startup
-├── skills/                # Cached skills (gitignored)
-├── projects/              # Project working directories (gitignored)
-├── pyproject.toml         # Python dependencies
-└── .env.example           # Environment template
+├── alembic/               # 資料庫遷移
+├── scripts/               # 公用腳本
+│   └── start_dev.sh       # 開發環境啟動腳本
+├── skills/                # 快取 Skills（已加入 .gitignore）
+├── projects/              # 專案工作目錄（已加入 .gitignore）
+├── pyproject.toml         # Python 相依套件
+└── .env.example           # 環境設定範本
 ```
 
-## API Endpoints
+## API 端點
 
-| Endpoint | Method | Description |
-|----------|--------|-------------|
-| `/api/me` | GET | Get current user info |
-| `/api/health` | GET | Health check |
-| `/api/system_prompt` | GET | Preview the system prompt |
-| `/api/projects` | GET | List all projects |
-| `/api/projects` | POST | Create new project |
-| `/api/projects/{id}` | GET | Get project details |
-| `/api/projects/{id}` | PATCH | Update project name |
-| `/api/projects/{id}` | DELETE | Delete project |
-| `/api/projects/{id}/conversations` | GET | List project conversations |
-| `/api/projects/{id}/conversations` | POST | Create new conversation |
-| `/api/projects/{id}/conversations/{cid}` | GET | Get conversation with messages |
-| `/api/projects/{id}/files` | GET | List files in project directory |
-| `/api/invoke_agent` | POST | Start agent execution (returns execution_id) |
-| `/api/stream_progress/{execution_id}` | POST | SSE stream of agent events |
-| `/api/stop_stream/{execution_id}` | POST | Cancel an active execution |
-| `/api/projects/{id}/skills/available` | GET | List skills with enabled status |
-| `/api/projects/{id}/skills/enabled` | PUT | Update enabled skills for project |
-| `/api/projects/{id}/skills/reload` | POST | Reload skills from source |
-| `/api/projects/{id}/skills/tree` | GET | Get skills file tree |
-| `/api/projects/{id}/skills/file` | GET | Get skill file content |
-| `/api/clusters` | GET | List available Databricks clusters |
-| `/api/warehouses` | GET | List available SQL warehouses |
-| `/api/mlflow/status` | GET | Get MLflow tracing status |
+| 端點 | 方法 | 說明 |
+|------|------|------|
+| `/api/me` | GET | 取得目前使用者資訊 |
+| `/api/health` | GET | 健康狀態檢查 |
+| `/api/system_prompt` | GET | 預覽系統提示詞 |
+| `/api/projects` | GET | 列出所有專案 |
+| `/api/projects` | POST | 建立新專案 |
+| `/api/projects/{id}` | GET | 取得專案詳細資訊 |
+| `/api/projects/{id}` | PATCH | 更新專案名稱 |
+| `/api/projects/{id}` | DELETE | 刪除專案 |
+| `/api/projects/{id}/conversations` | GET | 列出專案對話 |
+| `/api/projects/{id}/conversations` | POST | 建立新對話 |
+| `/api/projects/{id}/conversations/{cid}` | GET | 取得含訊息的對話 |
+| `/api/projects/{id}/files` | GET | 列出專案目錄中的檔案 |
+| `/api/invoke_agent` | POST | 啟動代理程式執行（回傳 execution_id） |
+| `/api/stream_progress/{execution_id}` | POST | 代理程式事件的 SSE 串流 |
+| `/api/stop_stream/{execution_id}` | POST | 取消進行中的執行 |
+| `/api/projects/{id}/skills/available` | GET | 列出 Skills 及啟用狀態 |
+| `/api/projects/{id}/skills/enabled` | PUT | 更新專案的已啟用 Skills |
+| `/api/projects/{id}/skills/reload` | POST | 從來源重新載入 Skills |
+| `/api/projects/{id}/skills/tree` | GET | 取得 Skills 檔案樹 |
+| `/api/projects/{id}/skills/file` | GET | 取得 Skill 檔案內容 |
+| `/api/clusters` | GET | 列出可用的 Databricks Cluster |
+| `/api/warehouses` | GET | 列出可用的 SQL Warehouse |
+| `/api/mlflow/status` | GET | 取得 MLflow 追蹤狀態 |
 
-## Deploying to Databricks Apps
+## 部署至 Databricks Apps
 
-This section covers deploying the Builder App to Databricks Apps platform for production use.
+本節說明如何將 Builder App 部署至 Databricks Apps 平台供正式環境使用。
 
-### Prerequisites
+### 前置需求
 
-Before deploying, ensure you have:
+部署前請確認：
 
-1. **Databricks CLI** installed and authenticated
-2. **Node.js 18+** for building the frontend
-3. **A Lakebase instance** in your Databricks workspace (for database persistence)
-4. Access to the **full repository** (not just this directory) since the app depends on sibling packages
+1. 已安裝並驗證 **Databricks CLI**
+2. 用於建置前端的 **Node.js 18+**
+3. Databricks 工作區中的 **Lakebase 執行個體**（用於資料庫持久化）
+4. 存取**完整倉庫**（非僅此目錄），因為應用程式依賴同層套件
 
-### Quick Deploy
+### 快速部署
 
 ```bash
-# 1. Authenticate with Databricks CLI
+# 1. 使用 Databricks CLI 驗證身份
 databricks auth login --host https://your-workspace.cloud.databricks.com
 
-# 2. Create the app (first time only)
+# 2. 建立 App（僅首次需要）
 databricks apps create my-builder-app
 
-# 3. Configure app.yaml (copy and edit the example)
+# 3. 設定 app.yaml（複製並編輯範本）
 cp app.yaml.example app.yaml
-# Edit app.yaml — set LAKEBASE_ENDPOINT (autoscale) or LAKEBASE_INSTANCE_NAME (provisioned)
+# 編輯 app.yaml — 設定 LAKEBASE_ENDPOINT（自動擴充）或 LAKEBASE_INSTANCE_NAME（固定容量）
 
-# 4. (Provisioned Lakebase only) Add Lakebase as an app resource
-#    Skip this step if using autoscale — it connects via OAuth directly.
+# 4. （僅限固定容量 Lakebase）將 Lakebase 加入為 App 資源
+#    若使用自動擴充可略過此步驟 — 它直接透過 OAuth 連線。
 databricks apps add-resource my-builder-app \
   --resource-type database \
   --resource-name lakebase \
   --database-instance <your-lakebase-instance-name>
 
-# 5. Deploy
+# 5. 部署
 ./scripts/deploy.sh my-builder-app
 
-# 6. Grant database permissions to the app's service principal (see Section 7)
+# 6. 授予應用程式服務主體資料庫權限（請參閱第 7 節）
 ```
 
-### Step-by-Step Deployment Guide
+### 逐步部署指南
 
-#### 1. Install and Authenticate Databricks CLI
+#### 1. 安裝並驗證 Databricks CLI
 
 ```bash
-# Install Databricks CLI
+# 安裝 Databricks CLI
 pip install databricks-cli
 
-# Authenticate (interactive browser login)
+# 驗證身份（互動式瀏覽器登入）
 databricks auth login --host https://your-workspace.cloud.databricks.com
 
-# Verify authentication
+# 確認驗證狀態
 databricks auth describe
 ```
 
-If you have multiple profiles, set the profile before deploying:
+若您有多個設定檔，請在部署前設定：
 ```bash
 export DATABRICKS_CONFIG_PROFILE=your-profile-name
 ```
 
-#### 2. Create the Databricks App
+#### 2. 建立 Databricks App
 
 ```bash
-# Create a new app
+# 建立新 App
 databricks apps create my-builder-app
 
-# Verify it was created
+# 確認已建立
 databricks apps get my-builder-app
 ```
 
-#### 3. Create a Lakebase Instance
+#### 3. 建立 Lakebase 執行個體
 
-The app requires a PostgreSQL database (Lakebase) for storing projects, conversations, and messages.
+應用程式需要 PostgreSQL 資料庫（Lakebase）儲存專案、對話與訊息。
 
-**Autoscale Lakebase** (recommended — scales to zero when idle):
-1. Go to your Databricks workspace → **Catalog** → **Lakebase**
-2. Click **Create** → select **Autoscale**
-3. Note the endpoint resource name (e.g., `projects/my-app/branches/production/endpoints/primary`)
-4. Set in `app.yaml`: `LAKEBASE_ENDPOINT=projects/my-app/branches/production/endpoints/primary`
+**自動擴充 Lakebase**（建議 — 閒置時縮減至零）：
+1. 進入 Databricks 工作區 → **Catalog** → **Lakebase**
+2. 點選 **Create** → 選擇 **Autoscale**
+3. 記下端點資源名稱（例如：`projects/my-app/branches/production/endpoints/primary`）
+4. 在 `app.yaml` 中設定：`LAKEBASE_ENDPOINT=projects/my-app/branches/production/endpoints/primary`
 
-**Provisioned Lakebase** (fixed capacity):
-1. Go to **Catalog** → **Lakebase** → **Create** → select **Provisioned**
-2. Note the instance name (e.g., `my-lakebase-instance`)
-3. Set in `app.yaml`: `LAKEBASE_INSTANCE_NAME=my-lakebase-instance`
+**固定容量 Lakebase**（固定容量）：
+1. 前往 **Catalog** → **Lakebase** → **Create** → 選擇 **Provisioned**
+2. 記下執行個體名稱（例如：`my-lakebase-instance`）
+3. 在 `app.yaml` 中設定：`LAKEBASE_INSTANCE_NAME=my-lakebase-instance`
 
-#### 4. Add Lakebase as an App Resource
+#### 4. 將 Lakebase 加入為 App 資源
 
-**Autoscale Lakebase**: Skip this step. Autoscale connects via OAuth using `LAKEBASE_ENDPOINT` — no app resource needed.
+**自動擴充 Lakebase**：略過此步驟。自動擴充透過 OAuth 使用 `LAKEBASE_ENDPOINT` 連線，無需 App 資源。
 
-**Provisioned Lakebase**: Add the instance as an app resource:
+**固定容量 Lakebase**：將執行個體加入為 App 資源：
 
 ```bash
 databricks apps add-resource my-builder-app \
@@ -578,17 +578,17 @@ databricks apps add-resource my-builder-app \
   --database-instance <your-lakebase-instance-name>
 ```
 
-This automatically configures the database connection environment variables (`PGHOST`, `PGPORT`, `PGUSER`, `PGPASSWORD`, `PGDATABASE`).
+這會自動設定資料庫連線環境變數（`PGHOST`、`PGPORT`、`PGUSER`、`PGPASSWORD`、`PGDATABASE`）。
 
-#### 5. Configure app.yaml
+#### 5. 設定 app.yaml
 
-Copy the example configuration and customize it:
+複製範本設定並自訂：
 
 ```bash
 cp app.yaml.example app.yaml
 ```
 
-Edit `app.yaml` with your settings:
+編輯 `app.yaml` 填入您的設定：
 
 ```yaml
 command:
@@ -600,75 +600,74 @@ command:
   - "$DATABRICKS_APP_PORT"
 
 env:
-  # Required: Lakebase database (pick ONE option)
+  # 必填：Lakebase 資料庫（選擇一種方式）
 
-  # Option A — Autoscale Lakebase (recommended):
+  # 方式 A — 自動擴充 Lakebase（建議）：
   - name: LAKEBASE_ENDPOINT
     value: "projects/<project-name>/branches/production/endpoints/primary"
   - name: LAKEBASE_DATABASE_NAME
     value: "databricks_postgres"
 
-  # Option B — Provisioned Lakebase:
+  # 方式 B — 固定容量 Lakebase：
   # - name: LAKEBASE_INSTANCE_NAME
   #   value: "<your-lakebase-instance-name>"
   # - name: LAKEBASE_DATABASE_NAME
   #   value: "databricks_postgres"
 
-  # Skills to enable (comma-separated)
+  # 要啟用的 Skills（以逗號分隔）
   - name: ENABLED_SKILLS
     value: "databricks-agent-bricks,databricks-python-sdk,databricks-spark-declarative-pipelines"
 
-  # MLflow tracing (optional)
+  # MLflow 追蹤（選用）
   - name: MLFLOW_TRACKING_URI
     value: "databricks"
   # - name: MLFLOW_EXPERIMENT_NAME
   #   value: "/Users/your-email@company.com/claude-code-traces"
 
-  # Other settings
+  # 其他設定
   - name: ENV
     value: "production"
   - name: PROJECTS_BASE_DIR
     value: "./projects"
 ```
 
-#### 6. Deploy the App
+#### 6. 部署 App
 
-Run the deploy script from the `databricks-builder-app` directory:
+從 `databricks-builder-app` 目錄執行部署腳本：
 
 ```bash
 ./scripts/deploy.sh my-builder-app
 ```
 
-The deploy script will:
-1. Build the React frontend
-2. Package the server code
-3. Bundle sibling packages (`databricks-tools-core`, `databricks-mcp-server`)
-4. Copy skills from `databricks-skills/`
-5. Upload everything to your Databricks workspace
-6. Deploy the app
+部署腳本會：
+1. 建置 React 前端
+2. 打包伺服器程式碼
+3. 捆綁同層套件（`databricks-tools-core`、`databricks-mcp-server`）
+4. 從 `databricks-skills/` 複製 Skills
+5. 上傳所有內容至 Databricks 工作區
+6. 部署 App
 
-**Skip frontend build** (if already built):
+**略過前端建置**（若已建置完成）：
 ```bash
 ./scripts/deploy.sh my-builder-app --skip-build
 ```
 
-#### 7. Grant Database Permissions
+#### 7. 授予資料庫權限
 
-After the first deployment, the app's service principal needs two things:
-1. A **Lakebase OAuth role** (so it can authenticate via OAuth tokens)
-2. **PostgreSQL grants** on the `builder_app` schema (so it can create/read/write tables)
+首次部署後，應用程式的服務主體需要：
+1. **Lakebase OAuth 角色**（以便透過 OAuth Token 驗證）
+2. 在 `builder_app` Schema 的 **PostgreSQL 授權**（以便建立/讀取/寫入資料表）
 
-##### Step 7a: Find the service principal's client ID
+##### 步驟 7a：找到服務主體的 Client ID
 
 ```bash
 SP_CLIENT_ID=$(databricks apps get my-builder-app --output json | jq -r '.service_principal_client_id')
 echo $SP_CLIENT_ID
 ```
 
-##### Step 7b: Create a Lakebase OAuth role for the SP
+##### 步驟 7b：為服務主體建立 Lakebase OAuth 角色
 
-> **Important**: Do NOT use PostgreSQL `CREATE ROLE` directly. Lakebase Autoscaling requires
-> roles to be created through the Databricks API so the OAuth authentication layer recognizes them.
+> **重要**：請勿直接使用 PostgreSQL `CREATE ROLE`。Lakebase 自動擴充需要透過 Databricks API 建立角色，OAuth 驗證層才能識別。
 
 ```python
 from databricks.sdk import WorkspaceClient
@@ -676,7 +675,7 @@ from databricks.sdk.service.postgres import Role, RoleRoleSpec, RoleAuthMethod, 
 
 w = WorkspaceClient()
 
-# Replace with your branch path and SP client ID
+# 以您的 Branch 路徑與服務主體 Client ID 取代以下值
 branch = "projects/<project-id>/branches/<branch-id>"
 sp_client_id = "<sp-client-id>"
 
@@ -692,7 +691,7 @@ w.postgres.create_role(
 ).wait()
 ```
 
-Or via CLI:
+或透過 CLI：
 
 ```bash
 databricks postgres create-role \
@@ -706,63 +705,62 @@ databricks postgres create-role \
   }'
 ```
 
-**Provisioned Lakebase**: This step is not needed — adding the instance as an app resource
-(Step 4) automatically configures authentication.
+**固定容量 Lakebase**：不需要此步驟 — 將執行個體加入為 App 資源（步驟 4）時，驗證已自動設定。
 
-##### Step 7c: Grant PostgreSQL permissions
+##### 步驟 7c：授予 PostgreSQL 權限
 
-Connect to your Lakebase database as your own user (via psql or a notebook) and run:
+以您自己的使用者身份連線至 Lakebase 資料庫（透過 psql 或 Notebook）並執行：
 
 ```sql
--- Replace <sp-client-id> with the service_principal_client_id
+-- 將 <sp-client-id> 替換為 service_principal_client_id
 
--- 1. Allow the SP to create the builder_app schema
+-- 1. 允許服務主體建立 builder_app Schema
 GRANT CREATE ON DATABASE databricks_postgres TO "<sp-client-id>";
 
--- 2. Create the schema and grant full access
+-- 2. 建立 Schema 並授予完整存取權
 CREATE SCHEMA IF NOT EXISTS builder_app;
 GRANT USAGE ON SCHEMA builder_app TO "<sp-client-id>";
 GRANT ALL PRIVILEGES ON SCHEMA builder_app TO "<sp-client-id>";
 
--- 3. Grant access to any existing tables/sequences (needed if you ran migrations locally)
+-- 3. 授予現有資料表/序列的存取權（若已在本機執行過遷移則需要）
 GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA builder_app TO "<sp-client-id>";
 GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA builder_app TO "<sp-client-id>";
 
--- 4. Ensure the SP has access to future tables/sequences created by other users
+-- 4. 確保服務主體能存取其他使用者未來建立的資料表/序列
 ALTER DEFAULT PRIVILEGES IN SCHEMA builder_app
   GRANT ALL ON TABLES TO "<sp-client-id>";
 ALTER DEFAULT PRIVILEGES IN SCHEMA builder_app
   GRANT ALL ON SEQUENCES TO "<sp-client-id>";
 ```
 
-After granting permissions, redeploy the app so it can run migrations with the new role.
+授予權限後，請重新部署應用程式以使新角色執行遷移。
 
-#### 8. Access Your App
+#### 8. 存取您的應用程式
 
-After successful deployment, the script will display your app URL:
+部署成功後，腳本將顯示您的 App URL：
 ```
 App URL: https://my-builder-app-1234567890.aws.databricksapps.com
 ```
 
-### Deployment Troubleshooting
+### 部署疑難排解
 
-#### "Could not determine Databricks workspace"
+#### 「無法判斷 Databricks 工作區」
 
-Your Databricks CLI authentication may be invalid or using the wrong profile:
+您的 Databricks CLI 驗證可能無效或使用了錯誤的設定檔：
 ```bash
-# Check available profiles
+# 查看可用設定檔
 databricks auth profiles
 
-# Use a specific profile
+# 使用特定設定檔
 export DATABRICKS_CONFIG_PROFILE=your-valid-profile
 
-# Re-authenticate if needed
+# 如需重新驗證
 databricks auth login --host https://your-workspace.cloud.databricks.com
 ```
 
-#### "Build directory client/out not found"
+#### 「找不到建置目錄 client/out」
 
-The frontend build is missing. The deploy script should build it automatically, but you can build manually:
+前端建置缺失。部署腳本應會自動建置，但您也可以手動建置：
 ```bash
 cd client
 npm install
@@ -770,79 +768,78 @@ npm run build
 cd ..
 ```
 
-#### "Skill 'X' not found"
+#### 「找不到 Skill 'X'」
 
-Skills are copied from the sibling `databricks-skills/` directory. Ensure:
-1. You're running the deploy script from the full repository (not just this directory)
-2. The skill name in `ENABLED_SKILLS` matches a directory in `databricks-skills/`
-3. The skill directory contains a `SKILL.md` file
+Skills 從同層 `databricks-skills/` 目錄複製。請確認：
+1. 從完整倉庫執行部署腳本（非僅此目錄）
+2. `ENABLED_SKILLS` 中的 Skill 名稱與 `databricks-skills/` 中的目錄名稱相符
+3. Skill 目錄包含 `SKILL.md` 檔案
 
-#### "password authentication failed" or "Permission denied for table projects"
+#### 「password authentication failed」或「Permission denied for table projects」
 
-See [Section 7: Grant Database Permissions](#7-grant-database-permissions) for the complete setup.
+完整設定步驟請參閱[第 7 節：授予資料庫權限](#7-授予資料庫權限)。
 
-Common causes:
+常見原因：
 
-| Error | Cause | Fix |
-|-------|-------|-----|
-| `password authentication failed` | Lakebase OAuth role missing or created via SQL instead of API | Create the role via `w.postgres.create_role()` with `LAKEBASE_OAUTH_V1` auth (Step 7b) |
-| `permission denied for table` | SP lacks PostgreSQL grants on schema/tables | Run the GRANT statements (Step 7c) |
-| `schema "builder_app" does not exist` | SP lacks `CREATE` on the database | `GRANT CREATE ON DATABASE databricks_postgres TO "<sp-client-id>"` |
-| `relation does not exist` | Migrations haven't run | Redeploy the app, or run `alembic upgrade head` locally |
+| 錯誤 | 原因 | 修復方式 |
+|------|------|---------|
+| `password authentication failed` | Lakebase OAuth 角色缺失或透過 SQL 建立 | 透過 `w.postgres.create_role()` 以 `LAKEBASE_OAUTH_V1` 驗證建立角色（步驟 7b） |
+| `permission denied for table` | 服務主體缺少 Schema/資料表的 PostgreSQL 授權 | 執行 GRANT 語句（步驟 7c） |
+| `schema "builder_app" does not exist` | 服務主體缺少資料庫的 `CREATE` 權限 | `GRANT CREATE ON DATABASE databricks_postgres TO "<sp-client-id>"` |
+| `relation does not exist` | 遷移尚未執行 | 重新部署應用程式，或在本機執行 `alembic upgrade head` |
 
-> **Autoscale Lakebase pitfall**: Do NOT use `CREATE ROLE ... LOGIN` in PostgreSQL directly.
-> Lakebase Autoscaling requires roles to be created through the Databricks API so that OAuth
-> token authentication works. Manually created roles get `NO_LOGIN` auth and will fail with
-> "password authentication failed".
+> **自動擴充 Lakebase 注意事項**：請勿在 PostgreSQL 中直接使用 `CREATE ROLE ... LOGIN`。
+> Lakebase 自動擴充需要透過 Databricks API 建立角色，OAuth Token 驗證才能正常運作。
+> 手動建立的角色會得到 `NO_LOGIN` 驗證方式，導致「password authentication failed」錯誤。
 
-#### App shows blank page or "Not Found"
+#### 應用程式顯示空白頁面或「Not Found」
 
-Check the app logs in Databricks:
+在 Databricks 中查看應用程式日誌：
 ```bash
 databricks apps logs my-builder-app
 ```
 
-Common causes:
-- Frontend files not properly deployed (check `client/out` exists in staging)
-- Database connection issues (verify Lakebase resource is added)
-- Python import errors (check logs for traceback)
+常見原因：
+- 前端檔案未正確部署（確認暫存中存在 `client/out`）
+- 資料庫連線問題（確認已加入 Lakebase 資源）
+- Python import 錯誤（查看日誌中的 traceback）
 
-#### Redeploying After Changes
+#### 重新部署後的變更
 
 ```bash
-# Full redeploy (rebuilds frontend)
+# 完整重新部署（重建前端）
 ./scripts/deploy.sh my-builder-app
 
-# Quick redeploy (skip frontend build)
+# 快速重新部署（略過前端建置）
 ./scripts/deploy.sh my-builder-app --skip-build
 ```
 
-### MLflow Tracing
+### MLflow 追蹤
 
-The app supports MLflow tracing for Claude Code conversations. To enable:
+本應用程式支援 Claude Code 對話的 MLflow 追蹤。啟用方式：
 
-1. Set `MLFLOW_TRACKING_URI=databricks` in `app.yaml`
-2. Optionally set `MLFLOW_EXPERIMENT_NAME` to a specific experiment path
+1. 在 `app.yaml` 中設定 `MLFLOW_TRACKING_URI=databricks`
+2. 可選擇性設定 `MLFLOW_EXPERIMENT_NAME` 指定特定實驗路徑
 
-Traces will appear in your Databricks MLflow UI and include:
-- User prompts and Claude responses
-- Tool usage and results
-- Session metadata
+追蹤記錄將出現在 Databricks MLflow UI 中，包含：
+- 使用者提示與 Claude 回應
+- 工具使用情況與結果
+- 工作階段 Metadata
 
-See the [Databricks MLflow Tracing documentation](https://docs.databricks.com/aws/en/mlflow3/genai/tracing/integrations/claude-code) for more details.
+詳情請參閱 [Databricks MLflow 追蹤文件](https://docs.databricks.com/aws/en/mlflow3/genai/tracing/integrations/claude-code)。
 
-## Embedding in Other Apps
+## 嵌入至其他應用程式
 
-If you want to embed the Databricks agent into your own application, see the integration example at:
+若您希望將 Databricks 代理程式嵌入至自有應用程式，請參閱以下整合範例：
 
 ```
 scripts/_integration-example/
 ```
 
-This provides a minimal working example with setup instructions for integrating the agent services into external frameworks.
+此範例提供最小可運作示例與設定說明，說明如何將代理程式服務整合至外部框架。
 
-## Related Packages
+## 相關套件
 
-- **databricks-tools-core**: Core MCP functionality and SQL operations
-- **databricks-mcp-server**: MCP server exposing Databricks tools
-- **databricks-skills**: Skill definitions for Databricks development
+- **databricks-tools-core**：核心 MCP 功能與 SQL 操作
+- **databricks-mcp-server**：公開 Databricks 工具的 MCP Server
+- **databricks-skills**：Databricks 開發的 Skill 定義

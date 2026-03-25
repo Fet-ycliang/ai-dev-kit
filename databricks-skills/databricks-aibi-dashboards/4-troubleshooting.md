@@ -1,72 +1,72 @@
-# Troubleshooting
+# 疑難排解
 
-Common errors and fixes for AI/BI dashboards.
+AI/BI 儀表板的常見錯誤與修正方式。
 
-## Widget shows "no selected fields to visualize"
+## 元件顯示「no selected fields to visualize」
 
-**This is a field name mismatch error.** The `name` in `query.fields` must exactly match the `fieldName` in `encodings`.
+**這是 field name 不一致的錯誤。** `query.fields` 中的 `name` 必須與 `encodings` 中的 `fieldName` 完全一致。
 
-**Fix:** Ensure names match exactly:
+**修正：**請確認名稱完全一致：
 ```json
-// WRONG - names don't match
+// 錯誤 - 名稱不一致
 "fields": [{"name": "spend", "expression": "SUM(`spend`)"}]
-"encodings": {"value": {"fieldName": "sum(spend)", ...}}  // ERROR!
+"encodings": {"value": {"fieldName": "sum(spend)", ...}}  // 錯誤！
 
-// CORRECT - names match
+// 正確 - 名稱一致
 "fields": [{"name": "sum(spend)", "expression": "SUM(`spend`)"}]
-"encodings": {"value": {"fieldName": "sum(spend)", ...}}  // OK!
+"encodings": {"value": {"fieldName": "sum(spend)", ...}}  // 正確！
 ```
 
-## Widget shows "Invalid widget definition"
+## 元件顯示「Invalid widget definition」
 
-**Check version numbers:**
-- Counters: `version: 2`
-- Tables: `version: 2`
-- Filters: `version: 2`
-- Bar/Line/Pie charts: `version: 3`
+**檢查版本號：**
+- 計數器：`version: 2`
+- 資料表：`version: 2`
+- 篩選器：`version: 2`
+- 長條圖/折線圖/圓餅圖：`version: 3`
 
-**Text widget errors:**
-- Text widgets must NOT have a `spec` block
-- Use `multilineTextboxSpec` directly on the widget object
-- Do NOT use `widgetType: "text"` - this is invalid
+**文字元件錯誤：**
+- 文字元件不可有 `spec` 區塊
+- 直接在 widget 物件上使用 `multilineTextboxSpec`
+- 不要使用 `widgetType: "text"` - 這是無效的
 
-**Table widget errors:**
-- Use `version: 2` (NOT 1 or 3)
-- Column objects only need `fieldName` and `displayName`
-- Do NOT add `type`, `numberFormat`, or other column properties
+**資料表元件錯誤：**
+- 使用 `version: 2`（不是 1 或 3）
+- 欄物件只需要 `fieldName` 和 `displayName`
+- 不要加入 `type`、`numberFormat` 或其他欄屬性
 
-**Counter widget errors:**
-- Use `version: 2` (NOT 3)
-- Ensure dataset returns exactly 1 row
+**計數器元件錯誤：**
+- 使用 `version: 2`（不是 3）
+- 確保資料集剛好回傳 1 列
 
-## Dashboard shows empty widgets
-- Run the dataset SQL query directly to check data exists
-- Verify column aliases match widget field expressions
-- Check `disaggregated` flag (should be `true` for pre-aggregated data)
+## 儀表板出現空白元件
+- 直接執行資料集 SQL 查詢，確認有資料存在
+- 確認欄位 alias 與元件欄位 expression 一致
+- 檢查 `disaggregated` 旗標（預先彙總資料應為 `true`）
 
-## Layout has gaps
-- Ensure each row sums to width=6
-- Check that y positions don't skip values
+## 版面配置有空隙
+- 確保每一列的寬度總和為 width=6
+- 檢查 y 位置是否沒有跳號
 
-## Filter shows "Invalid widget definition"
-- Check `widgetType` is one of: `filter-multi-select`, `filter-single-select`, `filter-date-range-picker`
-- **DO NOT** use `widgetType: "filter"` - this is invalid
-- Verify `spec.version` is `2`
-- Ensure `queryName` in encodings matches the query `name`
-- Confirm `disaggregated: false` in filter queries
-- Ensure `frame` with `showTitle: true` is included
+## 篩選器顯示「Invalid widget definition」
+- 檢查 `widgetType` 是否為下列其中之一：`filter-multi-select`、`filter-single-select`、`filter-date-range-picker`
+- **不要**使用 `widgetType: "filter"` - 這是無效的
+- 確認 `spec.version` 為 `2`
+- 確保 encodings 中的 `queryName` 與查詢 `name` 一致
+- 確認篩選器查詢使用 `disaggregated: false`
+- 確保有包含 `frame` 並設定 `showTitle: true`
 
-## Filter not affecting expected pages
-- **Global filters** (on `PAGE_TYPE_GLOBAL_FILTERS` page) affect all datasets containing the filter field
-- **Page-level filters** (on `PAGE_TYPE_CANVAS` page) only affect widgets on that same page
-- A filter only works on datasets that include the filter dimension column
+## 篩選器未影響預期頁面
+- **全域篩選器**（位於 `PAGE_TYPE_GLOBAL_FILTERS` 頁面）會影響所有包含該篩選欄位的資料集
+- **頁面層級篩選器**（位於 `PAGE_TYPE_CANVAS` 頁面）只會影響同一頁上的元件
+- 篩選器只會作用於包含該篩選維度欄位的資料集
 
-## Filter shows "UNRESOLVED_COLUMN" error for `associative_filter_predicate_group`
-- **DO NOT** use `COUNT_IF(\`associative_filter_predicate_group\`)` in filter queries
-- This internal expression causes SQL errors when the dashboard executes queries
-- Use a simple field expression instead: `{"name": "field", "expression": "\`field\`"}`
+## 篩選器對 `associative_filter_predicate_group` 顯示「UNRESOLVED_COLUMN」錯誤
+- **不要**在篩選器查詢中使用 `COUNT_IF(\`associative_filter_predicate_group\`)`
+- 此內部 expression 會在儀表板執行查詢時造成 SQL 錯誤
+- 請改用簡單欄位 expression：`{"name": "field", "expression": "\`field\`"}`
 
-## Text widget shows title and description on same line
-- Multiple items in the `lines` array are **concatenated**, not displayed on separate lines
-- Use **separate text widgets** for title and subtitle at different y positions
-- Example: title at y=0 with height=1, subtitle at y=1 with height=1
+## 文字元件將標題與說明顯示在同一行
+- `lines` 陣列中的多個項目會**串接**，不會分行顯示
+- 請在不同 y 位置為標題與副標題使用**分開的文字元件**
+- 例如：標題放在 y=0、height=1，副標題放在 y=1、height=1

@@ -1,23 +1,23 @@
-# End-to-End RAG with Vector Search
+# 使用向量搜尋的端到端 RAG
 
-Build a complete Retrieval-Augmented Generation pipeline: prepare documents, create a vector index, query it, and wire it into an agent.
+建立完整的檢索增強生成管道：準備文件、建立向量索引、查詢它，並將其接入代理。
 
-## MCP Tools Used
+## 使用的 MCP 工具
 
-| Tool | Step |
+| 工具 | 步驟 |
 |------|------|
-| `execute_sql` | Create source table, insert documents |
-| `create_vs_endpoint` | Create compute endpoint |
-| `create_vs_index` | Create Delta Sync index with managed embeddings |
-| `sync_vs_index` | Trigger index sync |
-| `get_vs_index` | Check index status |
-| `query_vs_index` | Test similarity search |
+| `execute_sql` | 建立來源表格、插入文件 |
+| `create_vs_endpoint` | 建立計算端點 |
+| `create_vs_index` | 建立帶受管嵌入的 Delta 同步索引 |
+| `sync_vs_index` | 觸發索引同步 |
+| `get_vs_index` | 檢查索引狀態 |
+| `query_vs_index` | 測試相似度搜尋 |
 
 ---
 
-## Step 1: Prepare Source Table
+## 步驟 1：準備來源表格
 
-The source Delta table needs a primary key column and a text column to embed.
+來源 Delta 表格需要主鍵欄位和要嵌入的文字欄位。
 
 ```sql
 CREATE TABLE IF NOT EXISTS catalog.schema.knowledge_base (
@@ -29,12 +29,12 @@ CREATE TABLE IF NOT EXISTS catalog.schema.knowledge_base (
 );
 
 INSERT INTO catalog.schema.knowledge_base VALUES
-('doc-001', 'Getting Started', 'Databricks is a unified analytics platform...', 'overview', current_timestamp()),
-('doc-002', 'Unity Catalog', 'Unity Catalog provides centralized governance...', 'governance', current_timestamp()),
-('doc-003', 'Delta Lake', 'Delta Lake is an open-source storage layer...', 'storage', current_timestamp());
+('doc-001', 'Getting Started', 'Databricks 是統一分析平台...', 'overview', current_timestamp()),
+('doc-002', 'Unity Catalog', 'Unity Catalog 提供集中治理...', 'governance', current_timestamp()),
+('doc-003', 'Delta Lake', 'Delta Lake 是開源儲存層...', 'storage', current_timestamp());
 ```
 
-Or via MCP:
+或透過 MCP：
 
 ```python
 execute_sql(sql_query="""
@@ -48,7 +48,7 @@ execute_sql(sql_query="""
 """)
 ```
 
-## Step 2: Create Vector Search Endpoint
+## 步驟 2：建立向量搜尋端點
 
 ```python
 create_vs_endpoint(
@@ -57,14 +57,14 @@ create_vs_endpoint(
 )
 ```
 
-Endpoint creation is asynchronous. Check status:
+端點建立是非同步的。檢查狀態：
 
 ```python
 get_vs_endpoint(name="my-rag-endpoint")
-# Wait for state: "ONLINE"
+# 等待狀態：「ONLINE」
 ```
 
-## Step 3: Create Delta Sync Index
+## 步驟 3：建立 Delta 同步索引
 
 ```python
 create_vs_index(
@@ -86,65 +86,65 @@ create_vs_index(
 )
 ```
 
-Key decisions:
-- **`embedding_source_columns`**: Databricks computes embeddings automatically from the `content` column
-- **`pipeline_type`**: `TRIGGERED` for manual sync (cheaper), `CONTINUOUS` for auto-sync on table changes
-- **`columns_to_sync`**: Only sync columns you need in query results (reduces storage and improves performance)
+關鍵決策：
+- **`embedding_source_columns`**：Databricks 自動從 `content` 欄位計算嵌入
+- **`pipeline_type`**：`TRIGGERED` 用於手動同步（更便宜），`CONTINUOUS` 用於表格變更時自動同步
+- **`columns_to_sync`**：僅同步查詢結果中需要的欄位（減少儲存並改善效能）
 
-## Step 4: Sync and Verify
+## 步驟 4：同步和驗證
 
 ```python
-# Trigger initial sync
+# 觸發初始同步
 sync_vs_index(index_name="catalog.schema.knowledge_base_index")
 
-# Check status
+# 檢查狀態
 get_vs_index(index_name="catalog.schema.knowledge_base_index")
-# Wait for state: "ONLINE"
+# 等待狀態：「ONLINE」
 ```
 
-## Step 5: Query the Index
+## 步驟 5：查詢索引
 
 ```python
-# Semantic search
+# 語義搜尋
 query_vs_index(
     index_name="catalog.schema.knowledge_base_index",
     columns=["doc_id", "title", "content", "category"],
-    query_text="How do I govern my data?",
+    query_text="我如何治理我的資料？",
     num_results=3
 )
 ```
 
-### With Filters
+### 帶篩選
 
-The filter syntax depends on the endpoint type used when creating the index.
+篩選語法取決於建立索引時使用的端點類型。
 
 ```python
-# Storage-Optimized endpoint (used in this walkthrough): SQL-like filter syntax
+# 儲存最佳化端點（本演練中使用）：SQL 類似篩選語法
 query_vs_index(
     index_name="catalog.schema.knowledge_base_index",
     columns=["doc_id", "title", "content"],
-    query_text="How do I govern my data?",
+    query_text="我如何治理我的資料？",
     num_results=3,
     filters="category = 'governance'"
 )
 
-# Standard endpoint (if you created a Standard endpoint instead): JSON filters_json
+# 標準端點（如果您改為建立標準端點）：JSON filters_json
 query_vs_index(
     index_name="catalog.schema.my_standard_index",
     columns=["doc_id", "title", "content"],
-    query_text="How do I govern my data?",
+    query_text="我如何治理我的資料？",
     num_results=3,
     filters_json='{"category": "governance"}'
 )
 ```
 
-### Hybrid Search (Vector + Keyword)
+### 混合搜尋（向量 + 關鍵字）
 
 ```python
 query_vs_index(
     index_name="catalog.schema.knowledge_base_index",
     columns=["doc_id", "title", "content"],
-    query_text="Delta Lake ACID transactions",
+    query_text="Delta Lake ACID 交易",
     num_results=5,
     query_type="HYBRID"
 )
@@ -152,18 +152,18 @@ query_vs_index(
 
 ---
 
-## Step 6: Use in an Agent
+## 步驟 6：在代理中使用
 
-### As a Tool in a ChatAgent
+### 作為 ChatAgent 中的工具
 
-Use `VectorSearchRetrieverTool` to wire the index into an agent deployed on Model Serving:
+使用 `VectorSearchRetrieverTool` 將索引接入在模型服務上部署的代理：
 
 ```python
 from databricks.agents import ChatAgent
 from databricks.agents.tools import VectorSearchRetrieverTool
 from databricks.sdk import WorkspaceClient
 
-# Define the retriever tool
+# 定義檢索工具
 retriever_tool = VectorSearchRetrieverTool(
     index_name="catalog.schema.knowledge_base_index",
     columns=["doc_id", "title", "content"],
@@ -192,7 +192,7 @@ class RAGAgent(ChatAgent):
         response = self.w.serving_endpoints.query(
             name="databricks-meta-llama-3-3-70b-instruct",
             messages=[
-                {"role": "system", "content": f"Answer using this context:\n{context_docs}"},
+                {"role": "system", "content": f"使用此內容回答：\n{context_docs}"},
                 {"role": "user", "content": query},
             ],
         )
@@ -202,38 +202,38 @@ class RAGAgent(ChatAgent):
 
 ---
 
-## Updating the Index
+## 更新索引
 
-### Add New Documents
+### 新增文件
 
 ```sql
 INSERT INTO catalog.schema.knowledge_base VALUES
-('doc-004', 'MLflow', 'MLflow is an open-source platform for ML lifecycle...', 'ml', current_timestamp());
+('doc-004', 'MLflow', 'MLflow 是 ML 生命週期的開源平台...', 'ml', current_timestamp());
 ```
 
-Then sync:
+然後同步：
 
 ```python
 sync_vs_index(index_name="catalog.schema.knowledge_base_index")
 ```
 
-### Delete Documents
+### 刪除文件
 
 ```sql
 DELETE FROM catalog.schema.knowledge_base WHERE doc_id = 'doc-001';
 ```
 
-Then sync — the index automatically handles deletions via Delta change data feed.
+然後同步 — 索引自動透過 Delta 變更資料 feed 處理刪除。
 
 ---
 
-## Common Issues
+## 常見問題
 
-| Issue | Solution |
-|-------|----------|
-| **Index stuck in PROVISIONING** | Endpoint may still be creating. Check `get_vs_endpoint` first |
-| **Query returns no results** | Index may not be synced yet. Run `sync_vs_index` and wait for ONLINE state |
-| **"Column not found in index"** | Column must be in `columns_to_sync`. Recreate index with the column included |
-| **Embeddings not computed** | Ensure `embedding_model_endpoint_name` is a valid serving endpoint |
-| **Stale results after table update** | For TRIGGERED pipelines, you must call `sync_vs_index` manually |
-| **Filter not working** | Standard endpoints use dict-format filters (`filters_json`), Storage-Optimized use SQL-like string filters (`filters`) |
+| 問題 | 解決方案 |
+|------|--------|
+| **索引卡在 PROVISIONING** | 端點仍可能在建立中。先檢查 `get_vs_endpoint` |
+| **查詢無結果** | 索引可能尚未同步。執行 `sync_vs_index` 並等待 ONLINE 狀態 |
+| **「索引中找不到欄位」** | 欄位必須在 `columns_to_sync` 中。使用包含的欄位重新建立索引 |
+| **未計算嵌入** | 確保 `embedding_model_endpoint_name` 是有效的服務端點 |
+| **表格更新後結果陳舊** | 對於 TRIGGERED 管道，您必須手動呼叫 `sync_vs_index` |
+| **篩選不起作用** | 標準端點使用字典格式篩選（`filters_json`），儲存最佳化使用 SQL 類似字串篩選（`filters`） |

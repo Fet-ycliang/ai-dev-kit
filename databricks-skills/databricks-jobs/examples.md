@@ -1,19 +1,19 @@
-# Complete Examples
+# 完整範例
 
-## Contents
-- [ETL Pipeline with Multiple Tasks](#etl-pipeline-with-multiple-tasks)
-- [Scheduled Data Warehouse Refresh](#scheduled-data-warehouse-refresh)
-- [Event-Driven Pipeline](#event-driven-pipeline)
-- [ML Training Pipeline](#ml-training-pipeline)
-- [Multi-Environment Deployment](#multi-environment-deployment)
-- [Streaming Job](#streaming-job)
-- [Cross-Job Orchestration](#cross-job-orchestration)
+## 目錄
+- [含有多個任務的 ETL 管線](#含有多個任務的-etl-管線)
+- [排程式 Data Warehouse 重新整理](#排程式-data-warehouse-重新整理)
+- [事件驅動管線](#事件驅動管線)
+- [ML 訓練管線](#ml-訓練管線)
+- [多環境部署](#多環境部署)
+- [串流 Job](#串流-job)
+- [跨 Job 協調流程](#跨-job-協調流程)
 
 ---
 
-## ETL Pipeline with Multiple Tasks
+## 含有多個任務的 ETL 管線
 
-A classic extract-transform-load pipeline with task dependencies.
+具備任務相依關係的經典 ETL 管線。
 
 ### DABs YAML
 
@@ -24,20 +24,20 @@ resources:
     daily_etl:
       name: "[${bundle.target}] Daily ETL Pipeline"
 
-      # Schedule: Daily at 6 AM UTC
+      # 排程：每天 UTC 早上 6 點
       schedule:
         quartz_cron_expression: "0 0 6 * * ?"
         timezone_id: "UTC"
         pause_status: UNPAUSED
 
-      # Job parameters
+      # Job 參數
       parameters:
         - name: load_date
           default: "{{start_date}}"
         - name: env
           default: "${bundle.target}"
 
-      # Shared cluster for all tasks
+      # 所有任務共用的 cluster
       job_clusters:
         - job_cluster_key: etl_cluster
           new_cluster:
@@ -47,7 +47,7 @@ resources:
             spark_conf:
               spark.sql.shuffle.partitions: "200"
 
-      # Email notifications
+      # 電子郵件通知
       email_notifications:
         on_failure:
           - "data-team@example.com"
@@ -55,7 +55,7 @@ resources:
           - "data-team@example.com"
 
       tasks:
-        # Extract from source systems
+        # 從來源系統擷取
         - task_key: extract_orders
           job_cluster_key: etl_cluster
           notebook_task:
@@ -75,7 +75,7 @@ resources:
           notebook_task:
             notebook_path: ../src/notebooks/extract_products.py
 
-        # Transform: wait for all extracts
+        # 轉換：等待所有擷取任務完成
         - task_key: transform_facts
           depends_on:
             - task_key: extract_orders
@@ -87,7 +87,7 @@ resources:
             base_parameters:
               load_date: "{{job.parameters.load_date}}"
 
-        # Load: run after transform
+        # 載入：在轉換後執行
         - task_key: load_warehouse
           depends_on:
             - task_key: transform_facts
@@ -95,7 +95,7 @@ resources:
           notebook_task:
             notebook_path: ../src/notebooks/load_warehouse.py
 
-        # Data quality check
+        # 資料品質檢查
         - task_key: validate_data
           depends_on:
             - task_key: load_warehouse
@@ -111,7 +111,7 @@ resources:
           group_name: "data-engineers"
 ```
 
-### Python SDK Equivalent
+### Python SDK 對應版本
 
 ```python
 from databricks.sdk import WorkspaceClient
@@ -197,9 +197,9 @@ print(f"Created job: {job.job_id}")
 
 ---
 
-## Scheduled Data Warehouse Refresh
+## 排程式 Data Warehouse 重新整理
 
-SQL-based warehouse refresh with multiple queries.
+以 SQL 為基礎、包含多個查詢的 Data Warehouse 重新整理。
 
 ### DABs YAML
 
@@ -210,12 +210,12 @@ resources:
       name: "[${bundle.target}] Warehouse Refresh"
 
       schedule:
-        quartz_cron_expression: "0 0 4 * * ?"  # 4 AM daily
+        quartz_cron_expression: "0 0 4 * * ?"  # 每天凌晨 4 點
         timezone_id: "America/New_York"
         pause_status: UNPAUSED
 
       tasks:
-        # Refresh dimension tables
+        # 重新整理維度資料表
         - task_key: refresh_dim_customers
           sql_task:
             file:
@@ -230,7 +230,7 @@ resources:
               source: WORKSPACE
             warehouse_id: ${var.warehouse_id}
 
-        # Refresh fact tables (depends on dimensions)
+        # 重新整理事實資料表（相依於維度資料表）
         - task_key: refresh_fact_sales
           depends_on:
             - task_key: refresh_dim_customers
@@ -241,7 +241,7 @@ resources:
               source: WORKSPACE
             warehouse_id: ${var.warehouse_id}
 
-        # Update aggregations
+        # 更新彙總
         - task_key: update_aggregations
           depends_on:
             - task_key: refresh_fact_sales
@@ -251,7 +251,7 @@ resources:
               source: WORKSPACE
             warehouse_id: ${var.warehouse_id}
 
-        # Refresh dashboard
+        # 重新整理儀表板
         - task_key: refresh_dashboard
           depends_on:
             - task_key: update_aggregations
@@ -263,9 +263,9 @@ resources:
 
 ---
 
-## Event-Driven Pipeline
+## 事件驅動管線
 
-Pipeline triggered by file arrival and table updates.
+由檔案到達與資料表更新觸發的管線。
 
 ### DABs YAML
 
@@ -275,20 +275,20 @@ resources:
     event_driven_pipeline:
       name: "[${bundle.target}] Event-Driven Pipeline"
 
-      # Trigger on file arrival
+      # 在檔案到達時觸發
       trigger:
         pause_status: UNPAUSED
         file_arrival:
           url: "s3://data-lake/incoming/orders/"
-          min_time_between_triggers_seconds: 300  # 5 min cooldown
-          wait_after_last_change_seconds: 60  # Wait for batch completion
+          min_time_between_triggers_seconds: 300  # 5 分鐘冷卻時間
+          wait_after_last_change_seconds: 60  # 等待批次完成
 
-      # Health monitoring
+      # 健康狀態監控
       health:
         rules:
           - metric: RUN_DURATION_SECONDS
             op: GREATER_THAN
-            value: 1800  # Alert if > 30 min
+            value: 1800  # 若超過 30 分鐘則警示
 
       email_notifications:
         on_failure:
@@ -308,7 +308,7 @@ resources:
               max_workers: 10
 ```
 
-### Table Update Trigger Example
+### 資料表更新 Trigger 範例
 
 ```yaml
 resources:
@@ -334,9 +334,9 @@ resources:
 
 ---
 
-## ML Training Pipeline
+## ML 訓練管線
 
-Machine learning workflow with training, evaluation, and deployment.
+涵蓋訓練、評估與部署的機器學習工作流程。
 
 ### DABs YAML
 
@@ -346,9 +346,9 @@ resources:
     ml_training:
       name: "[${bundle.target}] ML Training Pipeline"
 
-      # Weekly retraining
+      # 每週重新訓練
       schedule:
-        quartz_cron_expression: "0 0 2 ? * SUN"  # Sunday 2 AM
+        quartz_cron_expression: "0 0 2 ? * SUN"  # 星期日凌晨 2 點
         timezone_id: "UTC"
         pause_status: UNPAUSED
 
@@ -358,7 +358,7 @@ resources:
         - name: experiment_name
           default: "/Shared/experiments/sales_forecast"
 
-      # GPU cluster for training
+      # 用於訓練的 GPU cluster
       job_clusters:
         - job_cluster_key: gpu_cluster
           new_cluster:
@@ -374,7 +374,7 @@ resources:
             node_type_id: "i3.xlarge"
             num_workers: 4
 
-      # ML environment
+      # ML 環境
       environments:
         - environment_key: ml_env
           spec:
@@ -385,7 +385,7 @@ resources:
               - xgboost>=2.0.0
 
       tasks:
-        # Data preparation
+        # 資料準備
         - task_key: prepare_training_data
           job_cluster_key: cpu_cluster
           environment_key: ml_env
@@ -394,7 +394,7 @@ resources:
             base_parameters:
               output_table: "main.ml.training_data"
 
-        # Feature engineering
+        # 特徵工程
         - task_key: engineer_features
           depends_on:
             - task_key: prepare_training_data
@@ -403,7 +403,7 @@ resources:
           notebook_task:
             notebook_path: ../src/ml/engineer_features.py
 
-        # Model training
+        # 模型訓練
         - task_key: train_model
           depends_on:
             - task_key: engineer_features
@@ -415,7 +415,7 @@ resources:
               model_name: "{{job.parameters.model_name}}"
               experiment_name: "{{job.parameters.experiment_name}}"
 
-        # Model evaluation
+        # 模型評估
         - task_key: evaluate_model
           depends_on:
             - task_key: train_model
@@ -424,7 +424,7 @@ resources:
           notebook_task:
             notebook_path: ../src/ml/evaluate_model.py
 
-        # Conditional deployment (only on success)
+        # 條件式部署（僅在成功時）
         - task_key: deploy_model
           depends_on:
             - task_key: evaluate_model
@@ -439,9 +439,9 @@ resources:
 
 ---
 
-## Multi-Environment Deployment
+## 多環境部署
 
-Job configuration with environment-specific settings.
+具有環境專屬設定的 job 組態。
 
 ### databricks.yml
 
@@ -489,13 +489,13 @@ resources:
     data_pipeline:
       name: "[${bundle.target}] Data Pipeline"
 
-      # Only schedule in prod
+      # 僅在 prod 排程
       schedule:
         quartz_cron_expression: "0 0 6 * * ?"
         timezone_id: "UTC"
         pause_status: ${if(bundle.target == "prod", "UNPAUSED", "PAUSED")}
 
-      # Environment-specific cluster sizing
+      # 特定環境的 cluster 規模設定
       job_clusters:
         - job_cluster_key: main_cluster
           new_cluster:
@@ -527,9 +527,9 @@ resources:
 
 ---
 
-## Streaming Job
+## 串流 Job
 
-Continuous streaming job with monitoring.
+具備監控功能的持續串流 job。
 
 ### DABs YAML
 
@@ -539,19 +539,19 @@ resources:
     streaming_processor:
       name: "[${bundle.target}] Streaming Processor"
 
-      # Continuous execution
+      # 持續執行
       continuous:
         pause_status: UNPAUSED
 
-      # Health monitoring for streaming
+      # 串流健康狀態監控
       health:
         rules:
           - metric: STREAMING_BACKLOG_SECONDS
             op: GREATER_THAN
-            value: 300  # Alert if > 5 min behind
+            value: 300  # 若落後超過 5 分鐘則警示
           - metric: STREAMING_BACKLOG_RECORDS
             op: GREATER_THAN
-            value: 1000000  # Alert if > 1M records behind
+            value: 1000000  # 若落後超過 100 萬筆記錄則警示
 
       email_notifications:
         on_failure:
@@ -582,16 +582,16 @@ resources:
 
 ---
 
-## Cross-Job Orchestration
+## 跨 Job 協調流程
 
-Multiple jobs with dependencies using run_job_task.
+使用 run_job_task 讓多個 jobs 形成相依關係。
 
 ### DABs YAML
 
 ```yaml
 resources:
   jobs:
-    # Data ingestion job
+    # 資料擷取 job
     ingestion_job:
       name: "[${bundle.target}] Data Ingestion"
       tasks:
@@ -599,7 +599,7 @@ resources:
           notebook_task:
             notebook_path: ../src/notebooks/ingest.py
 
-    # Data transformation job
+    # 資料轉換 job
     transformation_job:
       name: "[${bundle.target}] Data Transformation"
       tasks:
@@ -607,7 +607,7 @@ resources:
           notebook_task:
             notebook_path: ../src/notebooks/transform.py
 
-    # Master orchestration job
+    # 主協調 job
     orchestrator:
       name: "[${bundle.target}] Master Orchestrator"
 
@@ -617,19 +617,19 @@ resources:
         pause_status: UNPAUSED
 
       tasks:
-        # Run ingestion first
+        # 先執行 ingestion
         - task_key: run_ingestion
           run_job_task:
             job_id: ${resources.jobs.ingestion_job.id}
 
-        # Run transformation after ingestion
+        # 在 ingestion 之後執行 transformation
         - task_key: run_transformation
           depends_on:
             - task_key: run_ingestion
           run_job_task:
             job_id: ${resources.jobs.transformation_job.id}
 
-        # Final validation
+        # 最終驗證
         - task_key: validate_all
           depends_on:
             - task_key: run_transformation
@@ -639,9 +639,9 @@ resources:
 
 ---
 
-## For Each Task - Parallel Processing
+## for_each_task - 平行處理
 
-Process multiple items in parallel using for_each_task.
+使用 for_each_task 平行處理多個項目。
 
 ### DABs YAML
 
@@ -657,18 +657,18 @@ resources:
         pause_status: UNPAUSED
 
       tasks:
-        # Generate list of items to process
+        # 產生要處理的項目清單
         - task_key: get_regions
           notebook_task:
             notebook_path: ../src/notebooks/get_active_regions.py
 
-        # Process each region in parallel
+        # 平行處理各個區域
         - task_key: process_regions
           depends_on:
             - task_key: get_regions
           for_each_task:
             inputs: "{{tasks.get_regions.values.regions}}"
-            concurrency: 10  # Max 10 parallel
+            concurrency: 10  # 最多 10 個平行執行
             task:
               task_key: process_region
               notebook_task:
@@ -676,19 +676,19 @@ resources:
                 base_parameters:
                   region: "{{input}}"
 
-        # Aggregate results after all regions processed
+        # 在所有區域處理完畢後彙總結果
         - task_key: aggregate_results
           depends_on:
             - task_key: process_regions
-          run_if: ALL_DONE  # Run even if some regions failed
+          run_if: ALL_DONE  # 即使部分區域失敗仍執行
           notebook_task:
             notebook_path: ../src/notebooks/aggregate_results.py
 ```
 
-### Notebook: get_active_regions.py
+### Notebook：get_active_regions.py
 
 ```python
-# Get list of active regions to process
+# 取得要處理的啟用區域清單
 regions = spark.sql("""
     SELECT DISTINCT region_code
     FROM main.config.active_regions
@@ -697,23 +697,23 @@ regions = spark.sql("""
 
 region_list = [row.region_code for row in regions]
 
-# Pass to downstream for_each_task
+# 傳遞給下游 for_each_task
 dbutils.jobs.taskValues.set(key="regions", value=region_list)
 ```
 
-### Notebook: process_region.py
+### Notebook：process_region.py
 
 ```python
-# Get region from parameter
+# 從參數取得 region
 region = dbutils.widgets.get("region")
 
-# Process data for this region
+# 處理此 region 的資料
 df = spark.sql(f"""
     SELECT * FROM main.bronze.orders
     WHERE region = '{region}'
 """)
 
-# Transform and write
+# 轉換並寫入
 df_transformed = transform_orders(df)
 df_transformed.write.mode("append").saveAsTable(f"main.silver.orders_{region}")
 

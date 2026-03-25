@@ -1,7 +1,7 @@
 """
-Unity Catalog - Connection Operations
+Unity Catalog - Connection 作業
 
-Functions for managing Lakehouse Federation foreign connections.
+用於管理 Lakehouse Federation 外部 Connection 的函式。
 """
 
 import re
@@ -14,14 +14,14 @@ _IDENTIFIER_PATTERN = re.compile(r"^[a-zA-Z0-9_][a-zA-Z0-9_.\-]*$")
 
 
 def _validate_identifier(name: str) -> str:
-    """Validate a SQL identifier to prevent injection."""
+    """驗證 SQL 識別子以防止注入。"""
     if not _IDENTIFIER_PATTERN.match(name):
-        raise ValueError(f"Invalid SQL identifier: '{name}'")
+        raise ValueError(f"無效的 SQL 識別子：'{name}'")
     return name
 
 
 def _execute_uc_sql(sql_query: str, warehouse_id: Optional[str] = None) -> List[Dict[str, Any]]:
-    """Execute SQL using the existing execute_sql infrastructure."""
+    """使用既有的 execute_sql 基礎設施執行 SQL。"""
     from ..sql.sql import execute_sql
 
     return execute_sql(sql_query=sql_query, warehouse_id=warehouse_id)
@@ -29,13 +29,13 @@ def _execute_uc_sql(sql_query: str, warehouse_id: Optional[str] = None) -> List[
 
 def list_connections() -> List[ConnectionInfo]:
     """
-    List all foreign connections.
+    列出所有外部 Connection。
 
-    Returns:
-        List of ConnectionInfo objects
+    回傳:
+        ConnectionInfo 物件清單
 
-    Raises:
-        DatabricksError: If API request fails
+    引發:
+        DatabricksError: 如果 API 請求失敗
     """
     w = get_workspace_client()
     return list(w.connections.list())
@@ -43,16 +43,16 @@ def list_connections() -> List[ConnectionInfo]:
 
 def get_connection(name: str) -> ConnectionInfo:
     """
-    Get a specific foreign connection.
+    取得特定的外部 Connection。
 
-    Args:
-        name: Name of the connection
+    參數:
+        name: Connection 名稱
 
-    Returns:
-        ConnectionInfo with connection details
+    回傳:
+        包含 Connection 詳細資料的 ConnectionInfo
 
-    Raises:
-        DatabricksError: If API request fails
+    引發:
+        DatabricksError: 如果 API 請求失敗
     """
     w = get_workspace_client()
     return w.connections.get(name=name)
@@ -65,28 +65,28 @@ def create_connection(
     comment: Optional[str] = None,
 ) -> ConnectionInfo:
     """
-    Create a foreign connection for Lakehouse Federation.
+    為 Lakehouse Federation 建立外部 Connection。
 
-    Args:
-        name: Name for the connection
-        connection_type: Type of connection. Valid values:
+    參數:
+        name: Connection 名稱
+        connection_type: Connection 類型。有效值：
             "SNOWFLAKE", "POSTGRESQL", "MYSQL", "SQLSERVER", "BIGQUERY",
             "REDSHIFT", "SQLDW"
-        options: Connection options dict. Common keys:
-            - host: Database hostname
-            - port: Database port
-            - user: Username
-            - password: Password (use secret('scope', 'key') for security)
-            - database: Database name
+        options: Connection 選項 dict。常見鍵值：
+            - host: 資料庫主機名稱
+            - port: 資料庫連接埠
+            - user: 使用者名稱
+            - password: 密碼（為了安全性請使用 secret('scope', 'key')）
+            - database: 資料庫名稱
             - warehouse: Snowflake warehouse
-            - httpPath: For some connectors
-        comment: Optional description
+            - httpPath: 某些 connector 會使用
+        comment: 可選的說明
 
-    Returns:
-        ConnectionInfo with created connection details
+    回傳:
+        包含已建立 Connection 詳細資料的 ConnectionInfo
 
-    Raises:
-        DatabricksError: If API request fails
+    引發:
+        DatabricksError: 如果 API 請求失敗
     """
     w = get_workspace_client()
     kwargs: Dict[str, Any] = {
@@ -106,19 +106,19 @@ def update_connection(
     owner: Optional[str] = None,
 ) -> ConnectionInfo:
     """
-    Update a foreign connection.
+    更新外部 Connection。
 
-    Args:
-        name: Current name of the connection
-        options: New connection options
-        new_name: New name for the connection
-        owner: New owner
+    參數:
+        name: Connection 目前的名稱
+        options: 新的 Connection 選項
+        new_name: Connection 的新名稱
+        owner: 新的擁有者
 
-    Returns:
-        ConnectionInfo with updated details
+    回傳:
+        包含更新後詳細資料的 ConnectionInfo
 
-    Raises:
-        DatabricksError: If API request fails
+    引發:
+        DatabricksError: 如果 API 請求失敗
     """
     w = get_workspace_client()
     kwargs: Dict[str, Any] = {"name": name}
@@ -133,13 +133,13 @@ def update_connection(
 
 def delete_connection(name: str) -> None:
     """
-    Delete a foreign connection.
+    刪除外部 Connection。
 
-    Args:
-        name: Name of the connection to delete
+    參數:
+        name: 要刪除的 Connection 名稱
 
-    Raises:
-        DatabricksError: If API request fails
+    引發:
+        DatabricksError: 如果 API 請求失敗
     """
     w = get_workspace_client()
     w.connections.delete(name=name)
@@ -153,17 +153,17 @@ def create_foreign_catalog(
     warehouse_id: Optional[str] = None,
 ) -> Dict[str, Any]:
     """
-    Create a foreign catalog using a connection (Lakehouse Federation).
+    使用 connection 建立 foreign catalog（Lakehouse Federation）。
 
-    Args:
-        catalog_name: Name for the new foreign catalog
-        connection_name: Name of the connection to use
-        catalog_options: Options (e.g., {"database": "my_db"})
-        comment: Optional description
-        warehouse_id: Optional SQL warehouse ID
+    參數:
+        catalog_name: 新 foreign catalog 的名稱
+        connection_name: 要使用的 Connection 名稱
+        catalog_options: 選項（例如 {"database": "my_db"}）
+        comment: 可選的說明
+        warehouse_id: 可選的 SQL warehouse ID
 
-    Returns:
-        Dict with status and executed SQL
+    回傳:
+        包含狀態與已執行 SQL 的 Dict
     """
     _validate_identifier(catalog_name)
     _validate_identifier(connection_name)

@@ -1,40 +1,40 @@
-# DLT to SDP Migration Guide
+# DLT 到 SDP 的遷移指南
 
-Guide for migrating Delta Live Tables (DLT) Python pipelines to Spark Declarative Pipelines (SDP) SQL.
+將 Delta Live Tables (DLT) Python pipelines 遷移至 Spark Declarative Pipelines (SDP) SQL 的指南。
 
-⚠️ **For NEW Python SDP pipelines**: Use modern `pyspark.pipelines` API. See [5-python-api.md](5-python-api.md).
+⚠️ **針對新的 Python SDP pipelines**：請使用現代的 `pyspark.pipelines` API。請參閱 [5-python-api.md](5-python-api.md)。
 
 ---
 
-## Migration Decision Matrix
+## 遷移決策矩陣
 
-| Feature/Pattern | DLT Python | SDP SQL | Recommendation |
+| 功能/模式 | DLT Python | SDP SQL | 建議 |
 |-----------------|------------|---------|----------------|
-| Simple transformations | ✓ | ✓ | **Migrate to SQL** |
-| Aggregations | ✓ | ✓ | **Migrate to SQL** |
-| Filtering, WHERE clauses | ✓ | ✓ | **Migrate to SQL** |
-| CASE expressions | ✓ | ✓ | **Migrate to SQL** |
-| SCD Type 1/2 | ✓ | ✓ | **Migrate to SQL** (AUTO CDC) |
-| Simple joins | ✓ | ✓ | **Migrate to SQL** |
-| Auto Loader | ✓ | ✓ | **Migrate to SQL** (read_files) |
-| Streaming sources (Kafka) | ✓ | ✓ | **Migrate to SQL** (read_stream) |
-| Complex Python UDFs | ✓ | ❌ | **Stay in Python** |
-| External API calls | ✓ | ❌ | **Stay in Python** |
-| Custom libraries | ✓ | ❌ | **Stay in Python** |
-| Complex apply functions | ✓ | ❌ | **Stay in Python** or simplify |
-| ML model inference | ✓ | ❌ | **Stay in Python** |
+| 簡單轉換 | ✓ | ✓ | **遷移至 SQL** |
+| 聚合 | ✓ | ✓ | **遷移至 SQL** |
+| 篩選、WHERE 子句 | ✓ | ✓ | **遷移至 SQL** |
+| CASE 運算式 | ✓ | ✓ | **遷移至 SQL** |
+| SCD Type 1/2 | ✓ | ✓ | **遷移至 SQL**（AUTO CDC） |
+| 簡單 joins | ✓ | ✓ | **遷移至 SQL** |
+| Auto Loader | ✓ | ✓ | **遷移至 SQL**（read_files） |
+| Streaming 來源（Kafka） | ✓ | ✓ | **遷移至 SQL**（read_stream） |
+| 複雜 Python UDF | ✓ | ❌ | **保留在 Python** |
+| 外部 API 呼叫 | ✓ | ❌ | **保留在 Python** |
+| 自訂函式庫 | ✓ | ❌ | **保留在 Python** |
+| 複雜 apply 函式 | ✓ | ❌ | **保留在 Python** 或簡化 |
+| ML 模型推論 | ✓ | ❌ | **保留在 Python** |
 
-**Rule**: If 80%+ is SQL-expressible, migrate to SDP SQL. If heavy Python logic, stay with DLT Python or use hybrid.
+**規則**：若有 80% 以上可用 SQL 表達，請遷移至 SDP SQL。若大量依賴 Python 邏輯，則維持 DLT Python 或採用混合式。
 
 ---
 
-## Side-by-Side: Key Patterns
+## 對照：關鍵模式
 
-### Basic Streaming Table
+### 基本 Streaming Table
 
 **DLT Python**:
 ```python
-@dlt.table(name="bronze_sales", comment="Raw sales")
+@dlt.table(name="bronze_sales", comment="原始銷售資料")
 def bronze_sales():
     return (
         spark.readStream.format("cloudFiles")
@@ -47,13 +47,13 @@ def bronze_sales():
 **SDP SQL**:
 ```sql
 CREATE OR REPLACE STREAMING TABLE bronze_sales
-COMMENT 'Raw sales'
+COMMENT '原始銷售資料'
 AS
 SELECT *, current_timestamp() AS _ingested_at
 FROM read_files('/mnt/raw/sales', format => 'json');
 ```
 
-### Filtering and Transformations
+### 篩選與轉換
 
 **DLT Python**:
 ```python
@@ -96,7 +96,7 @@ dlt.apply_changes(
 )
 ```
 
-**SDP SQL** (clause order: APPLY AS DELETE WHEN before SEQUENCE BY; only EXCEPT columns that exist in source; omit TRACK HISTORY ON * if it causes parse errors):
+**SDP SQL**（子句順序：`APPLY AS DELETE WHEN` 必須在 `SEQUENCE BY` 前；`EXCEPT` 只能排除 source 中實際存在的欄位；若 `TRACK HISTORY ON *` 造成 parse errors，請省略）:
 ```sql
 CREATE OR REFRESH STREAMING TABLE customers_history;
 
@@ -138,7 +138,7 @@ LEFT JOIN dim_products p ON s.product_id = p.product_id;
 
 ---
 
-## Handling Expectations
+## 處理 Expectations
 
 **DLT Python**:
 ```python
@@ -146,15 +146,15 @@ LEFT JOIN dim_products p ON s.product_id = p.product_id;
 @dlt.expect_or_fail("critical_id", "id IS NOT NULL")
 ```
 
-**SDP SQL - Basic**:
+**SDP SQL - 基本版**:
 ```sql
--- Use WHERE (equivalent to expect_or_drop)
+-- 使用 WHERE（等同於 expect_or_drop）
 WHERE amount > 0 AND id IS NOT NULL
 ```
 
-**SDP SQL - Quarantine Pattern** (for auditing):
+**SDP SQL - Quarantine 模式**（用於稽核）:
 ```sql
--- Flag invalid records
+-- 標記無效紀錄
 CREATE OR REPLACE STREAMING TABLE bronze_data_flagged AS
 SELECT
   *,
@@ -165,33 +165,33 @@ SELECT
   END AS is_invalid
 FROM STREAM bronze_data;
 
--- Clean for downstream
+-- 供下游使用的乾淨資料
 CREATE OR REPLACE STREAMING TABLE silver_data_clean AS
 SELECT * FROM STREAM bronze_data_flagged WHERE NOT is_invalid;
 
--- Quarantine for investigation
+-- 供調查用的隔離資料
 CREATE OR REPLACE STREAMING TABLE silver_data_quarantine AS
 SELECT * FROM STREAM bronze_data_flagged WHERE is_invalid;
 ```
 
-**Migration**: `@dlt.expect_or_drop` → WHERE clause or quarantine pattern.
+**遷移方式**：`@dlt.expect_or_drop` → WHERE 子句或 quarantine 模式。
 
 ---
 
-## Handling UDFs
+## 處理 UDF
 
-### Simple UDFs (Migrate to SQL)
+### 簡單 UDF（遷移至 SQL）
 
 **DLT Python**:
 ```python
 @F.udf(returnType=StringType())
 def categorize_amount(amount):
     if amount > 1000:
-        return "High"
+        return "高"
     elif amount > 100:
-        return "Medium"
+        return "中"
     else:
-        return "Low"
+        return "低"
 
 @dlt.table(name="sales_categorized")
 def sales_categorized():
@@ -201,98 +201,98 @@ def sales_categorized():
     )
 ```
 
-**SDP SQL** (CASE expression):
+**SDP SQL**（CASE 運算式）:
 ```sql
 CREATE OR REPLACE MATERIALIZED VIEW sales_categorized AS
 SELECT
   *,
   CASE
-    WHEN amount > 1000 THEN 'High'
-    WHEN amount > 100 THEN 'Medium'
-    ELSE 'Low'
+    WHEN amount > 1000 THEN '高'
+    WHEN amount > 100 THEN '中'
+    ELSE '低'
   END AS category
 FROM sales;
 ```
 
-### Complex UDFs (Stay in Python)
+### 複雜 UDF（保留 Python）
 
-**Keep in Python for**:
-- Complex conditional logic
-- External API calls
-- Custom algorithms
-- ML inference
+**以下情況保留在 Python**：
+- 複雜條件邏輯
+- 外部 API 呼叫
+- 自訂演算法
+- ML 推論
 
-**Options**:
-1. Keep transformation in Python DLT
-2. Create hybrid (SQL + Python for specific UDFs)
-3. Refactor to SQL built-ins if possible
-
----
-
-## Migration Process
-
-### Step 1: Inventory
-
-Document:
-- Number of tables/views
-- Python UDFs (simple vs complex)
-- External dependencies
-- Expectations and quality rules
-
-### Step 2: Categorize
-
-**Easy to migrate**: Filters, aggregations, simple CASE
-**Moderate**: UDFs rewritable as SQL
-**Hard**: Complex Python, external calls, ML
-
-### Step 3: Migrate by Layer
-
-1. **Bronze** (ingestion): Convert Auto Loader to read_files()
-2. **Silver** (cleansing): Convert expectations to WHERE/quarantine
-3. **Gold** (aggregations): Usually straightforward
-4. **SCD/CDC**: Use AUTO CDC
-
-### Step 4: Test
-
-- Run both pipelines in parallel
-- Compare outputs for correctness
-- Validate performance
-- Check quality metrics
+**選項**：
+1. 將轉換保留在 Python DLT 中
+2. 建立混合式方案（SQL + Python 處理特定 UDF）
+3. 若可行，重構為 SQL 內建函式
 
 ---
 
-## When NOT to Migrate
+## 遷移流程
 
-**Stay with DLT Python if**:
-1. Heavy Python UDF usage (>30% of logic)
-2. External API calls required
-3. Custom ML model inference
-4. Complex stateful operations not in SQL
-5. Existing pipeline works well, team prefers Python
-6. Limited SQL expertise
+### 步驟 1：盤點
 
-**Consider hybrid**: SQL for most, Python for complex logic.
+記錄以下內容：
+- 資料表/views 數量
+- Python UDF（簡單 vs 複雜）
+- 外部依賴
+- Expectations 與品質規則
+
+### 步驟 2：分類
+
+**容易遷移**：篩選、聚合、簡單 CASE
+**中等**：可改寫為 SQL 的 UDF
+**困難**：複雜 Python、外部呼叫、ML
+
+### 步驟 3：依層級遷移
+
+1. **Bronze**（ingestion）：將 Auto Loader 轉成 read_files()
+2. **Silver**（cleansing）：將 expectations 轉成 WHERE/quarantine
+3. **Gold**（aggregations）：通常相對直接
+4. **SCD/CDC**：使用 AUTO CDC
+
+### 步驟 4：測試
+
+- 平行執行兩套 pipeline
+- 比較輸出是否正確
+- 驗證效能
+- 檢查品質指標
 
 ---
 
-## Common Issues
+## 何時不要遷移
 
-| Issue | Solution |
+**若符合以下情況，請維持 DLT Python**：
+1. 大量使用 Python UDF（>30% 邏輯）
+2. 需要外部 API 呼叫
+3. 自訂 ML 模型推論
+4. SQL 無法處理的複雜有 state 作業
+5. 現有 pipeline 運作良好，團隊偏好 Python
+6. SQL 經驗有限
+
+**可考慮混合式**：大多數用 SQL，複雜邏輯用 Python。
+
+---
+
+## 常見問題
+
+| 問題 | 解法 |
 |-------|----------|
-| UDF doesn't translate | Keep in Python or refactor with SQL built-ins |
-| Expectations differ | Use quarantine pattern to audit dropped records |
-| Performance degradation | Use CLUSTER BY for Liquid Clustering, review joins |
-| Schema evolution different | Use `mode => 'PERMISSIVE'` in read_files() |
+| UDF 無法轉譯 | 保留在 Python，或改用 SQL 內建函式重構 |
+| Expectations 行為不同 | 使用 quarantine 模式稽核被捨棄的紀錄 |
+| 效能下降 | 使用 CLUSTER BY 啟用 Liquid Clustering，並檢查 joins |
+| Schema evolution 行為不同 | 在 read_files() 中使用 `mode => 'PERMISSIVE'` |
 
 ---
 
-## Summary
+## 摘要
 
-**Migration Path**:
-1. Use decision matrix (80%+ SQL-expressible → migrate)
-2. Migrate by layer (bronze → silver → gold)
-3. Handle expectations with WHERE/quarantine
-4. Translate simple UDFs to CASE expressions
-5. Keep complex Python logic in Python
+**遷移路徑**：
+1. 使用決策矩陣（80% 以上可用 SQL 表達 → 遷移）
+2. 依層級遷移（bronze → silver → gold）
+3. 以 WHERE/quarantine 處理 expectations
+4. 將簡單 UDF 轉成 CASE 運算式
+5. 將複雜 Python 邏輯保留在 Python
 
-**Key**: DLT Python and SDP SQL are both fully supported. Migrate for simplicity, not necessity.
+**關鍵**：DLT Python 與 SDP SQL 都完整受支援。遷移是為了簡化，而不是因為必須。

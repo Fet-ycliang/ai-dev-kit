@@ -156,7 +156,7 @@ def _to_dict_list(items: list) -> List[Dict[str, Any]]:
 
 
 # =============================================================================
-# Tool 1: manage_uc_objects
+# 工具 1: manage_uc_objects
 # =============================================================================
 
 
@@ -179,34 +179,34 @@ def manage_uc_objects(
     force: bool = False,
 ) -> Dict[str, Any]:
     """
-    Manage Unity Catalog namespace objects: catalogs, schemas, volumes, functions.
+    管理 Unity Catalog 命名空間物件：catalogs、schemas、volumes、functions。
 
-    Actions per object_type:
+    各 object_type 可用的動作：
     - catalog: create, get, list, update, delete
     - schema: create, get, list, update, delete
     - volume: create, get, list, update, delete
-    - function: get, list, delete (create functions via manage_uc_security_policies or execute_sql)
+    - function: get, list, delete（請透過 manage_uc_security_policies 或 execute_sql 建立 function）
 
-    Args:
-        object_type: "catalog", "schema", "volume", or "function"
-        action: "create", "get", "list", "update", or "delete"
-        name: Object name (for create)
-        full_name: Full qualified name (for get/update/delete).
-                   Format: "catalog" or "catalog.schema" or "catalog.schema.object".
-        catalog_name: Parent catalog (for list schemas/volumes/functions, or create schema)
-        schema_name: Parent schema (for list volumes/functions, or create volume)
-        comment: Description (for create/update)
-        owner: Owner (for create/update)
-        storage_root: Managed storage location (for catalog/schema create)
-        volume_type: "MANAGED" or "EXTERNAL" (for volume create, default: MANAGED)
-        storage_location: Cloud storage URL (for external volumes)
-        new_name: New name (for update/rename)
-        properties: Key-value properties (for catalog create)
-        isolation_mode: "OPEN" or "ISOLATED" (for catalog update)
-        force: Force deletion (default: False)
+    參數:
+        object_type: "catalog", "schema", "volume" 或 "function"
+        action: "create", "get", "list", "update" 或 "delete"
+        name: 物件名稱（用於 create）
+        full_name: 完整限定名稱（用於 get/update/delete）。
+                   格式："catalog"、"catalog.schema" 或 "catalog.schema.object"。
+        catalog_name: 父層 catalog（用於列出 schemas/volumes/functions，或建立 schema）
+        schema_name: 父層 schema（用於列出 volumes/functions，或建立 volume）
+        comment: 說明（用於 create/update）
+        owner: 擁有者（用於 create/update）
+        storage_root: 受管儲存位置（用於 catalog/schema create）
+        volume_type: "MANAGED" 或 "EXTERNAL"（用於 volume create，預設：MANAGED）
+        storage_location: 雲端儲存 URL（用於 external volumes）
+        new_name: 新名稱（用於 update/rename）
+        properties: 鍵值屬性（用於 catalog create）
+        isolation_mode: "OPEN" 或 "ISOLATED"（用於 catalog update）
+        force: 強制刪除（預設：False）
 
-    Returns:
-        Dict with operation result. For list: {"items": [...]}. For get/create/update: object details.
+    回傳:
+        包含作業結果的 dict。對 list 為 {"items": [...]}。對 get/create/update 為物件詳細資料。
     """
     otype = object_type.lower()
 
@@ -353,7 +353,7 @@ def manage_uc_objects(
 
 
 # =============================================================================
-# Tool 2: manage_uc_grants
+# 工具 2: manage_uc_grants
 # =============================================================================
 
 
@@ -366,27 +366,27 @@ def manage_uc_grants(
     privileges: List[str] = None,
 ) -> Dict[str, Any]:
     """
-    Manage permissions on Unity Catalog securables.
+    管理 Unity Catalog securable 物件上的權限。
 
-    Actions:
-    - grant: Grant privileges to a principal.
-    - revoke: Revoke privileges from a principal.
-    - get: Get current grants on an object.
-    - get_effective: Get effective (inherited + direct) grants.
+    動作:
+    - grant: 對 principal 授予 privileges。
+    - revoke: 從 principal 撤銷 privileges。
+    - get: 取得物件目前的 grants。
+    - get_effective: 取得有效的（繼承 + 直接）grants。
 
-    Args:
-        action: "grant", "revoke", "get", or "get_effective"
-        securable_type: Object type: "catalog", "schema", "table", "volume", "function",
+    參數:
+        action: "grant", "revoke", "get" 或 "get_effective"
+        securable_type: 物件類型："catalog", "schema", "table", "volume", "function",
             "storage_credential", "external_location", "connection", "share", "metastore"
-        full_name: Full name of the securable object
-        principal: User, group, or service principal (required for grant/revoke)
-        privileges: List of privileges (required for grant/revoke).
-            Common values: "SELECT", "MODIFY", "CREATE_TABLE", "CREATE_SCHEMA",
+        full_name: securable 物件的完整名稱
+        principal: 使用者、群組或 service principal（grant/revoke 時必填）
+        privileges: privilege 清單（grant/revoke 時必填）。
+            常見值："SELECT", "MODIFY", "CREATE_TABLE", "CREATE_SCHEMA",
             "USE_CATALOG", "USE_SCHEMA", "ALL_PRIVILEGES", "EXECUTE",
             "READ_VOLUME", "WRITE_VOLUME", "CREATE_VOLUME", "CREATE_FUNCTION"
 
-    Returns:
-        Dict with grant/revoke result or current permissions
+    回傳:
+        包含 grant/revoke 結果或目前權限的 dict
     """
     act = action.lower()
 
@@ -413,7 +413,7 @@ def manage_uc_grants(
 
 
 # =============================================================================
-# Tool 3: manage_uc_storage
+# 工具 3: manage_uc_storage
 # =============================================================================
 
 
@@ -433,28 +433,28 @@ def manage_uc_storage(
     force: bool = False,
 ) -> Dict[str, Any]:
     """
-    Manage storage credentials and external locations.
+    管理 storage credentials 與 external locations。
 
-    resource_type + action combinations:
+    resource_type + action 的組合：
     - credential: create, get, list, update, delete, validate
     - external_location: create, get, list, update, delete
 
-    Args:
-        resource_type: "credential" or "external_location"
+    參數:
+        resource_type: "credential" 或 "external_location"
         action: "create", "get", "list", "update", "delete", "validate"
-        name: Resource name (for all actions except list)
-        aws_iam_role_arn: AWS IAM Role ARN (for credential create/update on AWS)
-        azure_access_connector_id: Azure Access Connector ID (for credential create/update on Azure)
-        url: Cloud storage URL (for external_location create/update, or credential validate)
-        credential_name: Storage credential name (for external_location create/update)
-        read_only: Whether resource is read-only (default: False)
-        comment: Description
-        owner: Owner
-        new_name: New name for update/rename
-        force: Force deletion (default: False)
+        name: 資源名稱（除 list 外的所有 actions）
+        aws_iam_role_arn: AWS IAM Role ARN（AWS 上 credential create/update 用）
+        azure_access_connector_id: Azure Access Connector ID（Azure 上 credential create/update 用）
+        url: 雲端儲存 URL（用於 external_location create/update，或 credential validate）
+        credential_name: storage credential 名稱（用於 external_location create/update）
+        read_only: 資源是否唯讀（預設：False）
+        comment: 說明
+        owner: 擁有者
+        new_name: update/rename 用的新名稱
+        force: 強制刪除（預設：False）
 
-    Returns:
-        Dict with operation result
+    回傳:
+        包含作業結果的 dict
     """
     rtype = resource_type.lower().replace(" ", "_").replace("-", "_")
 
@@ -525,7 +525,7 @@ def manage_uc_storage(
 
 
 # =============================================================================
-# Tool 4: manage_uc_connections
+# 工具 4: manage_uc_connections
 # =============================================================================
 
 
@@ -544,31 +544,31 @@ def manage_uc_connections(
     warehouse_id: str = None,
 ) -> Dict[str, Any]:
     """
-    Manage Lakehouse Federation foreign connections.
+    管理 Lakehouse Federation 外部連線。
 
-    Actions:
-    - create: Create a foreign connection.
-    - get: Get connection details.
-    - list: List all connections.
-    - update: Update a connection.
-    - delete: Delete a connection.
-    - create_foreign_catalog: Create a foreign catalog using a connection.
+    動作:
+    - create: 建立外部連線。
+    - get: 取得連線詳細資料。
+    - list: 列出所有連線。
+    - update: 更新連線。
+    - delete: 刪除連線。
+    - create_foreign_catalog: 使用連線建立 foreign catalog。
 
-    Args:
+    參數:
         action: "create", "get", "list", "update", "delete", "create_foreign_catalog"
-        name: Connection name (for CRUD operations)
-        connection_type: "SNOWFLAKE", "POSTGRESQL", "MYSQL", "SQLSERVER", "BIGQUERY" (for create)
-        options: Connection options dict with keys like "host", "port", "user", "password", "database"
-        comment: Description
-        owner: Owner
-        new_name: New name for rename
-        connection_name: Connection to use (for create_foreign_catalog)
-        catalog_name: Name for the foreign catalog (for create_foreign_catalog)
-        catalog_options: Options for foreign catalog (e.g., {"database": "mydb"})
-        warehouse_id: SQL warehouse ID (for create_foreign_catalog)
+        name: 連線名稱（CRUD 作業用）
+        connection_type: "SNOWFLAKE", "POSTGRESQL", "MYSQL", "SQLSERVER", "BIGQUERY"（create 用）
+        options: 連線選項 dict，包含如 "host", "port", "user", "password", "database" 等鍵
+        comment: 說明
+        owner: 擁有者
+        new_name: 重新命名用的新名稱
+        connection_name: 要使用的連線（create_foreign_catalog 用）
+        catalog_name: foreign catalog 名稱（create_foreign_catalog 用）
+        catalog_options: foreign catalog 的選項（例如 {"database": "mydb"}）
+        warehouse_id: SQL warehouse ID（create_foreign_catalog 用）
 
-    Returns:
-        Dict with operation result
+    回傳:
+        包含作業結果的 dict
     """
     act = action.lower()
 
@@ -603,7 +603,7 @@ def manage_uc_connections(
 
 
 # =============================================================================
-# Tool 5: manage_uc_tags
+# 工具 5: manage_uc_tags
 # =============================================================================
 
 
@@ -624,32 +624,32 @@ def manage_uc_tags(
     warehouse_id: str = None,
 ) -> Dict[str, Any]:
     """
-    Manage tags and comments on Unity Catalog objects.
+    管理 Unity Catalog 物件上的 tags 與 comments。
 
-    Actions:
-    - set_tags: Set tags on an object or column.
-    - unset_tags: Remove tags from an object or column.
-    - set_comment: Set a comment on an object or column.
-    - query_table_tags: Query tags from system.information_schema.table_tags.
-    - query_column_tags: Query tags from system.information_schema.column_tags.
+    動作:
+    - set_tags: 在物件或欄位上設定 tags。
+    - unset_tags: 從物件或欄位移除 tags。
+    - set_comment: 在物件或欄位上設定 comment。
+    - query_table_tags: 從 system.information_schema.table_tags 查詢 tags。
+    - query_column_tags: 從 system.information_schema.column_tags 查詢 tags。
 
-    Args:
+    參數:
         action: "set_tags", "unset_tags", "set_comment", "query_table_tags", "query_column_tags"
-        object_type: "catalog", "schema", "table", or "column" (for set/unset/comment)
-        full_name: Full object name (for set/unset/comment)
-        column_name: Column name when object_type is "column"
-        tags: Tag key-value pairs for set_tags (e.g., {"pii": "true", "classification": "confidential"})
-        tag_names: Tag keys to remove for unset_tags
-        comment_text: Comment text for set_comment
-        catalog_filter: Filter by catalog name (for query actions)
-        tag_name_filter: Filter by tag name (for query actions)
-        tag_value_filter: Filter by tag value (for query actions)
-        table_name_filter: Filter by table name (for query_column_tags)
-        limit: Max rows for query (default: 100)
-        warehouse_id: SQL warehouse ID (auto-selected if not provided)
+        object_type: "catalog", "schema", "table" 或 "column"（set/unset/comment 用）
+        full_name: 物件完整名稱（set/unset/comment 用）
+        column_name: 當 object_type 為 "column" 時的欄位名稱
+        tags: set_tags 用的 tag 鍵值對（例如 {"pii": "true", "classification": "confidential"}）
+        tag_names: unset_tags 要移除的 tag 鍵
+        comment_text: set_comment 用的 comment 文字
+        catalog_filter: 依 catalog 名稱過濾（query actions 用）
+        tag_name_filter: 依 tag 名稱過濾（query actions 用）
+        tag_value_filter: 依 tag 值過濾（query actions 用）
+        table_name_filter: 依資料表名稱過濾（query_column_tags 用）
+        limit: 查詢最大列數（預設：100）
+        warehouse_id: SQL warehouse ID（若未提供會自動選取）
 
-    Returns:
-        Dict with operation result or query results
+    回傳:
+        包含作業結果或查詢結果的 dict
     """
     act = action.lower()
 
@@ -703,7 +703,7 @@ def manage_uc_tags(
 
 
 # =============================================================================
-# Tool 6: manage_uc_security_policies
+# 工具 6: manage_uc_security_policies
 # =============================================================================
 
 
@@ -724,32 +724,32 @@ def manage_uc_security_policies(
     warehouse_id: str = None,
 ) -> Dict[str, Any]:
     """
-    Manage row-level security and column masking policies.
+    管理列層級安全性與欄位遮罩原則。
 
-    Actions:
-    - set_row_filter: Apply a row filter function to a table.
-    - drop_row_filter: Remove the row filter from a table.
-    - set_column_mask: Apply a column mask function.
-    - drop_column_mask: Remove a column mask.
-    - create_security_function: Create a SQL function for row filters or column masks.
+    動作:
+    - set_row_filter: 對資料表套用列篩選函式。
+    - drop_row_filter: 從資料表移除列篩選。
+    - set_column_mask: 套用欄位遮罩函式。
+    - drop_column_mask: 移除欄位遮罩。
+    - create_security_function: 建立供列篩選或欄位遮罩使用的 SQL 函式。
 
-    Args:
+    參數:
         action: "set_row_filter", "drop_row_filter", "set_column_mask", "drop_column_mask", "create_security_function"
-        table_name: Full table name (for row filter/column mask operations)
-        column_name: Column name (for column mask operations)
-        filter_function: Full function name for row filter
-        filter_columns: Columns passed to the filter function
-        mask_function: Full function name for column mask
-        function_name: Full function name to create (catalog.schema.function)
-        function_body: SQL function body (e.g., "RETURN IF(IS_ACCOUNT_GROUP_MEMBER('admins'), val, '***')")
-        parameter_name: Function input parameter name
-        parameter_type: Function input parameter type (e.g., "STRING")
-        return_type: Function return type ("BOOLEAN" for filters, data type for masks)
-        function_comment: Function description
-        warehouse_id: SQL warehouse ID (auto-selected if not provided)
+        table_name: 完整資料表名稱（row filter/column mask 作業用）
+        column_name: 欄位名稱（column mask 作業用）
+        filter_function: 列篩選用的完整函式名稱
+        filter_columns: 傳入篩選函式的欄位
+        mask_function: 欄位遮罩用的完整函式名稱
+        function_name: 要建立的完整函式名稱（catalog.schema.function）
+        function_body: SQL 函式主體（例如 "RETURN IF(IS_ACCOUNT_GROUP_MEMBER('admins'), val, '***')"）
+        parameter_name: 函式輸入參數名稱
+        parameter_type: 函式輸入參數型別（例如 "STRING"）
+        return_type: 函式回傳型別（篩選為 "BOOLEAN"，遮罩則為資料型別）
+        function_comment: 函式說明
+        warehouse_id: SQL warehouse ID（若未提供會自動選取）
 
-    Returns:
-        Dict with operation result and executed SQL
+    回傳:
+        包含作業結果與已執行 SQL 的 dict
     """
     act = action.lower()
 
@@ -786,7 +786,7 @@ def manage_uc_security_policies(
 
 
 # =============================================================================
-# Tool 7: manage_uc_monitors
+# 工具 7: manage_uc_monitors
 # =============================================================================
 
 
@@ -800,25 +800,25 @@ def manage_uc_monitors(
     assets_dir: str = None,
 ) -> Dict[str, Any]:
     """
-    Manage Lakehouse quality monitors on tables.
+    管理資料表上的 Lakehouse 品質監視器。
 
-    Actions:
-    - create: Create a quality monitor on a table.
-    - get: Get monitor details.
-    - run_refresh: Trigger a monitor refresh.
-    - list_refreshes: List refresh history.
-    - delete: Delete the monitor.
+    動作:
+    - create: 在資料表上建立品質監視器。
+    - get: 取得監視器詳細資料。
+    - run_refresh: 觸發監視器重新整理。
+    - list_refreshes: 列出重新整理歷程。
+    - delete: 刪除監視器。
 
-    Args:
+    參數:
         action: "create", "get", "run_refresh", "list_refreshes", "delete"
-        table_name: Full table name being monitored (catalog.schema.table)
-        output_schema_name: Schema for output tables (for create, e.g., "catalog.schema")
-        schedule_cron: Quartz cron expression (for create, e.g., "0 0 12 * * ?")
-        schedule_timezone: Timezone (default: "UTC")
-        assets_dir: Workspace path for assets (for create)
+        table_name: 被監視的完整資料表名稱（catalog.schema.table）
+        output_schema_name: 輸出資料表所用的 schema（create 用，例如 "catalog.schema"）
+        schedule_cron: Quartz cron 表達式（create 用，例如 "0 0 12 * * ?"）
+        schedule_timezone: 時區（預設："UTC"）
+        assets_dir: assets 的 workspace 路徑（create 用）
 
-    Returns:
-        Dict with monitor details or operation result
+    回傳:
+        包含監視器詳細資料或作業結果的 dict
     """
     act = action.lower()
 
@@ -844,7 +844,7 @@ def manage_uc_monitors(
 
 
 # =============================================================================
-# Tool 8: manage_uc_sharing
+# 工具 8: manage_uc_sharing
 # =============================================================================
 
 
@@ -865,30 +865,30 @@ def manage_uc_sharing(
     include_shared_data: bool = True,
 ) -> Dict[str, Any]:
     """
-    Manage Delta Sharing: shares, recipients, and providers.
+    管理 Delta Sharing：shares、recipients 與 providers。
 
-    resource_type + action combinations:
+    resource_type + action 的組合：
     - share: create, get, list, delete, add_table, remove_table, grant_to_recipient, revoke_from_recipient
     - recipient: create, get, list, delete, rotate_token
     - provider: get, list, list_shares
 
-    Args:
-        resource_type: "share", "recipient", or "provider"
-        action: Operation to perform (see combinations above)
-        name: Resource name (share/recipient/provider name)
-        comment: Description (for create)
-        table_name: Full table name for add_table/remove_table
-        shared_as: Alias for shared table (hides internal naming)
-        partition_spec: Partition filter for shared table
-        authentication_type: "TOKEN" or "DATABRICKS" (for recipient create)
-        sharing_id: Sharing identifier for D2D sharing (for recipient create)
-        ip_access_list: Allowed IP addresses (for recipient create)
-        share_name: Share name (for grant/revoke operations)
-        recipient_name: Recipient name (for grant/revoke operations)
-        include_shared_data: Include shared objects in get (default: True)
+    參數:
+        resource_type: "share", "recipient" 或 "provider"
+        action: 要執行的作業（請參閱上述組合）
+        name: 資源名稱（share/recipient/provider 名稱）
+        comment: 說明（create 用）
+        table_name: add_table/remove_table 用的完整資料表名稱
+        shared_as: 分享資料表的別名（隱藏內部命名）
+        partition_spec: 分享資料表的分割過濾條件
+        authentication_type: "TOKEN" 或 "DATABRICKS"（recipient create 用）
+        sharing_id: D2D sharing 的 sharing 識別碼（recipient create 用）
+        ip_access_list: 允許的 IP 位址（recipient create 用）
+        share_name: share 名稱（grant/revoke 作業用）
+        recipient_name: recipient 名稱（grant/revoke 作業用）
+        include_shared_data: get 時是否包含已分享物件（預設：True）
 
-    Returns:
-        Dict with operation result
+    回傳:
+        包含作業結果的 dict
     """
     rtype = resource_type.lower()
     act = action.lower()
@@ -948,7 +948,7 @@ def manage_uc_sharing(
 
 
 # =============================================================================
-# Tool 9: manage_metric_views
+# 工具 9: manage_metric_views
 # =============================================================================
 
 
@@ -975,51 +975,51 @@ def manage_metric_views(
     warehouse_id: str = None,
 ) -> Dict[str, Any]:
     """
-    Manage Unity Catalog metric views: create, alter, describe, query, drop, and grant.
+    管理 Unity Catalog metric views：create、alter、describe、query、drop 與 grant。
 
-    Metric views define reusable, governed business metrics in YAML. They separate
-    measure definitions from dimension groupings, allowing flexible querying across
-    any dimension at runtime. Requires Databricks Runtime 17.2+ and a SQL warehouse.
+    Metric views 以 YAML 定義可重複使用、受治理的業務指標。它們將
+    measure 定義與 dimension 分組分開，讓執行階段能依任何 dimension
+    彈性查詢。需要 Databricks Runtime 17.2+ 與 SQL warehouse。
 
-    Actions:
-    - create: Create a metric view with dimensions and measures.
-    - alter: Update a metric view's YAML definition.
-    - describe: Get the full definition and metadata of a metric view.
-    - query: Query measures grouped by dimensions using MEASURE() syntax.
-    - drop: Drop a metric view.
-    - grant: Grant privileges (e.g., SELECT) on a metric view.
+    動作:
+    - create: 建立包含 dimensions 與 measures 的 metric view。
+    - alter: 更新 metric view 的 YAML 定義。
+    - describe: 取得 metric view 的完整定義與中繼資料。
+    - query: 使用 MEASURE() 語法查詢依 dimensions 分組的 measures。
+    - drop: 刪除 metric view。
+    - grant: 在 metric view 上授予 privileges（例如 SELECT）。
 
-    Args:
-        action: "create", "alter", "describe", "query", "drop", or "grant"
-        full_name: Three-level name (catalog.schema.metric_view_name)
-        source: Source table/view (for create/alter, e.g., "catalog.schema.orders")
-        dimensions: List of dimension dicts for create/alter. Each has:
-            - name: Display name (e.g., "Order Month")
-            - expr: SQL expression (e.g., "DATE_TRUNC('MONTH', order_date)")
-            - comment: (optional) Description
-        measures: List of measure dicts for create/alter. Each has:
-            - name: Display name (e.g., "Total Revenue")
-            - expr: Aggregate expression (e.g., "SUM(total_price)")
-            - comment: (optional) Description
-        version: YAML spec version (default: "1.1" for DBR 17.2+)
-        comment: Description of the metric view (for create/alter)
-        filter_expr: SQL boolean filter applied to all queries (for create/alter)
-        joins: Star/snowflake schema joins (for create/alter).
-            Each dict: name, source, on (or using), joins (nested for snowflake)
-        materialization: Materialization config (experimental, for create/alter).
-            Keys: schedule, mode ("relaxed"), materialized_views (list)
-        or_replace: If True, uses CREATE OR REPLACE (for create, default: False)
-        query_measures: Measure names to query (for query action)
-        query_dimensions: Dimension names to group by (for query action)
-        where: WHERE clause filter (for query action)
-        order_by: ORDER BY clause, use "ALL" for ORDER BY ALL (for query action)
-        limit: Row limit (for query action)
-        principal: User/group to grant to (for grant action)
-        privileges: Privileges to grant, default ["SELECT"] (for grant action)
-        warehouse_id: SQL warehouse ID (auto-selected if not provided)
+    參數:
+        action: "create", "alter", "describe", "query", "drop" 或 "grant"
+        full_name: 三層名稱（catalog.schema.metric_view_name）
+        source: 來源資料表/檢視（create/alter 用，例如 "catalog.schema.orders"）
+        dimensions: create/alter 用的 dimension dict 清單。每個項目包含：
+            - name: 顯示名稱（例如 "Order Month"）
+            - expr: SQL 表達式（例如 "DATE_TRUNC('MONTH', order_date)"）
+            - comment: （選用）說明
+        measures: create/alter 用的 measure dict 清單。每個項目包含：
+            - name: 顯示名稱（例如 "Total Revenue"）
+            - expr: 彙總表達式（例如 "SUM(total_price)"）
+            - comment: （選用）說明
+        version: YAML spec 版本（預設："1.1"，適用 DBR 17.2+）
+        comment: metric view 的說明（create/alter 用）
+        filter_expr: 套用到所有查詢的 SQL 布林過濾條件（create/alter 用）
+        joins: Star/snowflake schema joins（create/alter 用）。
+            每個 dict 包含：name、source、on（或 using）、joins（snowflake 用巢狀結構）
+        materialization: Materialization 設定（experimental，create/alter 用）。
+            鍵值：schedule、mode（"relaxed"）、materialized_views（list）
+        or_replace: 若為 True，使用 CREATE OR REPLACE（create 用，預設：False）
+        query_measures: 要查詢的 measure 名稱（query action 用）
+        query_dimensions: 要分組的 dimension 名稱（query action 用）
+        where: WHERE 子句過濾條件（query action 用）
+        order_by: ORDER BY 子句，若要 ORDER BY ALL 請用 "ALL"（query action 用）
+        limit: 列數上限（query action 用）
+        principal: 要授權的使用者/群組（grant action 用）
+        privileges: 要授予的 privileges，預設為 ["SELECT"]（grant action 用）
+        warehouse_id: SQL warehouse ID（若未提供會自動選取）
 
-    Returns:
-        Dict with operation result. For query: list of row dicts.
+    回傳:
+        包含作業結果的 dict。對 query 則為列 dict 清單。
     """
     act = action.lower()
 

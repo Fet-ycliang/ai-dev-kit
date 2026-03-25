@@ -1,8 +1,8 @@
 """
-Spark Declarative Pipelines - Pipeline Management
+Spark Declarative Pipelines - 管線管理
 
-Functions for managing SDP pipeline lifecycle using Databricks Pipelines API.
-All pipelines use Unity Catalog and serverless compute by default.
+用於透過 Databricks Pipelines API 管理 SDP pipeline 生命週期的函式。
+所有 pipelines 預設皆使用 Unity Catalog 與 serverless compute。
 """
 
 import time
@@ -32,10 +32,10 @@ from databricks.sdk.service.pipelines import (
 from ..auth import get_workspace_client
 
 
-# Fields that are not valid SDK parameters and should be filtered out
+# 不是有效的 SDK 參數欄位，應予以過濾
 _INVALID_SDK_FIELDS = {"pipeline_type"}
 
-# Fields that need conversion from dict to SDK objects
+# 需要從 dict 轉換為 SDK objects 的欄位
 _COMPLEX_FIELD_CONVERTERS = {
     "libraries": lambda items: [PipelineLibrary.from_dict(item) for item in items] if items else None,
     "clusters": lambda items: [PipelineCluster.from_dict(item) for item in items] if items else None,
@@ -54,49 +54,49 @@ _COMPLEX_FIELD_CONVERTERS = {
 
 def _convert_extra_settings(extra_settings: Dict[str, Any]) -> Dict[str, Any]:
     """
-    Convert extra_settings dict to SDK-compatible kwargs.
+    將 extra_settings dict 轉換為與 SDK 相容的 kwargs。
 
-    - Filters out invalid fields (e.g., pipeline_type)
-    - Converts nested dicts to SDK objects (e.g., clusters, event_log)
-    - Passes simple types directly
+    - 過濾無效欄位（例如 pipeline_type）
+    - 將巢狀 dict 轉換為 SDK objects（例如 clusters、event_log）
+    - 直接傳遞簡單型別
 
-    Args:
-        extra_settings: Raw dict from user (e.g., from Databricks UI JSON export)
+    參數:
+        extra_settings: 使用者提供的原始 dict（例如來自 Databricks UI 的 JSON 匯出）
 
-    Returns:
-        Dict with SDK-compatible values
+    回傳:
+        帶有 SDK 相容值的 Dict
     """
     result = {}
 
     for key, value in extra_settings.items():
-        # Skip invalid fields
+        # 略過無效欄位
         if key in _INVALID_SDK_FIELDS:
             continue
 
-        # Skip None values
+        # 略過 None 值
         if value is None:
             continue
 
-        # Convert complex fields
+        # 轉換複合欄位
         if key in _COMPLEX_FIELD_CONVERTERS:
             converted = _COMPLEX_FIELD_CONVERTERS[key](value)
             if converted is not None:
                 result[key] = converted
         else:
-            # Pass simple types directly (strings, bools, dicts like configuration/tags)
+            # 直接傳遞簡單型別（strings、bools，以及如 configuration/tags 的 dicts）
             result[key] = value
 
     return result
 
 
-# Terminal states - pipeline update has finished (success or failure)
+# 終止狀態 - pipeline update 已完成（成功或失敗）
 TERMINAL_STATES = {
     UpdateInfoState.COMPLETED,
     UpdateInfoState.FAILED,
     UpdateInfoState.CANCELED,
 }
 
-# Running states - pipeline update is in progress
+# 執行中狀態 - pipeline update 進行中
 RUNNING_STATES = {
     UpdateInfoState.RUNNING,
     UpdateInfoState.INITIALIZING,
@@ -110,7 +110,7 @@ RUNNING_STATES = {
 
 
 def _build_libraries(workspace_file_paths: List[str]) -> List[PipelineLibrary]:
-    """Build PipelineLibrary list from file paths."""
+    """根據檔案路徑建立 PipelineLibrary 清單。"""
     return [PipelineLibrary(file=FileLibrary(path=path)) for path in workspace_file_paths]
 
 
@@ -149,7 +149,7 @@ def _extract_error_summary(events: List[PipelineEvent]) -> List[str]:
 
 
 def _extract_error_details(events: List[PipelineEvent]) -> List[Dict[str, Any]]:
-    """Extract full error details from pipeline events (includes stack traces)."""
+    """從 pipeline events 擷取錯誤詳細資訊，供 LLM 使用。"""
     errors = []
     for event in events:
         if event.error:
@@ -158,7 +158,7 @@ def _extract_error_details(events: List[PipelineEvent]) -> List[Dict[str, Any]]:
                 "level": event.level.value if event.level else None,
                 "timestamp": event.timestamp if event.timestamp else None,
             }
-            # Extract exception details
+            # 擷取 exception 詳細資訊
             if event.error.exceptions:
                 exceptions = []
                 for exc in event.error.exceptions:
@@ -175,39 +175,39 @@ def _extract_error_details(events: List[PipelineEvent]) -> List[Dict[str, Any]]:
 @dataclass
 class PipelineRunResult:
     """
-    Result from a pipeline operation with detailed status for LLM consumption.
+    pipeline 作業結果，包含供 LLM 使用的詳細狀態。
 
-    This dataclass provides comprehensive information about pipeline operations
-    to help LLMs understand what happened and take appropriate action.
+    此 dataclass 提供 pipeline 作業的完整資訊，
+    以協助 LLM 了解發生了什麼事並採取適當行動。
     """
 
-    # Pipeline identification
+    # Pipeline 識別資訊
     pipeline_id: str
     pipeline_name: str
 
-    # Operation details
+    # 作業詳細資訊
     update_id: Optional[str] = None
     state: Optional[str] = None
     success: bool = False
-    created: bool = False  # True if pipeline was created, False if updated
+    created: bool = False  # 若 pipeline 為新建則為 True，若為更新則為 False
 
-    # Configuration (for context)
+    # 設定內容（供背景脈絡使用）
     catalog: Optional[str] = None
     schema: Optional[str] = None
     root_path: Optional[str] = None
 
-    # Timing
+    # 時間資訊
     duration_seconds: Optional[float] = None
 
-    # Error details (if failed)
+    # 錯誤詳細資訊（若失敗）
     error_message: Optional[str] = None
     errors: List[Dict[str, Any]] = field(default_factory=list)
 
-    # Human-readable status
+    # 人類可讀狀態
     message: str = ""
 
     def to_dict(self) -> Dict[str, Any]:
-        """Convert to dictionary for JSON serialization."""
+        """轉換為可供 JSON 序列化的 dictionary。"""
         return {
             "pipeline_id": self.pipeline_id,
             "pipeline_name": self.pipeline_name,
@@ -227,17 +227,17 @@ class PipelineRunResult:
 
 def find_pipeline_by_name(name: str) -> Optional[str]:
     """
-    Find a pipeline by name and return its ID.
+    依名稱尋找 pipeline 並回傳其 ID。
 
-    Args:
-        name: Pipeline name to search for (exact match)
+    參數:
+        name: 要搜尋的 Pipeline 名稱（完全符合）
 
-    Returns:
-        Pipeline ID if found, None otherwise
+    回傳:
+        若找到則回傳 Pipeline ID，否則回傳 None
     """
     w = get_workspace_client()
 
-    # List pipelines with name filter and find exact match
+    # 列出 pipelines 並使用名稱篩選，再找出完全符合的項目
     for pipeline in w.pipelines.list_pipelines(filter=f"name LIKE '{name}'"):
         if pipeline.name == name:
             return pipeline.pipeline_id
@@ -254,49 +254,49 @@ def create_pipeline(
     extra_settings: Optional[Dict[str, Any]] = None,
 ) -> CreatePipelineResponse:
     """
-    Create a new Spark Declarative Pipeline (Unity Catalog, serverless by default).
+    建立新的 Spark Declarative Pipeline（預設使用 Unity Catalog 與 serverless）。
 
-    Args:
-        name: Pipeline name
-        root_path: Root folder for source code (added to Python sys.path for imports)
-        catalog: Unity Catalog name
-        schema: Schema name for output tables
-        workspace_file_paths: List of workspace file paths (raw .sql or .py files)
-        extra_settings: Optional dict with additional pipeline settings. These are passed
-            directly to the Databricks SDK pipelines.create() call. Explicit parameters
-            (name, root_path, catalog, schema, workspace_file_paths) take precedence.
-            Supports all SDK options: clusters, continuous, development, photon, edition,
-            channel, event_log, configuration, notifications, tags, etc.
-            Note: If 'id' is provided in extra_settings, use update_pipeline instead.
+    參數:
+        name: Pipeline 名稱
+        root_path: 原始碼根目錄（會加入 Python sys.path 供 imports 使用）
+        catalog: Unity Catalog 名稱
+        schema: 輸出資料表的 Schema 名稱
+        workspace_file_paths: workspace 檔案路徑清單（原始 .sql 或 .py 檔案）
+        extra_settings: 額外 pipeline 設定的選用 dict。這些設定會直接傳遞到
+            Databricks SDK pipelines.create() 呼叫。明確傳入的參數
+            （name、root_path、catalog、schema、workspace_file_paths）優先。
+            支援所有 SDK 選項：clusters、continuous、development、photon、edition、
+            channel、event_log、configuration、notifications、tags 等。
+            注意：若 extra_settings 中提供 'id'，請改用 update_pipeline。
 
-    Returns:
-        CreatePipelineResponse with pipeline_id
+    回傳:
+        含有 pipeline_id 的 CreatePipelineResponse
 
-    Raises:
-        DatabricksError: If pipeline already exists or API request fails
+    引發:
+        DatabricksError: 若 pipeline 已存在或 API 請求失敗
     """
     w = get_workspace_client()
     libraries = _build_libraries(workspace_file_paths)
 
-    # Start with converted extra_settings as base
+    # 先以轉換後的 extra_settings 作為基礎
     kwargs: Dict[str, Any] = {}
     if extra_settings:
         kwargs = _convert_extra_settings(extra_settings)
 
-    # Explicit parameters always take precedence
+    # 明確傳入的參數一律優先
     kwargs["name"] = name
     kwargs["root_path"] = root_path
     kwargs["catalog"] = catalog
     kwargs["schema"] = schema
     kwargs["libraries"] = libraries
 
-    # Set defaults only if not provided in extra_settings
+    # 僅在 extra_settings 未提供時才設定預設值
     if "continuous" not in kwargs:
         kwargs["continuous"] = False
     if "serverless" not in kwargs:
         kwargs["serverless"] = True
 
-    # Remove 'id' if present - create should not have an id
+    # 若存在 'id' 則移除 - create 不應帶有 id
     kwargs.pop("id", None)
 
     return w.pipelines.create(**kwargs)
@@ -304,13 +304,13 @@ def create_pipeline(
 
 def get_pipeline(pipeline_id: str) -> GetPipelineResponse:
     """
-    Get pipeline details and configuration.
+    取得 pipeline 詳細資料與設定。
 
-    Args:
+    參數:
         pipeline_id: Pipeline ID
 
-    Returns:
-        GetPipelineResponse with full pipeline configuration and state
+    回傳:
+        包含完整 pipeline 設定與狀態的 GetPipelineResponse
     """
     w = get_workspace_client()
     return w.pipelines.get(pipeline_id=pipeline_id)
@@ -326,32 +326,32 @@ def update_pipeline(
     extra_settings: Optional[Dict[str, Any]] = None,
 ) -> None:
     """
-    Update pipeline configuration.
+    更新 pipeline 設定。
 
-    Args:
+    參數:
         pipeline_id: Pipeline ID
-        name: New pipeline name
-        root_path: New root folder for source code
-        catalog: New catalog name
-        schema: New schema name
-        workspace_file_paths: New list of file paths (raw .sql or .py files)
-        extra_settings: Optional dict with additional pipeline settings. These are passed
-            directly to the Databricks SDK pipelines.update() call. Explicit parameters
-            take precedence over values in extra_settings.
-            Supports all SDK options: clusters, continuous, development, photon, edition,
-            channel, event_log, configuration, notifications, tags, etc.
+        name: 新的 Pipeline 名稱
+        root_path: 新的原始碼根目錄
+        catalog: 新的 catalog 名稱
+        schema: 新的 schema 名稱
+        workspace_file_paths: 新的檔案路徑清單（原始 .sql 或 .py 檔案）
+        extra_settings: 額外 pipeline 設定的選用 dict。這些設定會直接傳遞到
+            Databricks SDK pipelines.update() 呼叫。明確傳入的參數
+            會優先於 extra_settings 中的值。
+            支援所有 SDK 選項：clusters、continuous、development、photon、edition、
+            channel、event_log、configuration、notifications、tags 等。
     """
     w = get_workspace_client()
 
-    # Start with converted extra_settings as base
+    # 先以轉換後的 extra_settings 作為基礎
     kwargs: Dict[str, Any] = {}
     if extra_settings:
         kwargs = _convert_extra_settings(extra_settings)
 
-    # pipeline_id is required and always set
+    # pipeline_id 為必要欄位，且一定會設定
     kwargs["pipeline_id"] = pipeline_id
 
-    # Explicit parameters take precedence (only if provided)
+    # 明確傳入的參數優先（僅在有提供時）
     if name:
         kwargs["name"] = name
     if root_path:
@@ -363,7 +363,7 @@ def update_pipeline(
     if workspace_file_paths:
         kwargs["libraries"] = _build_libraries(workspace_file_paths)
 
-    # Ensure id in kwargs matches pipeline_id (SDK uses both)
+    # 確保 kwargs 中的 id 與 pipeline_id 一致（SDK 兩者都會使用）
     if "id" in kwargs and kwargs["id"] != pipeline_id:
         kwargs["id"] = pipeline_id
 
@@ -372,9 +372,9 @@ def update_pipeline(
 
 def delete_pipeline(pipeline_id: str) -> None:
     """
-    Delete a pipeline.
+    刪除 pipeline。
 
-    Args:
+    參數:
         pipeline_id: Pipeline ID
     """
     w = get_workspace_client()
@@ -393,30 +393,30 @@ def start_update(
     full_error_details: bool = False,
 ) -> Dict[str, Any]:
     """
-    Start a pipeline update or dry-run validation.
+    啟動 pipeline update 或 dry-run 驗證。
 
-    Args:
+    參數:
         pipeline_id: Pipeline ID
-        refresh_selection: List of table names to refresh
-        full_refresh: If True, performs full refresh of all tables
-        full_refresh_selection: List of table names for full refresh
-        validate_only: If True, performs dry-run validation without updating data
-        wait: If True (default), wait for the update to complete and return results.
-            If False, return immediately with just the update_id.
-        timeout: Maximum wait time in seconds (default: 300 = 5 minutes)
-        poll_interval: Time between status checks in seconds (default: 5)
-        full_error_details: If True, return full error events with stack traces.
-            If False (default), return only concise error messages.
+        refresh_selection: 要刷新的資料表名稱清單
+        full_refresh: 若為 True，會對所有資料表執行完整刷新
+        full_refresh_selection: 要執行完整刷新的資料表名稱清單
+        validate_only: 若為 True，僅執行 dry-run 驗證，不更新資料
+        wait: 若為 True（預設），等待 update 完成並回傳結果；
+            若為 False，則只立即回傳 update_id
+        timeout: 最長等待時間（秒，預設：300，也就是 5 分鐘）
+        poll_interval: 每次狀態檢查之間的間隔秒數（預設：5）
+        full_error_details: 若為 True，回傳含 stack trace 的完整錯誤事件；
+            若為 False（預設），只回傳精簡錯誤摘要
 
-    Returns:
-        Dictionary with:
-        - update_id: The update ID
-        - If wait=True, also includes:
-            - state: Final state (COMPLETED, FAILED, CANCELED)
-            - success: True if completed successfully
-            - duration_seconds: Total time taken
-            - error_summary: List of concise error messages (default)
-            - errors: Full error events with stack traces (only if full_error_details=True)
+    回傳:
+        字典，包含：
+        - update_id: Update ID
+        - 若 wait=True，另外還會包含：
+            - state: 最終狀態（COMPLETED、FAILED、CANCELED）
+            - success: 是否成功完成
+            - duration_seconds: 總耗時
+            - error_summary: 精簡錯誤訊息清單（預設）
+            - errors: 完整錯誤事件（僅當 full_error_details=True 時）
     """
     w = get_workspace_client()
 
@@ -492,28 +492,26 @@ def get_update(
     full_error_details: bool = False,
 ) -> Dict[str, Any]:
     """
-    Get pipeline update status and results.
+    取得 pipeline update 的狀態與結果。
 
-    If the update failed, automatically fetches ERROR/WARN events for that update.
-
-    Args:
+    參數:
         pipeline_id: Pipeline ID
-        update_id: Update ID from start_update
-        include_config: If True, include the full pipeline configuration in the response.
-            Default is False since the config is very large and verbose.
-        full_error_details: If True, return full error events with stack traces.
-            If False (default), return only concise error messages.
+        update_id: 來自 start_update 的 Update ID
+        include_config: 若為 True，回傳完整 pipeline 設定。
+            預設為 False，因為設定內容通常很大且冗長
+        full_error_details: 若為 True，回傳含 stack trace 的完整錯誤事件；
+            若為 False（預設），只回傳精簡錯誤摘要
 
-    Returns:
-        Dictionary with:
-        - update_id: The update ID
-        - state: Current state (QUEUED, RUNNING, COMPLETED, FAILED, CANCELED)
-        - success: True if completed successfully, False if failed, None if still running
-        - cause: What triggered the update (USER_ACTION, RETRY_ON_FAILURE, etc.)
-        - creation_time: When the update was created
-        - error_summary: List of concise error messages (default)
-        - errors: Full error events with stack traces (only if full_error_details=True)
-        - config: Pipeline configuration (only if include_config=True)
+    回傳:
+        字典，包含：
+        - update_id: Update ID
+        - state: 目前狀態（QUEUED、RUNNING、COMPLETED、FAILED、CANCELED）
+        - success: 成功時為 True、失敗時為 False、執行中為 None
+        - cause: 觸發 update 的原因（例如 USER_ACTION、RETRY_ON_FAILURE）
+        - creation_time: Update 建立時間
+        - error_summary: 精簡錯誤訊息清單（預設）
+        - errors: 完整錯誤事件（僅當 full_error_details=True 時）
+        - config: Pipeline 設定（僅當 include_config=True 時）
     """
     w = get_workspace_client()
     response = w.pipelines.get_update(pipeline_id=pipeline_id, update_id=update_id)
@@ -561,9 +559,9 @@ def get_update(
 
 def stop_pipeline(pipeline_id: str) -> None:
     """
-    Stop a running pipeline.
+    停止執行中的 pipeline。
 
-    Args:
+    參數:
         pipeline_id: Pipeline ID
     """
     w = get_workspace_client()
@@ -577,27 +575,25 @@ def get_pipeline_events(
     update_id: str = None,
 ) -> List[PipelineEvent]:
     """
-    Get pipeline events, issues, and error messages.
+    取得 pipeline events、issues 與錯誤訊息。
 
-    Use this to debug pipeline failures. By default returns ERROR and WARN events
-    since those contain the failure details. Each event can include full stack
-    traces, so output can be verbose.
+    可用於除錯 pipeline 失敗問題。
 
-    Args:
+    參數:
         pipeline_id: Pipeline ID
-        max_results: Maximum number of events to return (default: 5)
-        filter: SQL-like filter expression (default: "level in ('ERROR', 'WARN')").
-            Examples:
-            - "level in ('ERROR', 'WARN')" - errors and warnings (default)
-            - "level='ERROR'" - only errors
-            - "level='INFO'" - info events (state transitions)
-            - None or "" - all events (no filter)
-        update_id: Optional update ID to filter events. If provided, only
-            events from this specific update are returned. Get update IDs
-            from get_pipeline().latest_updates or start_update().
+        max_results: 要回傳的最大 event 數量（預設：5）
+        filter: 類 SQL 的篩選條件（預設：`level in ('ERROR', 'WARN')`）。
+            例如：
+            - `level in ('ERROR', 'WARN')`：錯誤與警告（預設）
+            - `level='ERROR'`：僅錯誤
+            - `level='INFO'`：資訊事件（例如狀態轉換）
+            - None 或空字串：不套用篩選，回傳所有事件
+        update_id: 可選的 Update ID 篩選條件。若有提供，
+            只回傳該次 update 的事件。可從 get_pipeline().latest_updates
+            或 start_update() 取得 update ID
 
-    Returns:
-        List of PipelineEvent objects with error details
+    回傳:
+        含有錯誤詳細資訊的 PipelineEvent objects 清單
     """
     w = get_workspace_client()
 
@@ -632,23 +628,23 @@ def wait_for_pipeline_update(
     pipeline_id: str, update_id: str, timeout: int = 1800, poll_interval: int = 5
 ) -> Dict[str, Any]:
     """
-    Wait for a pipeline update to complete and return detailed results.
+    等待 pipeline update 完成並回傳詳細結果。
 
-    Args:
+    參數:
         pipeline_id: Pipeline ID
-        update_id: Update ID from start_update
-        timeout: Maximum wait time in seconds (default: 30 minutes)
-        poll_interval: Time between status checks in seconds
+        update_id: 來自 start_update 的 Update ID
+        timeout: 最長等待時間（秒，預設：30 分鐘）
+        poll_interval: 每次檢查狀態的間隔秒數
 
-    Returns:
-        Dictionary with detailed update results:
-        - state: Final state (COMPLETED, FAILED, CANCELED)
-        - success: True if completed successfully
-        - duration_seconds: Total time taken
-        - errors: List of error details if failed
+    回傳:
+        包含 update 詳細結果的字典：
+        - state: 最終狀態（COMPLETED、FAILED、CANCELED）
+        - success: 若成功完成則為 True
+        - duration_seconds: 總耗時
+        - errors: 若失敗則包含錯誤詳細資訊清單
 
-    Raises:
-        TimeoutError: If pipeline doesn't complete within timeout
+    引發:
+        TimeoutError: 若 pipeline 未在 timeout 內完成
     """
     w = get_workspace_client()
     start_time = time.time()
@@ -658,8 +654,8 @@ def wait_for_pipeline_update(
 
         if elapsed > timeout:
             raise TimeoutError(
-                f"Pipeline update {update_id} did not complete within {timeout} seconds. "
-                f"Check status in UI or call get_update(pipeline_id='{pipeline_id}', update_id='{update_id}')."
+                f"Pipeline update {update_id} 未在 {timeout} 秒內完成。"
+                f"請在 UI 中檢查狀態，或呼叫 get_update(pipeline_id='{pipeline_id}', update_id='{update_id}')。"
             )
 
         response = w.pipelines.get_update(pipeline_id=pipeline_id, update_id=update_id)
@@ -680,7 +676,7 @@ def wait_for_pipeline_update(
                 "errors": [],
             }
 
-            # If failed, get detailed error information
+            # 若失敗，取得詳細錯誤資訊
             if state == UpdateInfoState.FAILED:
                 events = get_pipeline_events(pipeline_id, max_results=50)
                 result["errors"] = _extract_error_details(events)
@@ -703,47 +699,47 @@ def create_or_update_pipeline(
     extra_settings: Optional[Dict[str, Any]] = None,
 ) -> PipelineRunResult:
     """
-    Create a new pipeline or update an existing one with the same name.
+    建立新的 pipeline，或更新同名的既有 pipeline。
 
-    This is the main entry point for pipeline management. It:
-    1. Searches for an existing pipeline with the same name (or uses 'id' from extra_settings)
-    2. Creates a new pipeline or updates the existing one
-    3. Optionally starts a pipeline run
-    4. Optionally waits for the run to complete
+    這是管理 pipeline 的主要進入點。它會：
+    1. 搜尋是否已有同名 pipeline（或使用 extra_settings 中的 'id'）
+    2. 建立新 pipeline，或更新既有 pipeline
+    3. 視需要啟動 pipeline run
+    4. 視需要等待 run 完成
 
-    Uses Unity Catalog and serverless compute by default.
+    預設使用 Unity Catalog 與 serverless compute。
 
-    Args:
-        name: Pipeline name (used for lookup and creation)
-        root_path: Root folder for source code (added to Python sys.path for imports)
-        catalog: Unity Catalog name for output tables
-        schema: Schema name for output tables
-        workspace_file_paths: List of workspace file paths (raw .sql or .py files)
-        start_run: If True, start a pipeline run after create/update
-        wait_for_completion: If True, wait for the run to complete (requires start_run=True)
-        full_refresh: If True, perform full refresh when starting
-        timeout: Maximum wait time in seconds (default: 30 minutes)
-        extra_settings: Optional dict with additional pipeline settings. Supports all SDK
-            options: clusters, continuous, development, photon, edition, channel, event_log,
-            configuration, notifications, tags, serverless, etc.
-            If 'id' is provided, the pipeline will be updated instead of created.
-            Explicit parameters (name, root_path, catalog, schema) take precedence.
+    參數:
+        name: Pipeline 名稱（用於查找與建立）
+        root_path: 原始碼根目錄（會加入 Python sys.path 供 imports 使用）
+        catalog: 輸出資料表使用的 Unity Catalog 名稱
+        schema: 輸出資料表使用的 Schema 名稱
+        workspace_file_paths: workspace 檔案路徑清單（原始 .sql 或 .py 檔案）
+        start_run: 若為 True，會在 create/update 後啟動 pipeline run
+        wait_for_completion: 若為 True，會等待 run 完成（需搭配 start_run=True）
+        full_refresh: 若為 True，啟動時執行完整刷新
+        timeout: 最長等待時間（秒，預設：30 分鐘）
+        extra_settings: 額外 pipeline 設定的選用 dict。支援所有 SDK
+            選項：clusters、continuous、development、photon、edition、channel、event_log、
+            configuration、notifications、tags、serverless 等。
+            若提供 'id'，則會改為更新 pipeline 而非建立。
+            明確傳入的參數（name、root_path、catalog、schema）優先。
 
-    Returns:
-        PipelineRunResult with detailed status including:
-        - pipeline_id, pipeline_name, catalog, schema, root_path
-        - created: True if newly created, False if updated
-        - success: True if all operations succeeded
-        - state: Final state if run was started (COMPLETED, FAILED, etc.)
-        - duration_seconds: Time taken if waited
-        - error_message: Summary error message if failed
-        - errors: List of detailed errors if failed
-        - message: Human-readable status message
+    回傳:
+        含有詳細狀態的 PipelineRunResult，包括：
+        - pipeline_id、pipeline_name、catalog、schema、root_path
+        - created: 若為新建則為 True，若為更新則為 False
+        - success: 若所有作業都成功則為 True
+        - state: 若有啟動 run，則為最終狀態（COMPLETED、FAILED 等）
+        - duration_seconds: 若有等待則為耗時
+        - error_message: 若失敗則為摘要錯誤訊息
+        - errors: 若失敗則為詳細錯誤清單
+        - message: 人類可讀狀態訊息
     """
-    # Step 1: Check if pipeline exists (by name or by id in extra_settings)
+    # 步驟 1：檢查 pipeline 是否存在（依名稱，或依 extra_settings 中的 id）
     existing_pipeline_id = None
 
-    # If extra_settings contains an 'id', use it for update
+    # 若 extra_settings 包含 'id'，則用於更新
     if extra_settings and extra_settings.get("id"):
         existing_pipeline_id = extra_settings["id"]
     else:
@@ -751,7 +747,7 @@ def create_or_update_pipeline(
 
     created = existing_pipeline_id is None
 
-    # Step 2: Create or update
+    # 步驟 2：建立或更新
     try:
         if created:
             response = create_pipeline(
@@ -775,7 +771,7 @@ def create_or_update_pipeline(
                 extra_settings=extra_settings,
             )
     except Exception as e:
-        # Return detailed error for LLM consumption
+        # 回傳供 LLM 使用的詳細錯誤
         return PipelineRunResult(
             pipeline_id=existing_pipeline_id or "unknown",
             pipeline_name=name,
@@ -785,10 +781,10 @@ def create_or_update_pipeline(
             success=False,
             created=False,
             error_message=str(e),
-            message=f"Failed to {'create' if created else 'update'} pipeline: {e}",
+            message=f"{'建立' if created else '更新'} pipeline 失敗：{e}",
         )
 
-    # Build result with context
+    # 建立包含背景脈絡的結果
     result = PipelineRunResult(
         pipeline_id=pipeline_id,
         pipeline_name=name,
@@ -797,10 +793,10 @@ def create_or_update_pipeline(
         root_path=root_path,
         created=created,
         success=True,
-        message=f"Pipeline {'created' if created else 'updated'} successfully. Target: {catalog}.{schema}",
+        message=f"Pipeline {'建立' if created else '更新'}成功。目標：{catalog}.{schema}",
     )
 
-    # Step 3: Start run if requested
+    # 步驟 3：若有要求則啟動 run
     if start_run:
         try:
             update_id = start_update(
@@ -808,14 +804,14 @@ def create_or_update_pipeline(
                 full_refresh=full_refresh,
             )
             result.update_id = update_id
-            result.message = f"Pipeline {'created' if created else 'updated'} and run started. Update ID: {update_id}"
+            result.message = f"Pipeline {'建立' if created else '更新'}完成並已啟動 run。Update ID: {update_id}"
         except Exception as e:
             result.success = False
-            result.error_message = f"Pipeline created but failed to start run: {e}"
+            result.error_message = f"Pipeline 已建立，但啟動 run 失敗：{e}"
             result.message = result.error_message
             return result
 
-        # Step 4: Wait for completion if requested
+        # 步驟 4：若有要求則等待完成
         if wait_for_completion:
             try:
                 wait_result = wait_for_pipeline_update(
@@ -829,13 +825,12 @@ def create_or_update_pipeline(
 
                 if result.success:
                     result.message = (
-                        f"Pipeline {'created' if created else 'updated'} and "
-                        f"completed successfully in {result.duration_seconds}s. "
-                        f"Tables written to {catalog}.{schema}"
+                        f"Pipeline {'建立' if created else '更新'}完成，並於 {result.duration_seconds}s 內成功執行完畢。"
+                        f"資料表已寫入 {catalog}.{schema}"
                     )
                 else:
                     result.errors = wait_result.get("errors", [])
-                    # Build informative error message for LLM
+                    # 為 LLM 建立具資訊量的錯誤訊息
                     if result.errors:
                         first_error = result.errors[0]
                         error_msg = first_error.get("message", "")
@@ -844,13 +839,13 @@ def create_or_update_pipeline(
                             error_msg = exc.get("message", error_msg)
                         result.error_message = error_msg
                     else:
-                        result.error_message = f"Pipeline failed with state: {result.state}"
+                        result.error_message = f"Pipeline 失敗，狀態為：{result.state}"
 
                     result.message = (
-                        f"Pipeline {'created' if created else 'updated'} but run failed. "
-                        f"State: {result.state}. "
-                        f"Error: {result.error_message}. "
-                        f"Use get_pipeline_events(pipeline_id='{pipeline_id}') for full details."
+                        f"Pipeline {'建立' if created else '更新'}完成，但 run 失敗。"
+                        f"狀態：{result.state}。"
+                        f"錯誤：{result.error_message}。"
+                        f"請使用 get_pipeline_events(pipeline_id='{pipeline_id}') 取得完整詳細資料。"
                     )
 
             except TimeoutError as e:
@@ -858,9 +853,9 @@ def create_or_update_pipeline(
                 result.state = "TIMEOUT"
                 result.error_message = str(e)
                 result.message = (
-                    f"Pipeline run timed out after {timeout}s. "
-                    f"The pipeline may still be running. "
-                    f"Check status with get_update(pipeline_id='{pipeline_id}', update_id='{update_id}')"
+                    f"Pipeline run 在 {timeout}s 後逾時。"
+                    f"該 pipeline 可能仍在執行中。"
+                    f"請使用 get_update(pipeline_id='{pipeline_id}', update_id='{update_id}') 檢查狀態"
                 )
 
     return result

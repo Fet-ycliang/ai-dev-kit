@@ -1,4 +1,4 @@
-"""User tools - Get information about the current Databricks user."""
+"""使用者工具 - 取得目前 Databricks 使用者的資訊。"""
 
 from typing import Dict, Any
 
@@ -10,16 +10,16 @@ from ..server import mcp
 @mcp.tool
 def get_current_user() -> Dict[str, Any]:
     """
-    Get the current authenticated Databricks user's identity.
+    取得目前已通過驗證的 Databricks 使用者身分資訊。
 
-    Returns the username (email) and the user's home path in the workspace.
-    Useful for determining where to create files, notebooks, and other
-    user-specific resources.
+    回傳 username（email）與使用者在 workspace 中的 home path。
+    有助於判斷應在哪裡建立檔案、notebooks 與其他
+    使用者專屬資源。
 
-    Returns:
-        Dictionary with:
-        - username: The user's email address (or None if unavailable)
-        - home_path: The user's workspace home directory (e.g. /Workspace/Users/user@example.com/)
+    回傳:
+        包含以下內容的字典：
+        - username: 使用者的 email 位址（若無法取得則為 None）
+        - home_path: 使用者在 workspace 中的家目錄（例如 /Workspace/Users/user@example.com/）
     """
     username = get_current_username()
     home_path = f"/Workspace/Users/{username}/" if username else None

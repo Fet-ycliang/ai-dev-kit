@@ -1,5 +1,5 @@
 """
-SQL Utilities - Internal helpers for SQL operations.
+SQL Utilities - SQL 作業的內部輔助工具。
 """
 
 from .executor import SQLExecutor, SQLExecutionError
@@ -10,10 +10,10 @@ from .models import (
     HistogramBin,
     ColumnDetail,
     DataSourceInfo,
-    TableInfo,  # Alias for DataSourceInfo
+    TableInfo,  # DataSourceInfo 的別名
     TableSchemaResult,
     VolumeFileInfo,
-    VolumeFolderResult,  # Alias for DataSourceInfo
+    VolumeFolderResult,  # DataSourceInfo 的別名
 )
 from .table_stats_collector import TableStatsCollector
 
@@ -26,9 +26,9 @@ __all__ = [
     "HistogramBin",
     "ColumnDetail",
     "DataSourceInfo",
-    "TableInfo",  # Alias for DataSourceInfo
+    "TableInfo",  # DataSourceInfo 的別名
     "TableSchemaResult",
     "VolumeFileInfo",
-    "VolumeFolderResult",  # Alias for DataSourceInfo
+    "VolumeFolderResult",  # DataSourceInfo 的別名
     "TableStatsCollector",
 ]

@@ -1,124 +1,141 @@
 # Databricks Skills for Claude Code
 
-Skills that teach Claude Code how to work effectively with Databricks - providing patterns, best practices, and code examples that work with Databricks MCP tools.
+教導 Claude Code 如何有效使用 Databricks 的 Skills 集合——提供模式、最佳實踐與程式碼範例，可搭配 Databricks MCP 工具使用。
 
-## Installation
+## 安裝
 
-Run in your project root:
+在您的專案根目錄執行：
 
 ```bash
-# Install all skills (Databricks + MLflow)
+# 安裝所有 Skills（Databricks + MLflow）
 curl -sSL https://raw.githubusercontent.com/databricks-solutions/ai-dev-kit/main/databricks-skills/install_skills.sh | bash
 
-# Install specific skills
+# 安裝特定 Skills
 curl -sSL https://raw.githubusercontent.com/databricks-solutions/ai-dev-kit/main/databricks-skills/install_skills.sh | bash -s -- databricks-bundles agent-evaluation
 
-# Pin MLflow skills to a specific version
+# 將 MLflow Skills 固定在特定版本
 curl -sSL https://raw.githubusercontent.com/databricks-solutions/ai-dev-kit/main/databricks-skills/install_skills.sh | bash -s -- --mlflow-version v1.0.0
 
-# List available skills
+# 列出所有可用 Skills
 curl -sSL https://raw.githubusercontent.com/databricks-solutions/ai-dev-kit/main/databricks-skills/install_skills.sh | bash -s -- --list
 ```
 
-This creates `.claude/skills/` and downloads all skills. Claude Code loads them automatically.
-- **Databricks skills** are downloaded from this repository
-- **MLflow skills** are fetched dynamically from [github.com/mlflow/skills](https://github.com/mlflow/skills)
+安裝後會建立 `.claude/skills/` 目錄並下載所有 Skills，Claude Code 會自動載入。
+- **Databricks Skills** 從本儲存庫下載
+- **MLflow Skills** 動態從 [github.com/mlflow/skills](https://github.com/mlflow/skills) 取得
 
-**Manual install:**
+**手動安裝：**
 ```bash
 mkdir -p .claude/skills
 cp -r ai-dev-kit/databricks-skills/databricks-agent-bricks .claude/skills/
 ```
 
-## Available Skills
+---
 
-### 🤖 AI & Agents
-- **databricks-ai-functions** - Built-in AI Functions (ai_classify, ai_extract, ai_summarize, ai_query, ai_forecast, ai_parse_document, and more) with SQL and PySpark patterns, function selection guidance, document processing pipelines, and custom RAG (parse → chunk → index → query)
-- **databricks-agent-bricks** - Knowledge Assistants, Genie Spaces, Supervisor Agents
-- **databricks-genie** - Genie Spaces: create, curate, and query via Conversation API
-- **databricks-model-serving** - Deploy MLflow models and AI agents to endpoints
-- **databricks-unstructured-pdf-generation** - Generate synthetic PDFs for RAG
-- **databricks-vector-search** - Vector similarity search for RAG and semantic search
+## 可用 Skills
 
-### 📊 MLflow (from [mlflow/skills](https://github.com/mlflow/skills))
-- **agent-evaluation** - End-to-end agent evaluation workflow
-- **analyze-mlflow-chat-session** - Debug multi-turn conversations
-- **analyze-mlflow-trace** - Debug traces, spans, and assessments
-- **instrumenting-with-mlflow-tracing** - Add MLflow tracing to Python/TypeScript
-- **mlflow-onboarding** - MLflow setup guide for new users
-- **querying-mlflow-metrics** - Aggregated metrics and time-series analysis
-- **retrieving-mlflow-traces** - Trace search and filtering
-- **searching-mlflow-docs** - Search MLflow documentation
+### 🤖 AI 與 Agent
 
-### 📊 Analytics & Dashboards
-- **databricks-aibi-dashboards** - Databricks AI/BI dashboards (with SQL validation workflow)
-- **databricks-unity-catalog** - System tables for lineage, audit, billing
+- **databricks-ai-functions** — 內建 AI 函式（ai_classify、ai_extract、ai_summarize、ai_query、ai_forecast、ai_parse_document 等），含 SQL 與 PySpark 使用模式、函式選擇指引、文件處理管道，以及自訂 RAG 流程（解析 → 切分 → 索引 → 查詢）
+- **databricks-agent-bricks** — 知識助手（Knowledge Assistant）、Genie Spaces、Supervisor Agent
+- **databricks-genie** — Genie Spaces：建立、策展與透過 Conversation API 查詢
+- **databricks-model-serving** — 將 MLflow 模型與 AI Agent 部署至服務端點
+- **databricks-unstructured-pdf-generation** — 生成合成 PDF 供 RAG 使用
+- **databricks-vector-search** — 向量相似度搜尋，用於 RAG 與語意搜尋
 
-### 🔧 Data Engineering
-- **databricks-iceberg** - Apache Iceberg tables (Managed/Foreign), UniForm, Iceberg REST Catalog, Iceberg Clients Interoperability
-- **databricks-spark-declarative-pipelines** - SDP (formerly DLT) in SQL/Python
-- **databricks-jobs** - Multi-task workflows, triggers, schedules
-- **databricks-synthetic-data-gen** - Realistic test data with Faker
+### 📊 MLflow（來自 [mlflow/skills](https://github.com/mlflow/skills)）
 
-### 🚀 Development & Deployment
-- **databricks-bundles** - DABs for multi-environment deployments
-- **databricks-app-apx** - Full-stack apps (FastAPI + React)
-- **databricks-app-python** - Python web apps (Dash, Streamlit, Flask) with foundation model integration
-- **databricks-python-sdk** - Python SDK, Connect, CLI, REST API
-- **databricks-config** - Profile authentication setup
-- **databricks-lakebase-provisioned** - Managed PostgreSQL for OLTP workloads
+- **agent-evaluation** — 端到端 Agent 評估工作流程
+- **analyze-mlflow-chat-session** — 除錯多輪對話
+- **analyze-mlflow-trace** — 除錯 Trace、Span 與評估結果
+- **instrumenting-with-mlflow-tracing** — 在 Python/TypeScript 中加入 MLflow Tracing
+- **mlflow-onboarding** — 新用戶 MLflow 設定指南
+- **querying-mlflow-metrics** — 彙總指標與時間序列分析
+- **retrieving-mlflow-traces** — Trace 搜尋與篩選
+- **searching-mlflow-docs** — 搜尋 MLflow 文件
 
-### 📚 Reference
-- **databricks-docs** - Documentation index via llms.txt
+### 📊 分析與儀表板
 
-## How It Works
+- **databricks-aibi-dashboards** — Databricks AI/BI 儀表板（含 SQL 驗證工作流程）
+- **databricks-unity-catalog** — 系統資料表，用於資料血緣、稽核、計費分析
+
+### 🔧 資料工程
+
+- **databricks-iceberg** — Apache Iceberg 資料表（Managed/Foreign）、UniForm、Iceberg REST Catalog、跨引擎互通性
+- **databricks-spark-declarative-pipelines** — SDP（前身為 DLT），支援 SQL/Python
+- **databricks-jobs** — 多任務工作流程、觸發條件、排程設定
+- **databricks-synthetic-data-gen** — 使用 Faker 生成逼真的測試資料
+
+### 🚀 開發與部署
+
+- **databricks-bundles** — DABs 多環境部署（開發/測試/生產）
+- **databricks-app-apx** — 全端應用程式（FastAPI + React）
+- **databricks-app-python** — Python Web 應用（Dash、Streamlit、Flask）含基礎模型整合
+- **databricks-python-sdk** — Python SDK、Databricks Connect、CLI、REST API
+- **databricks-config** — 設定檔認證設定
+- **databricks-lakebase-provisioned** — OLTP 工作負載的受管 PostgreSQL
+
+### 📚 參考資料
+
+- **databricks-docs** — 透過 llms.txt 存取的文件索引
+
+---
+
+## 運作原理
 
 ```
 ┌────────────────────────────────────────────────┐
 │  .claude/skills/     +    .claude/mcp.json     │
-│  (Knowledge)               (Actions)           │
+│  （知識）                   （操作）             │
 │                                                │
-│  Skills teach HOW    +    MCP does it          │
+│  Skills 教導 HOW     +    MCP 執行 DO           │
 │  ↓                        ↓                    │
-│  Claude Code learns patterns and executes      │
+│  Claude Code 學習模式並實際執行                  │
 └────────────────────────────────────────────────┘
 ```
 
-**Example:** User says "Create a sales dashboard"
-1. Claude loads `databricks-aibi-dashboards` skill → learns validation workflow
-2. Calls `get_table_details()` → gets schemas
-3. Calls `execute_sql()` → tests queries
-4. Calls `create_or_update_dashboard()` → deploys
-5. Returns working dashboard URL
+**範例：** 使用者說「建立銷售儀表板」
 
-## Custom Skills
+1. Claude 載入 `databricks-aibi-dashboards` Skill → 學習驗證工作流程
+2. 呼叫 `get_table_details()` → 取得資料表 Schema
+3. 呼叫 `execute_sql()` → 測試查詢語句
+4. 呼叫 `create_or_update_dashboard()` → 部署儀表板
+5. 回傳可用的儀表板 URL
 
-Create your own in `.claude/skills/my-skill/SKILL.md`:
+---
+
+## 自訂 Skills
+
+在 `.claude/skills/my-skill/SKILL.md` 建立您自己的 Skill：
 
 ```markdown
 ---
 name: my-skill
-description: "What this teaches"
+description: "此 Skill 教導的內容"
 ---
 
 # My Skill
 
-## When to Use
+## 使用時機
 ...
 
-## Patterns
+## 模式
 ...
 ```
 
-## Troubleshooting
+---
 
-**Skills not loading?** Check `.claude/skills/` exists and each skill has `SKILL.md`
+## 疑難排解
 
-**Install fails?** Run `bash install_skills.sh` or check write permissions
+**Skills 未載入？** 確認 `.claude/skills/` 存在，且每個 Skill 目錄中有 `SKILL.md`
 
-## Related
+**安裝失敗？** 執行 `bash install_skills.sh` 或確認是否具備寫入權限
 
-- [databricks-tools-core](../databricks-tools-core/) - Python library
-- [databricks-mcp-server](../databricks-mcp-server/) - MCP server
-- [Databricks Docs](https://docs.databricks.com/) - Official documentation
-- [MLflow Skills](https://github.com/mlflow/skills) - Upstream MLflow skills repository
+---
+
+## 相關資源
+
+- [databricks-tools-core](../databricks-tools-core/) — Python 核心函式庫
+- [databricks-mcp-server](../databricks-mcp-server/) — MCP 伺服器
+- [Databricks 官方文件](https://docs.databricks.com/)
+- [MLflow Skills](https://github.com/mlflow/skills) — 上游 MLflow Skills 儲存庫

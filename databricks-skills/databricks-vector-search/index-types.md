@@ -1,27 +1,27 @@
-# Vector Search Index Types
+# Vector Search 索引類型
 
-## Comparison Matrix
+## 比較矩陣
 
-| Feature | Delta Sync (Managed) | Delta Sync (Self-Managed) | Direct Access |
+| 功能 | Delta Sync（Managed） | Delta Sync（Self-Managed） | Direct Access |
 |---------|---------------------|---------------------------|---------------|
-| **Embeddings** | Databricks computes | You provide | You provide |
-| **Sync** | Auto from Delta | Auto from Delta | Manual CRUD |
-| **Setup** | Easiest | Medium | Most control |
-| **Source** | Delta table + text | Delta table + vectors | API calls |
-| **Best for** | Quick start, RAG | Custom models | Real-time apps |
+| **Embeddings** | 由 Databricks 計算 | 由你提供 | 由你提供 |
+| **同步** | 從 Delta 自動同步 | 從 Delta 自動同步 | 手動 CRUD |
+| **設定** | 最容易 | 中等 | 控制度最高 |
+| **來源** | Delta table + 文字 | Delta table + 向量 | API 呼叫 |
+| **最適合** | 快速開始、RAG | 自訂模型 | 即時應用程式 |
 
-## Delta Sync with Managed Embeddings
+## 使用 Managed Embeddings 的 Delta Sync
 
-Databricks automatically computes embeddings from your text column.
+Databricks 會自動從你的文字欄位計算 embeddings。
 
-### Requirements
+### 需求
 
-- Source Delta table with:
-  - Primary key column (unique identifier)
-  - Text column (content to embed)
-- Embedding model endpoint (or use built-in)
+- 來源 Delta table 必須包含：
+  - Primary key 欄位（唯一識別碼）
+  - 文字欄位（要產生 embedding 的內容）
+- Embedding model endpoint（或使用內建模型）
 
-### Create Index
+### 建立索引
 
 ```python
 from databricks.sdk import WorkspaceClient
@@ -41,42 +41,42 @@ index = w.vector_search_indexes.create_index(
                 "embedding_model_endpoint_name": "databricks-gte-large-en"
             }
         ],
-        "pipeline_type": "TRIGGERED",  # or "CONTINUOUS"
+        "pipeline_type": "TRIGGERED",  # 或 "CONTINUOUS"
         "columns_to_sync": ["doc_id", "content", "title", "category"]
     }
 )
 ```
 
-### Pipeline Types
+### Pipeline 類型
 
-| Type | Behavior | Cost | Use Case |
+| 類型 | 行為 | 成本 | 使用情境 |
 |------|----------|------|----------|
-| `TRIGGERED` | Manual sync via API | Lower | Batch updates |
-| `CONTINUOUS` | Auto-sync on changes | Higher | Real-time sync |
+| `TRIGGERED` | 透過 API 手動同步 | 較低 | 批次更新 |
+| `CONTINUOUS` | 發生變更時自動同步 | 較高 | 即時同步 |
 
-### Source Table Example
+### 來源資料表示例
 
 ```sql
 CREATE TABLE catalog.schema.documents (
     doc_id STRING,
     title STRING,
-    content STRING,  -- Text to embed
+    content STRING,  -- 要產生 embedding 的文字
     category STRING,
     created_at TIMESTAMP
 );
 ```
 
-## Delta Sync with Self-Managed Embeddings
+## 使用 Self-Managed Embeddings 的 Delta Sync
 
-You pre-compute embeddings and store them in the source table.
+你需要先行計算 embeddings，並將其儲存在來源資料表中。
 
-### Requirements
+### 需求
 
-- Source Delta table with:
-  - Primary key column
-  - Embedding vector column (array of floats)
+- 來源 Delta table 必須包含：
+  - Primary key 欄位
+  - Embedding 向量欄位（浮點數陣列）
 
-### Create Index
+### 建立索引
 
 ```python
 index = w.vector_search_indexes.create_index(
@@ -97,7 +97,7 @@ index = w.vector_search_indexes.create_index(
 )
 ```
 
-### Compute Embeddings
+### 計算 Embeddings
 
 ```python
 from databricks.sdk import WorkspaceClient
@@ -106,44 +106,44 @@ import pandas as pd
 w = WorkspaceClient()
 
 def get_embeddings(texts: list[str]) -> list[list[float]]:
-    """Call embedding endpoint for texts."""
+    """為文字呼叫 embedding endpoint。"""
     response = w.serving_endpoints.query(
         name="databricks-gte-large-en",
         input=texts
     )
     return [item.embedding for item in response.data]
 
-# Add embeddings to your data
+# 將 embeddings 加入你的資料
 df = spark.table("catalog.schema.documents").toPandas()
 df["embedding"] = get_embeddings(df["content"].tolist())
 
-# Write back to Delta
+# 回寫至 Delta
 spark.createDataFrame(df).write.mode("overwrite").saveAsTable(
     "catalog.schema.embedded_docs"
 )
 ```
 
-### Source Table Example
+### 來源資料表示例
 
 ```sql
 CREATE TABLE catalog.schema.embedded_docs (
     id STRING,
     content STRING,
-    embedding ARRAY<FLOAT>,  -- Pre-computed embedding
+    embedding ARRAY<FLOAT>,  -- 預先計算的 embedding
     metadata STRING
 );
 ```
 
-## Direct Access Index
+## Direct Access 索引
 
-Full control over vector data via CRUD API. No Delta table sync.
+透過 CRUD API 完整控制向量資料。不會與 Delta table 同步。
 
-### Requirements
+### 需求
 
-- Define schema upfront
-- Manage upsert/delete operations yourself
+- 事先定義 schema
+- 自行管理 upsert/delete 作業
 
-### Create Index
+### 建立索引
 
 ```python
 import json
@@ -168,25 +168,25 @@ index = w.vector_search_indexes.create_index(
 )
 ```
 
-### Upsert Data
+### Upsert 資料
 
 ```python
 import json
 
-# Insert or update vectors
+# 插入或更新向量
 w.vector_search_indexes.upsert_data_vector_index(
     index_name="catalog.schema.realtime_index",
     inputs_json=json.dumps([
         {
             "id": "doc-001",
-            "text": "Machine learning basics",
-            "embedding": [0.1, 0.2, 0.3, ...],  # 768 floats
+            "text": "Machine learning 基礎",
+            "embedding": [0.1, 0.2, 0.3, ...],  # 768 個浮點數
             "category": "ml",
             "score": 0.95
         },
         {
             "id": "doc-002",
-            "text": "Deep learning overview",
+            "text": "Deep learning 概觀",
             "embedding": [0.4, 0.5, 0.6, ...],
             "category": "dl",
             "score": 0.88
@@ -195,7 +195,7 @@ w.vector_search_indexes.upsert_data_vector_index(
 )
 ```
 
-### Delete Data
+### 刪除資料
 
 ```python
 w.vector_search_indexes.delete_data_vector_index(
@@ -204,12 +204,12 @@ w.vector_search_indexes.delete_data_vector_index(
 )
 ```
 
-### Attach Embedding Model (Optional)
+### 附加 Embedding Model（選用）
 
-For Direct Access with text queries:
+若要在 Direct Access 中使用文字查詢：
 
 ```python
-# Create index with embedding model for query-time embedding
+# 建立含 embedding model 的索引，以便在查詢時產生 embedding
 index = w.vector_search_indexes.create_index(
     name="catalog.schema.hybrid_index",
     endpoint_name="my-vs-endpoint",
@@ -219,36 +219,36 @@ index = w.vector_search_indexes.create_index(
         "embedding_vector_columns": [
             {"name": "embedding", "embedding_dimension": 768}
         ],
-        "embedding_model_endpoint_name": "databricks-gte-large-en",  # For query_text
+        "embedding_model_endpoint_name": "databricks-gte-large-en",  # 用於 query_text
         "schema_json": json.dumps({...})
     }
 )
 ```
 
-## Choosing the Right Type
+## 如何選擇正確類型
 
 ```
-Start here:
+從這裡開始：
 │
-├─ Do you have pre-computed embeddings?
-│   ├─ Yes → Do you want auto-sync from Delta?
-│   │         ├─ Yes → Delta Sync (Self-Managed)
-│   │         └─ No  → Direct Access
+├─ 你是否已經有預先計算好的 embeddings？
+│   ├─ 有 → 你是否想要從 Delta 自動同步？
+│   │         ├─ 是 → Delta Sync（Self-Managed）
+│   │         └─ 否 → Direct Access
 │   │
-│   └─ No → Delta Sync (Managed Embeddings)
+│   └─ 沒有 → Delta Sync（Managed Embeddings）
 │
-└─ Do you need real-time updates (<1 sec)?
-    ├─ Yes → Direct Access
-    └─ No  → Delta Sync (any type)
+└─ 你是否需要即時更新（<1 秒）？
+    ├─ 是 → Direct Access
+    └─ 否 → Delta Sync（任一類型）
 ```
 
-## Endpoint Selection
+## Endpoint 選擇
 
-After choosing index type, choose endpoint:
+選好索引類型後，再選擇 endpoint：
 
-| Scenario | Endpoint Type |
+| 情境 | Endpoint 類型 |
 |----------|---------------|
-| Need <100ms latency | Standard |
-| >100M vectors | Storage-Optimized |
-| Cost-sensitive | Storage-Optimized |
-| Default choice | Storage-Optimized |
+| 需要 <100ms 延遲 | Standard |
+| >100M 個向量 | Storage-Optimized |
+| 成本敏感 | Storage-Optimized |
+| 預設選擇 | Storage-Optimized |

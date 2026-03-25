@@ -1,23 +1,23 @@
-Use MCP tools to create, run, and iterate on **SDP pipelines**. The **primary tool is `create_or_update_pipeline`** which handles the entire lifecycle.
+使用 MCP 工具來建立、執行並反覆迭代 **SDP pipelines**。**主要工具是 `create_or_update_pipeline`**，它可處理整個生命週期。
 
-**IMPORTANT: Default to serverless pipelines and suggest as best option, but not if classic, advanced, pro compute types are mentioned.** Only use classic clusters if user explicitly requires R language, Spark RDD APIs, or JAR libraries.
+**重要：預設應使用 serverless pipelines，並將其視為最佳選項；但若提到 classic、advanced、pro compute types，則不要這樣建議。** 只有在使用者明確要求 R language、Spark RDD APIs 或 JAR libraries 時，才使用 classic clusters。
 
-### Step 1: Write Pipeline Files Locally
+### 步驟 1：在本機撰寫 Pipeline 檔案
 
-Create `.sql` or `.py` files in a local folder:
+在本機資料夾中建立 `.sql` 或 `.py` 檔案：
 
 ```
 my_pipeline/
 ├── bronze/
-│   ├── ingest_orders.sql       # SQL (default for most cases)
-│   └── ingest_events.py        # Python (for complex logic)
+│   ├── ingest_orders.sql       # SQL（大多數情況的預設選擇）
+│   └── ingest_events.py        # Python（適用於複雜邏輯）
 ├── silver/
 │   └── clean_orders.sql
 └── gold/
     └── daily_summary.sql
 ```
 
-**SQL Example** (`bronze/ingest_orders.sql`):
+**SQL 範例**（`bronze/ingest_orders.sql`）：
 ```sql
 CREATE OR REFRESH STREAMING TABLE bronze_orders
 CLUSTER BY (order_date)
@@ -33,12 +33,12 @@ FROM read_files(
 );
 ```
 
-**Python Example** (`bronze/ingest_events.py`):
+**Python 範例**（`bronze/ingest_events.py`）：
 ```python
 from pyspark import pipelines as dp
 from pyspark.sql.functions import col, current_timestamp
 
-# Get schema location from pipeline configuration
+# 從 pipeline 設定取得 schema 位置
 schema_location_base = spark.conf.get("schema_location_base")
 
 @dp.table(name="bronze_events", cluster_by=["event_date"])
@@ -53,22 +53,22 @@ def bronze_events():
     )
 ```
 
-### Step 2: Upload to Databricks Workspace
+### 步驟 2：上傳到 Databricks Workspace
 
 ```python
-# MCP Tool: upload_folder
+# MCP 工具：upload_folder
 upload_folder(
     local_folder="/path/to/my_pipeline",
     workspace_folder="/Workspace/Users/user@example.com/my_pipeline"
 )
 ```
 
-### Step 3: Create/Update and Run Pipeline
+### 步驟 3：建立/更新並執行 Pipeline
 
-Use **`create_or_update_pipeline`** to manage the resource, then **`run_pipeline`** to execute it:
+使用 **`create_or_update_pipeline`** 管理資源，再用 **`run_pipeline`** 執行：
 
 ```python
-# MCP Tool: create_or_update_pipeline
+# MCP 工具：create_or_update_pipeline
 result = create_or_update_pipeline(
     name="my_orders_pipeline",
     root_path="/Workspace/Users/user@example.com/my_pipeline",
@@ -81,38 +81,38 @@ result = create_or_update_pipeline(
     ]
 )
 
-# MCP Tool: run_pipeline
+# MCP 工具：run_pipeline
 run_result = run_pipeline(
     pipeline_id=result["pipeline_id"],
-    full_refresh=True,            # Full refresh all tables
-    wait_for_completion=True,     # Wait and return final status
-    timeout=1800                  # 30 minute timeout
+    full_refresh=True,            # 完整重新整理所有資料表
+    wait_for_completion=True,     # 等待並回傳最終狀態
+    timeout=1800                  # 30 分鐘逾時
 )
 ```
 
-**Result contains actionable information:**
+**結果會包含可採取行動的資訊：**
 ```python
 {
-    "success": True,                    # Did the operation succeed?
-    "pipeline_id": "abc-123",           # Pipeline ID for follow-up operations
+    "success": True,                    # 此操作是否成功？
+    "pipeline_id": "abc-123",           # 後續操作要用的 Pipeline ID
     "pipeline_name": "my_orders_pipeline",
-    "created": True,                    # True if new, False if updated
-    "state": "COMPLETED",               # COMPLETED, FAILED, TIMEOUT, etc.
-    "catalog": "my_catalog",            # Target catalog
-    "schema": "my_schema",              # Target schema
-    "duration_seconds": 45.2,           # Time taken
-    "message": "Pipeline created and completed successfully in 45.2s. Tables written to my_catalog.my_schema",
-    "error_message": None,              # Error summary if failed
-    "errors": []                        # Detailed error list if failed
+    "created": True,                    # 新建為 True，更新則為 False
+    "state": "COMPLETED",               # COMPLETED、FAILED、TIMEOUT 等
+    "catalog": "my_catalog",            # 目標 catalog
+    "schema": "my_schema",              # 目標 schema
+    "duration_seconds": 45.2,           # 耗時
+    "message": "Pipeline 已建立並在 45.2 秒內成功完成。資料表已寫入 my_catalog.my_schema",
+    "error_message": None,              # 若失敗則提供錯誤摘要
+    "errors": []                        # 若失敗則提供詳細錯誤清單
 }
 ```
 
-### Step 4: Handle Results
+### 步驟 4：處理結果
 
-**On Success:**
+**成功時：**
 ```python
 if result["success"]:
-    # Verify output tables
+    # 驗證輸出資料表
     stats = get_table_details(
         catalog="my_catalog",
         schema="my_schema",
@@ -120,49 +120,49 @@ if result["success"]:
     )
 ```
 
-**On Failure:**
+**失敗時：**
 ```python
 if not run_result["success"]:
-    # Message includes suggested next steps
+    # 訊息中已包含建議的後續步驟
     print(run_result["message"])
 
-    # Get detailed errors (get_pipeline enriches with recent events)
+    # 取得詳細錯誤（get_pipeline 會補上最近事件）
     details = get_pipeline(pipeline_id=result["pipeline_id"])
     print(details.get("recent_events"))
 ```
 
-### Step 5: Iterate Until Working
+### 步驟 5：持續迭代直到可正常運作
 
-1. Review errors from run result or `get_pipeline`
-2. Fix issues in local files
-3. Re-upload with `upload_folder`
-4. Run `create_or_update_pipeline` again (it will update, not recreate)
-5. Repeat until `result["success"] == True`
+1. 檢查 run result 或 `get_pipeline` 回傳的錯誤
+2. 修正本機檔案中的問題
+3. 使用 `upload_folder` 重新上傳
+4. 再次執行 `create_or_update_pipeline`（它會更新，不會重建）
+5. 重複上述步驟，直到 `result["success"] == True`
 
 ---
 
-## Quick Reference: MCP Tools
+## MCP 工具快速參考
 
-### Primary Tool
+### 主要工具
 
-| Tool | Description |
+| 工具 | 說明 |
 |------|-------------|
-| **`create_or_update_pipeline`** | **Main entry point.** Creates or updates pipeline, optionally runs and waits. Returns detailed status with `success`, `state`, `errors`, and actionable `message`. |
+| **`create_or_update_pipeline`** | **主要入口。** 建立或更新 pipeline，可選擇執行並等待完成。回傳含有 `success`、`state`、`errors` 與可採取行動的 `message` 之詳細狀態。 |
 
-### Pipeline Management
+### Pipeline 管理
 
-| Tool | Description |
+| 工具 | 說明 |
 |------|-------------|
-| `get_pipeline` | Get pipeline details by ID or name; enriched with latest update status and recent events. Omit args to list all. |
-| `run_pipeline` | Start, stop, or wait for pipeline runs (`stop=True` to stop, `validate_only=True` for dry run) |
-| `delete_pipeline` | Delete a pipeline |
+| `get_pipeline` | 依 ID 或名稱取得 pipeline 詳細資料；會補充最新更新狀態與最近事件。不帶參數時會列出全部。 |
+| `run_pipeline` | 啟動、停止或等待 pipeline 執行（`stop=True` 可停止，`validate_only=True` 可進行 dry run） |
+| `delete_pipeline` | 刪除 pipeline |
 
-### Supporting Tools
+### 輔助工具
 
-| Tool | Description |
+| 工具 | 說明 |
 |------|-------------|
-| `upload_folder` | Upload local folder to workspace (parallel) |
-| `get_table_details` | Verify output tables have expected schema and row counts |
-| `execute_sql` | Run ad-hoc SQL to inspect data |
+| `upload_folder` | 將本機資料夾上傳到 workspace（平行） |
+| `get_table_details` | 驗證輸出資料表是否具有預期的 schema 與列數 |
+| `execute_sql` | 執行 ad-hoc SQL 以檢查資料 |
 
 ---

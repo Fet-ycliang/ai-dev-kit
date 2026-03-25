@@ -1,26 +1,26 @@
-# MLflow 3 Judge Alignment with MemAlign
+# MLflow 3 使用 MemAlign 進行評審員對齊
 
-Patterns for aligning LLM judges to domain expert preferences using MemAlign. An aligned judge is more accurate for evaluation runs, more meaningful for production monitoring, and a better guide for prompt optimization — but each of these uses is independent.
+使用 MemAlign 將 LLM 評審員對齊至領域專家偏好的模式。對齊後的評審員在評估執行中更準確、在生產監控中更具意義，也能更好地引導提示最佳化——但這三種用途是相互獨立的。
 
-**Read `GOTCHAS.md` before implementing — especially the MemAlign sections.**
-
----
-
-## When to Use Judge Alignment
-
-Align a judge when:
-- Built-in scorers don't capture domain-specific quality (e.g., "good" means expert-level tactical analysis)
-- LLM judges disagree with human raters on the same examples
-- You have domain experts who can rate a sample of agent outputs
-- You want production monitoring that reflects actual expert standards
-
-You do NOT need prompt optimization to benefit from aligned judges — a more accurate judge improves every evaluation run and monitoring setup you do afterward.
+**實作前請先閱讀 `GOTCHAS.md`，尤其是 MemAlign 的相關章節。**
 
 ---
 
-## Pattern 1: Design and Register the Base Judge
+## 何時使用評審員對齊
 
-MemAlign is scorer-agnostic and works with any `feedback_value_type` (float, boolean, categorical). This example uses a Likert scale (1-5 float), but you can use whatever scoring scheme fits your domain.
+在以下情況時對齊評審員：
+- 內建評分器無法捕捉領域特定的品質（例如「優秀」代表專家級的戰術分析）
+- LLM 評審員與人工評分者對相同範例的評判結果不一致
+- 您擁有可對一批代理輸出進行評分的領域專家
+- 您希望生產監控能反映實際的專家標準
+
+您**不需要**進行提示最佳化也能受益於對齊的評審員——更準確的評審員會改善您之後所有的評估執行和監控設定。
+
+---
+
+## 模式 1：設計並註冊基礎評審員
+
+MemAlign 不依賴特定評分器，可搭配任何 `feedback_value_type`（float、boolean、categorical）使用。此範例使用 Likert 量表（1-5 float），但您可以使用任何適合您領域的評分方案。
 
 ```python
 import mlflow
@@ -29,41 +29,40 @@ from mlflow.genai import evaluate
 
 mlflow.set_experiment(experiment_id=EXPERIMENT_ID)
 
-# Define base judge using make_judge -- MemAlign works with any feedback type
-# This example uses a Likert scale (1-5 float), but boolean or categorical also work
+# 使用 make_judge 定義基礎評審員 —— MemAlign 可搭配任何回饋類型使用
+# 此範例使用 Likert 量表（1-5 float），但 boolean 或 categorical 也同樣適用
 domain_quality_judge = make_judge(
     name="domain_quality_base",
     instructions=(
-        "Evaluate if the response in {{ outputs }} appropriately analyzes the available data "
-        "and provides an actionable recommendation to the question in {{ inputs }}. "
-        "The response should be accurate, contextually relevant, and give a strategic advantage "
-        "to the person making the request. "
-        "Your grading criteria: "
-        " 1: Completely unacceptable. Incorrect data interpretation or no recommendations. "
-        " 2: Mostly unacceptable. Irrelevant or spurious feedback or weak recommendations with minimal strategic advantage. "
-        " 3: Somewhat acceptable. Relevant feedback provided with some strategic advantage. "
-        " 4: Mostly acceptable. Relevant feedback provided with strong strategic advantage. "
-        " 5: Completely acceptable. Relevant feedback provided with excellent strategic advantage."
+        "評估 {{ outputs }} 中的回應是否適當地分析了可用資料，"
+        "並針對 {{ inputs }} 中的問題提供可行的建議。"
+        "回應應準確、與情境相關，並為提問者提供策略優勢。"
+        "您的評分標準："
+        " 1：完全無法接受。資料解讀錯誤或未提供建議。"
+        " 2：大部分無法接受。回饋不相關或流於表面，建議的策略優勢極低。"
+        " 3：部分可接受。提供了相關回饋，具有一定的策略優勢。"
+        " 4：大部分可接受。提供了相關回饋，具有強烈的策略優勢。"
+        " 5：完全可接受。提供了相關回饋，具有優異的策略優勢。"
     ),
-    feedback_value_type=float,   # Example uses a Likert scale; MemAlign works with any feedback type
+    feedback_value_type=float,   # 此範例使用 Likert 量表；MemAlign 可搭配任何回饋類型使用
     model=JUDGE_MODEL,
 )
 
-# Register to experiment — creates the persistent record used by align()
+# 註冊至實驗 —— 建立 align() 所使用的持久性記錄
 registered_base_judge = domain_quality_judge.register(experiment_id=EXPERIMENT_ID)
-print(f"Registered base judge: {registered_base_judge.name}")
+print(f"已註冊基礎評審員：{registered_base_judge.name}")
 ```
 
 ---
 
-## Pattern 2: Run Evaluation and Tag Traces
+## 模式 2：執行評估並標記追蹤記錄
 
-Run evaluation to generate a set of traces that domain experts will review. Tag traces that were **successfully evaluated** in this `evaluate()` job (i.e., the agent produced a response and the judge scored it without errors).
+執行評估以產生一組供領域專家審閱的追蹤記錄。標記在此 `evaluate()` 工作中**成功評估**的追蹤記錄（即代理已產生回應，且評審員在無錯誤的情況下完成評分）。
 
 ```python
 from mlflow.genai import evaluate
 
-# Eval dataset: inputs only (no expectations needed at this stage)
+# 評估資料集：僅含輸入（此階段不需要期望值）
 eval_data = [
     {"inputs": {"input": [{"role": "user", "content": question}]}}
     for question in example_questions
@@ -75,29 +74,29 @@ results = evaluate(
     scorers=[domain_quality_judge],
 )
 
-# Tag traces that were successfully evaluated in this evaluate() job
-# "OK" state means the agent responded AND the judge scored it without errors
+# 標記在此 evaluate() 工作中成功評估的追蹤記錄
+# "OK" 狀態表示代理已回應且評審員無誤地完成評分
 ok_trace_ids = results.result_df.loc[results.result_df["state"] == "OK", "trace_id"]
 for trace_id in ok_trace_ids:
     mlflow.set_trace_tag(trace_id=trace_id, key="eval", value="complete")
 
-print(f"Tagged {len(ok_trace_ids)} successfully evaluated traces for labeling")
+print(f"已標記 {len(ok_trace_ids)} 筆成功評估的追蹤記錄以供標記")
 ```
 
 ---
 
-## Pattern 3: Build Eval Dataset and Create Labeling Session
+## 模式 3：建立評估資料集並建立標記工作階段
 
-Persist traces to a UC dataset and assign them to domain experts for review.
+將追蹤記錄持久化至 UC 資料集，並指派給領域專家進行審閱。
 
-**CRITICAL: The label schema `name` MUST match the judge `name` used in the `evaluate()` job.** This is how `align()` pairs SME feedback with the corresponding LLM judge scores on the same traces. If these names do not match, alignment will fail or produce incorrect results.
+**重要：標籤架構的 `name` 必須與 `evaluate()` 工作中使用的評審員 `name` 完全一致。** 這是 `align()` 將中小企業回饋與相同追蹤記錄上對應 LLM 評審員分數配對的方式。若名稱不符，對齊將失敗或產生不正確的結果。
 
 ```python
 from mlflow.genai.datasets import create_dataset, get_dataset
 from mlflow.genai import create_labeling_session, get_review_app
 from mlflow.genai import label_schemas
 
-# Build persistent dataset from tagged traces
+# 從已標記的追蹤記錄建立持久性資料集
 try:
     eval_dataset = get_dataset(name=DATASET_NAME)
 except Exception:
@@ -108,7 +107,7 @@ tagged_traces = mlflow.search_traces(
     filter_string="tag.eval = 'complete'",
     return_type="pandas",
 )
-# merge_records() expects 'inputs' and 'outputs' column names
+# merge_records() 預期欄位名稱為 'inputs' 和 'outputs'
 if "inputs" not in tagged_traces.columns and "request" in tagged_traces.columns:
     tagged_traces = tagged_traces.rename(columns={"request": "inputs"})
 if "outputs" not in tagged_traces.columns and "response" in tagged_traces.columns:
@@ -116,31 +115,30 @@ if "outputs" not in tagged_traces.columns and "response" in tagged_traces.column
 
 eval_dataset = eval_dataset.merge_records(tagged_traces)
 
-# CRITICAL: The label schema name MUST match the judge name used in evaluate()
-# This is how align() pairs SME feedback with LLM judge scores on the same traces
-LABEL_SCHEMA_NAME = "domain_quality_base"  # Must match the judge name exactly
+# 重要：標籤架構名稱必須與 evaluate() 中使用的評審員名稱完全一致
+# 這是 align() 將中小企業回饋與 LLM 評審員分數配對的方式
+LABEL_SCHEMA_NAME = "domain_quality_base"  # 必須與評審員名稱完全一致
 
 feedback_schema = label_schemas.create_label_schema(
-    name=LABEL_SCHEMA_NAME,               # Must match judge name from Pattern 1
+    name=LABEL_SCHEMA_NAME,               # 必須與模式 1 中的評審員名稱一致
     type="feedback",
     title=LABEL_SCHEMA_NAME,
     input=label_schemas.InputNumeric(min_value=1.0, max_value=5.0),
     instruction=(
-        "Evaluate if the response appropriately analyzes the available data and provides "
-        "an actionable recommendation for the question. The response should be accurate, "
-        "contextually relevant, and give a strategic advantage to the person making the request. "
-        "\n\n Your grading criteria should be: "
-        "\n 1: Completely unacceptable. Incorrect data interpretation or no recommendations."
-        "\n 2: Mostly unacceptable. Irrelevant or spurious feedback or weak recommendations with minimal strategic advantage."
-        "\n 3: Somewhat acceptable. Relevant feedback provided with some strategic advantage."
-        "\n 4: Mostly acceptable. Relevant feedback provided with strong strategic advantage."
-        "\n 5: Completely acceptable. Relevant feedback provided with excellent strategic advantage."
+        "評估回應是否適當地分析了可用資料，並針對問題提供可行的建議。"
+        "回應應準確、與情境相關，並為提問者提供策略優勢。"
+        "\n\n 您的評分標準應為："
+        "\n 1：完全無法接受。資料解讀錯誤或未提供建議。"
+        "\n 2：大部分無法接受。回饋不相關或流於表面，建議的策略優勢極低。"
+        "\n 3：部分可接受。提供了相關回饋，具有一定的策略優勢。"
+        "\n 4：大部分可接受。提供了相關回饋，具有強烈的策略優勢。"
+        "\n 5：完全可接受。提供了相關回饋，具有優異的策略優勢。"
     ),
-    enable_comment=True,   # Allow SMEs to leave free-text rationale (used by MemAlign)
+    enable_comment=True,   # 允許中小企業留下自由文字說明（MemAlign 會使用）
     overwrite=True,
 )
 
-# Optional: add a deployed agent to the Review App so SMEs can ask new questions
+# 選用：將已部署的代理加入 Review App，讓中小企業可提出新問題
 review_app = get_review_app(experiment_id=EXPERIMENT_ID)
 review_app = review_app.add_agent(
     agent_name=MODEL_NAME,
@@ -148,105 +146,105 @@ review_app = review_app.add_agent(
     overwrite=True,
 )
 
-# Create labeling session and attach the dataset
+# 建立標記工作階段並附加資料集
 labeling_session = create_labeling_session(
     name=f"{LABELING_SESSION_NAME}_sme",
     assigned_users=ASSIGNED_USERS,
-    label_schemas=[LABEL_SCHEMA_NAME],     # Must match judge name
+    label_schemas=[LABEL_SCHEMA_NAME],     # 必須與評審員名稱一致
 )
 labeling_session = labeling_session.add_dataset(dataset_name=DATASET_NAME)
 
-print(f"Share with domain experts: {labeling_session.url}")
-# Domain experts open this URL and rate each response using the 1-5 scale
+print(f"分享給領域專家的網址：{labeling_session.url}")
+# 領域專家開啟此網址，使用 1-5 量表對每個回應進行評分
 ```
 
 ---
 
-## Pattern 4: Align Judge with MemAlign (Recommended)
+## 模式 4：使用 MemAlign 對齊評審員（建議方式）
 
-After SMEs complete labeling, distill their feedback patterns into the judge's instructions.
+中小企業完成標記後，將其回饋模式提煉至評審員的指令中。
 
-Judge alignment supports multiple optimizers (e.g., SIMBA, custom optimizers), but this example uses **MemAlign**, which is the recommended approach. MemAlign is the fastest alignment method (seconds vs. minutes for alternatives), the most cost-effective, and supports **memory scaling** where quality continues to improve as feedback accumulates without re-optimization.
+評審員對齊支援多種最佳化器（例如 SIMBA、自訂最佳化器），但此範例使用 **MemAlign**，這是建議的方式。MemAlign 是最快的對齊方法（需數秒，而其他替代方案需數分鐘）、最具成本效益，並支援**記憶體擴展**，即隨著回饋累積品質可持續提升，無需重新最佳化。
 
 ```python
 from mlflow.genai.judges.optimizers import MemAlignOptimizer
 from mlflow.genai.scorers import get_scorer
 
-# Fetch the tagged traces (which now have SME labels attached)
+# 擷取已標記的追蹤記錄（現在已附加中小企業標籤）
 traces_for_alignment = mlflow.search_traces(
     locations=[EXPERIMENT_ID],
     filter_string="tag.eval = 'complete'",
-    return_type="list",   # align() requires list format
+    return_type="list",   # align() 需要清單格式
 )
-print(f"Aligning on {len(traces_for_alignment)} traces")
+print(f"正在對齊 {len(traces_for_alignment)} 筆追蹤記錄")
 
-# Configure MemAlign optimizer
-# Other optimizers are available (e.g., SIMBA), but MemAlign is recommended for its
-# speed, cost efficiency, and ability to improve continuously as feedback accumulates
+# 設定 MemAlign 最佳化器
+# 其他最佳化器可用（例如 SIMBA），但 MemAlign 以其速度、成本效益
+# 及隨回饋累積持續改善的能力而被建議使用
 optimizer = MemAlignOptimizer(
-    reflection_lm=REFLECTION_MODEL,                       # Model for guideline distillation
-    retrieval_k=5,                                        # Examples to retrieve per evaluation
+    reflection_lm=REFLECTION_MODEL,                       # 用於指引提煉的模型
+    retrieval_k=5,                                        # 每次評估擷取的範例數
     embedding_model="databricks:/databricks-gte-large-en",
-    # Defaults to "openai/text-embedding-3-small" if not set -- see GOTCHAS.md
+    # 未設定時預設為 "openai/text-embedding-3-small" —— 詳見 GOTCHAS.md
 )
 
-# Load the registered base judge and run alignment
+# 載入已註冊的基礎評審員並執行對齊
 base_judge = get_scorer(name="domain_quality_base")
 aligned_judge = base_judge.align(
     traces=traces_for_alignment,
     optimizer=optimizer,
 )
 
-# Inspect distilled semantic guidelines — these encode expert preferences
-print("Distilled Guidelines from SME feedback:")
+# 檢視提煉出的語義指引 —— 這些編碼了專家偏好
+print("從中小企業回饋提煉出的指引：")
 for i, guideline in enumerate(aligned_judge._semantic_memory, 1):
     print(f"  {i}. {guideline.guideline_text}")
     if guideline.source_trace_ids:
-        print(f"     Derived from {len(guideline.source_trace_ids)} trace(s)")
+        print(f"     衍生自 {len(guideline.source_trace_ids)} 筆追蹤記錄")
 ```
 
 ---
 
-## Pattern 5: Register the Aligned Judge
+## 模式 5：註冊對齊後的評審員
 
-Persist the aligned judge to the experiment for later retrieval in evaluation or optimization runs.
+將對齊後的評審員持久化至實驗，以便後續在評估或最佳化執行中擷取。
 
 ```python
 from mlflow.genai.scorers import ScorerSamplingConfig
 
-# Option A: Update the existing judge record in-place (recommended for iterative alignment)
+# 選項 A：原地更新現有評審員記錄（建議用於迭代式對齊）
 aligned_judge_registered = aligned_judge.update(
     experiment_id=EXPERIMENT_ID,
     sampling_config=ScorerSamplingConfig(sample_rate=0.0),
 )
-print(f"Updated judge: {aligned_judge_registered.name}")
+print(f"已更新評審員：{aligned_judge_registered.name}")
 
-# Option B: Register as a new named version (preserves the original for comparison)
+# 選項 B：以新名稱版本註冊（保留原始版本以供比較）
 from mlflow.genai.judges import make_judge
 
 aligned_judge_v2 = make_judge(
     name="domain_quality_aligned_v1",
-    instructions=aligned_judge.instructions,  # Includes distilled guidelines
-    feedback_value_type=float,                # Match the original judge's feedback type
+    instructions=aligned_judge.instructions,  # 包含提煉後的指引
+    feedback_value_type=float,                # 與原始評審員的回饋類型一致
     model=JUDGE_MODEL,
 )
 aligned_judge_v2 = aligned_judge_v2.register(experiment_id=EXPERIMENT_ID)
 
-# Retrieve in a later session
-# NOTE: Episodic memory is lazily loaded — inspect .instructions, not ._episodic_memory
+# 在後續工作階段中擷取
+# 注意：情節式記憶體是延遲載入的 —— 請檢視 .instructions，而非 ._episodic_memory
 from mlflow.genai.scorers import get_scorer
 
 retrieved_judge = get_scorer(name="domain_quality_base", experiment_id=EXPERIMENT_ID)
-print(retrieved_judge.instructions[:500])  # Shows aligned instructions with guidelines
+print(retrieved_judge.instructions[:500])  # 顯示包含指引的對齊後指令
 ```
 
 ---
 
-## Pattern 6: Re-evaluate with Aligned Judge
+## 模式 6：使用對齊後的評審員重新評估
 
-Run a fresh evaluation with the aligned judge. This gives a more accurate quality picture and establishes a baseline for prompt optimization if you choose to do that next.
+使用對齊後的評審員執行全新評估。這能提供更準確的品質圖像，並在您選擇進行提示最佳化時建立基準線。
 
-**Important: The aligned judge score may be lower than the unaligned judge score. This is expected and correct.** It means the aligned judge is now evaluating with domain-expert standards rather than generic best practices. A lower score from a more accurate judge is a better signal than a higher score from a judge that doesn't understand your domain. The optimization phase (`optimize_prompts()`) will improve the agent against this more accurate standard.
+**重要：對齊後的評審員分數可能低於未對齊的評審員分數。這是預期且正確的結果。** 這意味著對齊後的評審員現在是以領域專家標準進行評估，而非通用最佳實踐。來自更準確評審員的較低分數，比來自不了解您領域的評審員的較高分數更具參考價值。最佳化階段（`optimize_prompts()`）將依據這個更準確的標準來改善代理。
 
 ```python
 from mlflow.genai import evaluate
@@ -274,43 +272,43 @@ with mlflow.start_run(run_name="aligned_judge_baseline"):
         scorers=[aligned_judge],
     )
 
-print(f"Aligned judge baseline metrics: {baseline_results.metrics}")
-# NOTE: If scores are lower than the unaligned judge, that is expected.
-# The aligned judge is more accurate, not less generous.
+print(f"對齊後評審員的基準指標：{baseline_results.metrics}")
+# 注意：若分數低於未對齊評審員，這是預期現象。
+# 對齊後的評審員更準確，而非更寬鬆。
 ```
 
 ---
 
-## Using Aligned Judges Beyond Evaluation
+## 超越評估的對齊評審員用途
 
-Aligned judges are not just for one-time evaluation. They can be used for:
+對齊後的評審員不僅限於一次性評估，還可用於：
 
-**Production monitoring:**
+**生產監控：**
 ```python
 from mlflow.genai.scorers import ScorerSamplingConfig
 
 aligned_judge = get_scorer(name="domain_quality_base", experiment_id=EXPERIMENT_ID)
 monitoring_judge = aligned_judge.start(
-    sampling_config=ScorerSamplingConfig(sample_rate=0.1)  # Score 10% of production traffic
+    sampling_config=ScorerSamplingConfig(sample_rate=0.1)  # 對 10% 的生產流量進行評分
 )
 ```
 
-**Prompt optimization input (see `patterns-prompt-optimization.md`):**
+**提示最佳化輸入（參見 `patterns-prompt-optimization.md`）：**
 ```python
-# Pass the aligned judge as the scorer in optimize_prompts()
+# 在 optimize_prompts() 中將對齊後的評審員作為評分器傳入
 result = mlflow.genai.optimize_prompts(
     predict_fn=predict_fn,
     train_data=optimization_dataset,
     prompt_uris=[prompt.uri],
     optimizer=GepaPromptOptimizer(reflection_model=REFLECTION_MODEL),
-    scorers=[aligned_judge],   # ← aligned judge drives GEPA's reflection
+    scorers=[aligned_judge],   # ← 對齊後的評審員驅動 GEPA 的反思
 )
 ```
 
-**Regression detection across agent versions:**
+**跨代理版本的回歸偵測：**
 ```python
 with mlflow.start_run(run_name="agent_v2"):
     v2_results = evaluate(data=eval_records, predict_fn=agent_v2, scorers=[aligned_judge])
 
-# Metrics from aligned judge are more meaningful than unaligned LLM judge
+# 來自對齊後評審員的指標比未對齊 LLM 評審員更具意義
 ```

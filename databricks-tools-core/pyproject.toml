@@ -47,3 +47,8 @@ markers = [
 [tool.setuptools.packages.find]
 where = ["."]
 include = ["databricks_tools_core*"]
+
+[[tool.uv.index]]
+name = "nexus"
+url = "https://nexus01p.fareastone.com.tw:8081/repository/pypi-proxy/simple"
+default = true

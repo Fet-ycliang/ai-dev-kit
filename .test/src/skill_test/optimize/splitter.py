@@ -1,12 +1,12 @@
-"""Train/val dataset splitting for GEPA optimization.
+"""供 GEPA 優化使用的訓練/驗證資料集分割。
 
-Loads ground_truth.yaml test cases and splits them into train/val sets,
-stratified by metadata.category when possible.
+載入 ground_truth.yaml 測試案例，並在可行時依 metadata.category
+進行分層 train/val 分割。
 
-GEPA's DefaultDataInst format: {"input": str, "additional_context": dict[str, str], "answer": str}
+GEPA 的 DefaultDataInst 格式：{"input": str, "additional_context": dict[str, str], "answer": str}
 
-We store our internal task representation alongside, and convert to GEPA format
-when needed via to_gepa_instances().
+我們會同時儲存內部任務表示，並在需要時透過 to_gepa_instances()
+轉換為 GEPA 格式。
 """
 
 import json
@@ -22,21 +22,21 @@ from ..dataset import EvalRecord, get_dataset_source
 
 
 class SkillTask(TypedDict, total=False):
-    """Internal task representation (superset of GEPA DefaultDataInst)."""
+    """內部任務表示（GEPA DefaultDataInst 的超集）。"""
 
     id: str
-    input: str  # The prompt (maps to DefaultDataInst.input)
-    answer: str  # Expected response (maps to DefaultDataInst.answer)
-    additional_context: dict[str, str]  # Extra context (maps to DefaultDataInst.additional_context)
-    expectations: dict[str, Any]  # Scorer expectations (not sent to GEPA directly)
-    metadata: dict[str, Any]  # Category, difficulty, etc.
+    input: str  # 提示文字（對應 DefaultDataInst.input）
+    answer: str  # 預期回應（對應 DefaultDataInst.answer）
+    additional_context: dict[str, str]  # 額外 context（對應 DefaultDataInst.additional_context）
+    expectations: dict[str, Any]  # 評分器期望值（不直接傳給 GEPA）
+    metadata: dict[str, Any]  # 類別、難度等
 
 
 def _summarize_expectations(expectations: dict[str, Any]) -> str:
-    """Produce a human-readable summary of what a task tests.
+    """產生任務測試內容的人類可讀摘要。
 
-    Included in additional_context so GEPA's reflection LM understands
-    what each test case is checking without parsing JSON.
+    會放入 additional_context，讓 GEPA 的 reflection LM 不必解析 JSON，
+    也能理解每個測試案例檢查的是什麼。
     """
     parts = []
 
@@ -62,7 +62,7 @@ def _summarize_expectations(expectations: dict[str, Any]) -> str:
 
 
 def _record_to_task(record: EvalRecord) -> SkillTask:
-    """Convert an EvalRecord to our internal task format."""
+    """將 EvalRecord 轉換為我們的內部任務格式。"""
     task: SkillTask = {
         "id": record.id,
         "input": record.inputs.get("prompt", ""),
@@ -74,17 +74,17 @@ def _record_to_task(record: EvalRecord) -> SkillTask:
         task["answer"] = record.outputs.get("response", "")
     if record.expectations:
         task["expectations"] = record.expectations
-        # Also encode expectations into additional_context for GEPA reflection
+        # 也將 expectations 編碼進 additional_context，供 GEPA reflection 使用
         task["additional_context"]["expectations"] = json.dumps(record.expectations)
-        # Human-readable summary for GEPA's reflection LM
+        # 給 GEPA reflection LM 的人類可讀摘要
         task["additional_context"]["evaluation_criteria"] = _summarize_expectations(record.expectations)
     return task
 
 
 def to_gepa_instances(tasks: list[SkillTask]) -> list[dict[str, Any]]:
-    """Convert internal tasks to GEPA DefaultDataInst format.
+    """將內部任務轉換為 GEPA DefaultDataInst 格式。
 
-    Returns list of {"input": str, "additional_context": dict[str,str], "answer": str}
+    回傳 {"input": str, "additional_context": dict[str,str], "answer": str} 的清單
     """
     return [
         {
@@ -102,19 +102,19 @@ def create_gepa_datasets(
     base_path: Path | None = None,
     seed: int = 42,
 ) -> tuple[list[SkillTask], list[SkillTask] | None]:
-    """Load ground_truth.yaml, stratify by metadata.category, split into train/val.
+    """載入 ground_truth.yaml，依 metadata.category 分層，並切分為 train/val。
 
-    For skills with <5 test cases: uses all as train, val=None (single-task mode).
-    For skills with >=5 test cases: stratified train/val split (generalization mode).
+    對於少於 5 個測試案例的技能：全部作為 train，val=None（單任務模式）。
+    對於至少 5 個測試案例的技能：採用分層 train/val 分割（泛化模式）。
 
-    Args:
-        skill_name: Name of the skill to load test cases for
-        val_ratio: Fraction of test cases to hold out for validation
-        base_path: Override base path for skills directory
-        seed: Random seed for reproducible splits
+    參數:
+        skill_name: 要載入測試案例的技能名稱
+        val_ratio: 要保留作為驗證集的測試案例比例
+        base_path: 技能目錄基底路徑的覆寫值
+        seed: 用於可重現分割的隨機種子
 
-    Returns:
-        Tuple of (train_tasks, val_tasks). val_tasks is None if <5 test cases.
+    回傳:
+        (train_tasks, val_tasks) 的 tuple。若測試案例少於 5 個，val_tasks 會是 None。
     """
     source = get_dataset_source(skill_name, base_path)
     records = source.load()
@@ -124,11 +124,11 @@ def create_gepa_datasets(
 
     tasks = [_record_to_task(r) for r in records]
 
-    # Too few for a meaningful val split
+    # 數量太少，不足以做有意義的 val 分割
     if len(tasks) < 5:
         return tasks, None
 
-    # Stratify by category
+    # 依類別分層
     by_category: dict[str, list[SkillTask]] = defaultdict(list)
     for task in tasks:
         cat = task.get("metadata", {}).get("category", "_uncategorized")
@@ -142,7 +142,7 @@ def create_gepa_datasets(
         rng.shuffle(cat_tasks)
         n_val = max(1, int(len(cat_tasks) * val_ratio))
 
-        # Ensure at least 1 train sample per category
+        # 確保每個類別至少有 1 個 train 樣本
         if len(cat_tasks) - n_val < 1:
             n_val = len(cat_tasks) - 1
 
@@ -152,7 +152,7 @@ def create_gepa_datasets(
             val.extend(cat_tasks[:n_val])
             train.extend(cat_tasks[n_val:])
 
-    # If val ended up empty, fall back
+    # 如果 val 最終為空，則回退
     if not val:
         return tasks, None
 
@@ -166,25 +166,25 @@ def create_cross_skill_dataset(
     seed: int = 42,
     tool_modules: list[str] | None = None,
 ) -> list[SkillTask]:
-    """Create a merged dataset from multiple skills for cross-skill tool optimization.
+    """從多個技能建立合併資料集，用於跨技能工具優化。
 
-    If ``skill_names`` is None, discovers all skills that have a ``ground_truth.yaml``.
-    Loads tasks from each, caps at ``max_per_skill``, and tags each task with
-    ``metadata["source_skill"]``.
+    若 ``skill_names`` 為 None，則會探索所有具有 ``ground_truth.yaml`` 的技能。
+    會從每個技能載入任務、以 ``max_per_skill`` 為上限，並在每個任務上標記
+    ``metadata["source_skill"]``。
 
-    Args:
-        skill_names: Specific skills to include. None = auto-discover all.
-        max_per_skill: Maximum tasks per skill to keep the dataset balanced.
-        base_path: Override base path for skills directory.
-        seed: Random seed for reproducible sampling.
+    參數:
+        skill_names: 要納入的特定技能。None = 自動探索全部。
+        max_per_skill: 每個技能保留的最大任務數，以維持資料集平衡。
+        base_path: 技能目錄基底路徑的覆寫值。
+        seed: 用於可重現抽樣的隨機種子。
 
-    Returns:
-        Merged list of SkillTask dicts, each tagged with source_skill.
+    回傳:
+        合併後的 SkillTask dict 清單，每個項目都標記了 source_skill。
     """
     if base_path is None:
         base_path = Path(".test/skills")
 
-    # Auto-discover skills with ground_truth.yaml
+    # 自動探索具有 ground_truth.yaml 的技能
     if skill_names is None:
         if not base_path.exists():
             return []
@@ -194,7 +194,7 @@ def create_cross_skill_dataset(
             if d.is_dir() and (d / "ground_truth.yaml").exists() and not d.name.startswith("_")
         )
 
-    # Filter skills by tool_modules relevance
+    # 依 tool_modules 關聯性篩選技能
     if tool_modules:
         tool_modules_set = set(tool_modules)
         filtered = []
@@ -204,13 +204,13 @@ def create_cross_skill_dataset(
                 manifest = yaml.safe_load(manifest_path.read_text()) or {}
                 skill_tool_modules = manifest.get("tool_modules")
                 if skill_tool_modules is None:
-                    # No field → include by default (backward compat)
+                    # 沒有此欄位 → 預設納入（向後相容）
                     filtered.append(name)
                 elif tool_modules_set & set(skill_tool_modules):
                     filtered.append(name)
-                # else: skill declares modules that don't overlap → skip
+                # 否則：skill 宣告的模組與之無交集 → 略過
             else:
-                filtered.append(name)  # No manifest → include
+                filtered.append(name)  # 沒有 manifest → 納入
         skill_names = filtered
 
     if not skill_names:
@@ -228,13 +228,13 @@ def create_cross_skill_dataset(
 
         tasks = [_record_to_task(r) for r in records]
 
-        # Tag with source skill
+        # 標記來源技能
         for t in tasks:
             meta = t.get("metadata", {})
             meta["source_skill"] = skill_name
             t["metadata"] = meta
 
-        # Cap per skill
+        # 對每個技能設上限
         if len(tasks) > max_per_skill:
             rng.shuffle(tasks)
             tasks = tasks[:max_per_skill]
@@ -245,20 +245,19 @@ def create_cross_skill_dataset(
 
 
 def generate_bootstrap_tasks(skill_name: str, base_path: Path | None = None) -> list[SkillTask]:
-    """Generate synthetic tasks from a SKILL.md when no ground_truth.yaml exists.
+    """當不存在 ground_truth.yaml 時，從 SKILL.md 產生合成任務。
 
-    Parses the SKILL.md for documented patterns and generates basic test prompts
-    that exercise each pattern.
+    會解析 SKILL.md 中記錄的模式，並產生可測試各模式的基本 prompt。
 
-    Args:
-        skill_name: Name of the skill
-        base_path: Override base path for skills directory
+    參數:
+        skill_name: 技能名稱
+        base_path: 技能目錄基底路徑的覆寫值
 
-    Returns:
-        List of synthetic SkillTask dicts
+    回傳:
+        合成 SkillTask dict 清單
     """
     if base_path is None:
-        # Find repo root for path resolution
+        # 為路徑解析找出 repo 根目錄
         from .utils import find_repo_root
 
         repo_root = find_repo_root()
@@ -280,7 +279,7 @@ def generate_bootstrap_tasks(skill_name: str, base_path: Path | None = None) -> 
 
     tasks: list[SkillTask] = []
 
-    # Extract h2/h3 headers as topic areas
+    # 擷取 h2/h3 標題作為主題區域
     headers = re.findall(r"^#{2,3}\s+(.+)$", skill_content, re.MULTILINE)
 
     for i, header in enumerate(headers):
@@ -294,7 +293,7 @@ def generate_bootstrap_tasks(skill_name: str, base_path: Path | None = None) -> 
             }
         )
 
-    # Extract code block language hints for targeted prompts
+    # 擷取 code block 的語言提示，以產生更具針對性的 prompt
     code_langs = set(re.findall(r"```(\w+)\n", skill_content))
     for lang in code_langs:
         tasks.append(

@@ -1,10 +1,10 @@
-"""ASI diagnostics: convert MLflow Feedback to optimize_anything SideInfo.
+"""ASI 診斷：將 MLflow Feedback 轉換為 optimize_anything SideInfo。
 
-Thin adapter that passes judge rationale through to GEPA's reflection LM
-WITHOUT truncation. The critical fix: GEPA's reflection LM gets full
-diagnostic text from judges, not truncated snippets.
+精簡轉接層，會將評判器 rationale 完整傳遞給 GEPA 的 reflection LM，
+不做截斷。關鍵修正是：GEPA 的 reflection LM 會取得來自評判器的
+完整診斷文字，而不是被截斷的片段。
 
-Also provides ``feedback_to_score()`` for backward compatibility with tests.
+另外也提供 ``feedback_to_score()``，以維持與測試的向後相容性。
 """
 
 from __future__ import annotations
@@ -15,12 +15,12 @@ from mlflow.entities import Feedback
 
 
 def feedback_to_score(feedback: Feedback) -> float | None:
-    """Convert a single MLflow Feedback to a numeric score.
+    """將單一 MLflow Feedback 轉換為數值分數。
 
-    Mapping:
+    對應規則：
         "yes" -> 1.0
         "no"  -> 0.0
-        "skip" -> None (excluded from scoring)
+        "skip" -> None（不納入評分）
         numeric -> float(value)
     """
     value = feedback.value
@@ -38,10 +38,10 @@ def feedback_to_score(feedback: Feedback) -> float | None:
 
 
 def feedback_to_asi(feedbacks: list[Feedback]) -> tuple[float, dict[str, Any]]:
-    """Convert MLflow Feedback objects to optimize_anything (score, SideInfo).
+    """將 MLflow Feedback 物件轉換為 optimize_anything 的 (score, SideInfo)。
 
-    Computes the mean score across non-skipped feedbacks and builds a
-    SideInfo dict with full rationale (no truncation).
+    會計算未略過 feedback 的平均分數，並建立一個
+    含完整 rationale（不截斷）的 SideInfo dict。
     """
     scores = []
     side_info: dict[str, Any] = {}

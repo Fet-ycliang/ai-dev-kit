@@ -1,154 +1,154 @@
 # Knowledge Assistants (KA)
 
-Knowledge Assistants are document-based Q&A systems that use RAG (Retrieval-Augmented Generation) to answer questions from indexed documents.
+Knowledge Assistants 是以文件為基礎的問答系統，使用 RAG（Retrieval-Augmented Generation）從已建立索引的文件中回答問題。
 
-## What is a Knowledge Assistant?
+## 什麼是 Knowledge Assistant？
 
-A KA connects to documents stored in a Unity Catalog Volume and allows users to ask natural language questions. The system:
+KA 會連接儲存在 Unity Catalog Volume 中的文件，讓使用者可以提出自然語言問題。系統會：
 
-1. **Indexes** all documents in the volume (PDFs, text files, etc.)
-2. **Retrieves** relevant chunks when a question is asked
-3. **Generates** an answer using the retrieved context
+1. **建立索引**：為 volume 中的所有文件建立索引（PDF、文字檔等）
+2. **擷取內容**：當有人提問時，擷取相關的內容片段
+3. **產生答案**：使用擷取到的情境內容產生答案
 
-## When to Use
+## 何時使用
 
-Use a Knowledge Assistant when:
-- You have a collection of documents (policies, manuals, guides, reports)
-- Users need to find specific information without reading entire documents
-- You want to provide a conversational interface to documentation
+在以下情境可使用 Knowledge Assistant：
+- 你有一批文件集合（政策、手冊、指南、報告）
+- 使用者需要找出特定資訊，而不想閱讀整份文件
+- 你想為文件提供對話式介面
 
-## Prerequisites
+## 先決條件
 
-Before creating a KA, you need documents in a Unity Catalog Volume:
+建立 KA 之前，你需要在 Unity Catalog Volume 中準備好文件：
 
-**Option 1: Use existing documents**
-- Upload PDFs/text files to a Volume manually or via SDK
+**選項 1：使用既有文件**
+- 手動或透過 SDK 將 PDF／文字檔上傳到 Volume
 
-**Option 2: Generate synthetic documents**
-- Use the `databricks-unstructured-pdf-generation` skill to create realistic PDF documents
-- Each PDF gets a companion JSON file with question/guideline pairs for evaluation
+**選項 2：產生合成文件**
+- 使用 `databricks-unstructured-pdf-generation` skill 建立擬真的 PDF 文件
+- 每份 PDF 都會附帶一個 companion JSON 檔，內含 question/guideline 配對，供評估使用
 
-## Creating a Knowledge Assistant
+## 建立 Knowledge Assistant
 
-Use the `manage_ka` tool with `action="create_or_update"`:
+使用 `manage_ka` 工具並指定 `action="create_or_update"`：
 
-- `name`: "HR Policy Assistant"
+- `name`: "HR 政策助理"
 - `volume_path`: "/Volumes/my_catalog/my_schema/raw_data/hr_docs"
-- `description`: "Answers questions about HR policies and procedures"
-- `instructions`: "Be helpful and always cite the specific policy document when answering. If you're unsure, say so."
+- `description`: "回答有關 HR 政策與流程的問題"
+- `instructions`: "請以專業且樂於協助的方式回答，並在作答時一律引用具體的政策文件。若不確定，請明確說明。"
 
-The tool will:
-1. Create the KA with the specified volume as a knowledge source
-2. Scan the volume for JSON files with example questions (from PDF generation)
-3. Queue examples to be added once the endpoint is ready
+工具會：
+1. 使用指定的 volume 作為 knowledge source 建立 KA
+2. 掃描 volume 中包含範例問題的 JSON 檔案（來自 PDF 產生流程）
+3. 將範例排入佇列，待 endpoint 就緒後自動新增
 
-## Provisioning Timeline
+## 佈建時程
 
-After creation, the KA endpoint needs to provision:
+建立後，KA endpoint 需要時間完成佈建：
 
-| Status | Meaning | Duration |
-|--------|---------|----------|
-| `PROVISIONING` | Creating the endpoint | 2-5 minutes |
-| `ONLINE` | Ready to use | - |
-| `OFFLINE` | Not currently running | - |
+| 狀態 | 說明 | 時間 |
+|------|------|------|
+| `PROVISIONING` | 正在建立 endpoint | 2-5 分鐘 |
+| `ONLINE` | 可開始使用 | - |
+| `OFFLINE` | 目前未執行 | - |
 
-Use `manage_ka` with `action="get"` to check the status:
+使用 `manage_ka` 並指定 `action="get"` 可檢查狀態：
 
-- `tile_id`: "<the tile_id from create>"
+- `tile_id`: "<來自 create 的 tile_id>"
 
-## Adding Example Questions
+## 加入範例問題
 
-Example questions help with:
-- **Evaluation**: Test if the KA answers correctly
-- **User onboarding**: Show users what to ask
+範例問題有助於：
+- **評估**：測試 KA 是否能正確回答
+- **使用者上手**：讓使用者知道可以怎麼提問
 
-### Automatic (from PDF generation)
+### 自動加入（來自 PDF 產生流程）
 
-If you used `generate_pdf_documents`, each PDF has a companion JSON with:
+如果你使用 `generate_pdf_documents`，每份 PDF 都會附帶一個 companion JSON，內容如下：
 ```json
 {
-  "question": "What is the company's remote work policy?",
-  "guideline": "Should mention the 3-day minimum in-office requirement"
+  "question": "公司的遠端工作政策是什麼？",
+  "guideline": "應提到每週至少 3 天進辦公室的要求"
 }
 ```
 
-These are automatically added when `add_examples_from_volume=true` (default).
+當 `add_examples_from_volume=true`（預設值）時，這些範例會自動加入。
 
-### Manual
+### 手動加入
 
-Examples can also be specified in the `manage_ka` create_or_update call if needed.
+如有需要，也可以在 `manage_ka` 的 create_or_update 呼叫中直接指定範例。
 
-## Best Practices
+## 最佳實務
 
-### Document Organization
+### 文件組織
 
-- **One volume per topic**: e.g., `/Volumes/catalog/schema/raw_data/hr_docs`, `/Volumes/catalog/schema/raw_data/tech_docs`
-- **Clear naming**: Name files descriptively so chunks are identifiable
+- **每個主題使用一個 volume**：例如 `/Volumes/catalog/schema/raw_data/hr_docs`、`/Volumes/catalog/schema/raw_data/tech_docs`
+- **清楚命名**：以具描述性的方式命名檔案，讓內容片段可辨識
 
-### Instructions
+### 撰寫 Instructions
 
-Good instructions improve answer quality:
+良好的 instructions 能提升回答品質：
 
 ```
-Be helpful and professional. When answering:
-1. Always cite the specific document and section
-2. If multiple documents are relevant, mention all of them
-3. If the information isn't in the documents, clearly say so
-4. Use bullet points for multi-part answers
+請以專業且樂於協助的方式回答。回答時請遵守以下原則：
+1. 一律引用具體的文件與章節
+2. 若有多份文件相關，請一併提及
+3. 若文件中沒有該資訊，請明確說明
+4. 多部分答案請使用項目符號
 ```
 
-### Updating Content
+### 更新內容
 
-To update the indexed documents:
-1. Add/remove/modify files in the volume
-2. Call `manage_ka` with `action="create_or_update"`, the same name and `tile_id`
-3. The KA will re-index the updated content
+若要更新已建立索引的文件：
+1. 在 volume 中新增／移除／修改檔案
+2. 使用相同的名稱與 `tile_id` 呼叫 `manage_ka`，並指定 `action="create_or_update"`
+3. KA 會重新為更新後的內容建立索引
 
-## Example Workflow
+## 範例工作流程
 
-1. **Generate PDF documents** using `databricks-unstructured-pdf-generation` skill:
-   - Creates PDFs in `/Volumes/catalog/schema/raw_data/pdf_documents`
-   - Creates JSON files with question/guideline pairs
+1. 使用 `databricks-unstructured-pdf-generation` skill **產生 PDF 文件**：
+   - 在 `/Volumes/catalog/schema/raw_data/pdf_documents` 建立 PDF
+   - 建立 question/guideline 配對的 JSON 檔案
 
-2. **Create the Knowledge Assistant**:
-   - `name`: "My Document Assistant"
+2. **建立 Knowledge Assistant**：
+   - `name`: "我的文件助理"
    - `volume_path`: "/Volumes/catalog/schema/raw_data/pdf_documents"
 
-3. **Wait for ONLINE status** (2-5 minutes)
+3. **等待 `ONLINE` 狀態**（2-5 分鐘）
 
-4. **Examples are automatically added** from the JSON files
+4. **自動從 JSON 檔案加入範例**
 
-5. **Test the KA** in the Databricks UI
+5. **在 Databricks UI 中測試 KA**
 
-## Using KA in Supervisor Agents
+## 在 Supervisor Agents 中使用 KA
 
-Knowledge Assistants can be used as agents in a Supervisor Agent (formerly Multi-Agent Supervisor, MAS). Each KA has an associated model serving endpoint.
+Knowledge Assistants 可作為 Supervisor Agent（前稱 Multi-Agent Supervisor, MAS）中的 agent。每個 KA 都有對應的 model serving endpoint。
 
-### Finding the Endpoint Name
+### 取得 endpoint 名稱
 
-Use `manage_ka` with `action="get"` to retrieve the KA details. The response includes:
-- `tile_id`: The unique identifier for the KA
-- `name`: The KA name (sanitized)
-- `endpoint_status`: Current status (ONLINE, PROVISIONING, etc.)
+使用 `manage_ka` 並指定 `action="get"` 來取得 KA 詳細資料。回應中會包含：
+- `tile_id`：KA 的唯一識別子
+- `name`：KA 名稱（已清理）
+- `endpoint_status`：目前狀態（ONLINE、PROVISIONING 等）
 
-The endpoint name follows this pattern: `ka-{tile_id}-endpoint`
+endpoint 名稱遵循以下格式：`ka-{tile_id}-endpoint`
 
-### Finding a KA by Name
+### 依名稱尋找 KA
 
-If you know the KA name but not the tile_id, use `manage_ka` with `action="find_by_name"`:
+如果你知道 KA 名稱但不知道 tile_id，可使用 `manage_ka` 並指定 `action="find_by_name"`：
 
 ```python
 manage_ka(action="find_by_name", name="HR_Policy_Assistant")
-# Returns: {"found": True, "tile_id": "01abc...", "name": "HR_Policy_Assistant", "endpoint_name": "ka-01abc...-endpoint"}
+# 回傳：{"found": True, "tile_id": "01abc...", "name": "HR_Policy_Assistant", "endpoint_name": "ka-01abc...-endpoint"}
 ```
 
-### Example: Adding KA to Supervisor Agent
+### 範例：將 KA 加入 Supervisor Agent
 
 ```python
-# First, find the KA
+# 先找到 KA
 manage_ka(action="find_by_name", name="HR_Policy_Assistant")
 
-# Then use the tile_id in a Supervisor Agent
+# 再將 tile_id 用於 Supervisor Agent
 manage_mas(
     action="create_or_update",
     name="Support_MAS",
@@ -156,28 +156,28 @@ manage_mas(
         {
             "name": "hr_agent",
             "ka_tile_id": "<tile_id from find_by_name>",
-            "description": "Answers HR policy questions from the employee handbook"
+            "description": "回答員工手冊中的 HR 政策問題"
         }
     ]
 )
 ```
 
-## Troubleshooting
+## 疑難排解
 
-### Endpoint stays in PROVISIONING
+### Endpoint 一直停留在 PROVISIONING
 
-- Check workspace capacity and quotas
-- Verify the volume path is accessible
-- Wait up to 10 minutes before investigating further
+- 檢查 workspace 容量與配額
+- 確認 volume 路徑可存取
+- 最多等待 10 分鐘後再進一步檢查
 
-### Documents not indexed
+### 文件未建立索引
 
-- Ensure files are in a supported format (PDF, TXT, MD)
-- Check file permissions in the volume
-- Verify the volume path is correct
+- 確認檔案格式受支援（PDF、TXT、MD）
+- 檢查 volume 中的檔案權限
+- 確認 volume 路徑正確
 
-### Poor answer quality
+### 回答品質不佳
 
-- Add more specific instructions
-- Ensure documents are well-structured
-- Consider breaking large documents into smaller files
+- 加入更具體的 instructions
+- 確保文件結構良好
+- 可考慮將大型文件拆成較小的檔案

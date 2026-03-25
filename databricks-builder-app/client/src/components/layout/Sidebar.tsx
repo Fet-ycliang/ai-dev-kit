@@ -34,7 +34,7 @@ export function Sidebar({
 
   const handleDelete = (e: React.MouseEvent, conversationId: string) => {
     e.stopPropagation();
-    if (confirm('Delete this conversation?')) {
+    if (confirm('要刪除此對話嗎？')) {
       onDeleteConversation(conversationId);
     }
   };
@@ -46,7 +46,7 @@ export function Sidebar({
         ${isCollapsed ? 'w-20' : 'w-[var(--sidebar-width)]'}
       `}
     >
-      {/* Header - New Conversation Button */}
+      {/* 頁首 - 新對話按鈕 */}
       <div
         className={`${isCollapsed ? 'p-2' : 'p-4'} border-b border-[var(--color-border)]/20 transition-all duration-300`}
       >
@@ -59,26 +59,26 @@ export function Sidebar({
           </div>
           {!isCollapsed && (
             <span className="text-[var(--color-text-heading)] font-semibold text-[15px] transition-opacity duration-300">
-              New Chat
+              新對話
             </span>
           )}
         </button>
       </div>
 
-      {/* Conversations List */}
+      {/* 對話列表 */}
       {!isCollapsed && (
         <div className="flex-1 overflow-y-auto overflow-x-hidden p-3">
           {isLoading ? (
             <div className="text-center py-12 text-[var(--color-text-muted)]">
               <Loader2 className="h-8 w-8 mx-auto mb-3 opacity-60 animate-spin" />
-              <p className="text-sm font-medium">Loading...</p>
+              <p className="text-sm font-medium">載入中...</p>
             </div>
           ) : conversations.length === 0 ? (
             <div className="text-center py-12 text-[var(--color-text-muted)]">
               <MessageSquare className="h-12 w-12 mx-auto mb-3 opacity-40" />
-              <p className="text-sm font-medium">No conversations yet</p>
+              <p className="text-sm font-medium">目前尚無對話</p>
               <p className="text-xs mt-1 opacity-70">
-                Start a new conversation!
+                先開始一則新對話吧！
               </p>
             </div>
           ) : (
@@ -108,13 +108,13 @@ export function Sidebar({
                     {conv.title}
                   </h3>
 
-                  {/* Delete button - show on hover */}
+                  {/* 刪除按鈕 - 滑過時顯示 */}
                   {hoveredConversation === conv.id && (
                     <div className="absolute right-2 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity">
                       <button
                         onClick={(e) => handleDelete(e, conv.id)}
                         className="p-1 rounded hover:bg-black/10 transition-colors"
-                        title="Delete"
+                        title="刪除"
                       >
                         <Trash2
                           className={`h-3 w-3 ${
@@ -133,7 +133,7 @@ export function Sidebar({
         </div>
       )}
 
-      {/* View Skills Button */}
+      {/* 檢視 Skills 按鈕 */}
       {!isCollapsed && onViewSkills && (
         <div className="p-3 border-t border-[var(--color-border)]/20">
           <button
@@ -141,17 +141,17 @@ export function Sidebar({
             className="flex items-center gap-2 w-full px-3 py-2 rounded-lg text-xs text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)] hover:bg-[var(--color-background)] transition-colors"
           >
             <BookOpen className="h-3.5 w-3.5" />
-            View system prompt & skills
+            檢視 System Prompt 與 Skills
           </button>
         </div>
       )}
 
-      {/* Collapse/Expand Button */}
+      {/* 收合 / 展開按鈕 */}
       <div className="absolute -right-3 top-20 z-10">
         <button
           onClick={() => setIsCollapsed(!isCollapsed)}
           className="p-1.5 rounded-full bg-[var(--color-background)] border border-[var(--color-border)] shadow-sm hover:shadow-md transition-all duration-200 group"
-          title={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+          title={isCollapsed ? '展開側邊欄' : '收合側邊欄'}
         >
           {isCollapsed ? (
             <ChevronRight className="h-3 w-3 text-[var(--color-muted-foreground)] group-hover:text-[var(--color-foreground)]" />

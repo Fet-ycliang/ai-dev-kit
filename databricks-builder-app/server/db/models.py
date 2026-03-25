@@ -1,4 +1,4 @@
-"""Database models for Projects, Conversations, and Messages."""
+"""Projects、Conversations 及 Messages 的資料庫模型。"""
 
 import uuid
 from datetime import datetime, timezone
@@ -17,13 +17,13 @@ def utc_now() -> datetime:
 
 
 class Base(DeclarativeBase):
-  """Base class for SQLAlchemy models."""
+  """SQLAlchemy 模型的基礎類別。"""
 
   pass
 
 
 class Project(Base):
-  """Project model - user-scoped container for conversations."""
+  """Project 模型 - 使用者範圍內的對話容器。"""
 
   __tablename__ = 'projects'
 
@@ -34,7 +34,7 @@ class Project(Base):
     DateTime(timezone=True), default=utc_now, nullable=False
   )
 
-  # Relationships
+  # 關聯
   conversations: Mapped[List['Conversation']] = relationship(
     'Conversation', back_populates='project', cascade='all, delete-orphan'
   )
@@ -42,7 +42,7 @@ class Project(Base):
   __table_args__ = (Index('ix_projects_user_created', 'user_email', 'created_at'),)
 
   def to_dict(self) -> dict[str, Any]:
-    """Convert to dictionary."""
+    """轉換為字典。"""
     return {
       'id': self.id,
       'name': self.name,
@@ -53,7 +53,7 @@ class Project(Base):
 
 
 class Conversation(Base):
-  """Conversation model - represents a Claude Code agent session."""
+  """Conversation 模型 - 代表一個 Claude Code agent session。"""
 
   __tablename__ = 'conversations'
 
@@ -66,23 +66,23 @@ class Conversation(Base):
     DateTime(timezone=True), default=utc_now, nullable=False
   )
 
-  # Claude agent session ID (for resuming sessions)
+  # Claude agent session ID（用於恢復 session）
   session_id: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
 
-  # Databricks cluster ID for code execution
+  # Databricks cluster ID（用於程式碼執行）
   cluster_id: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
 
-  # Default Unity Catalog context
+  # 預設 Unity Catalog 上下文
   default_catalog: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
   default_schema: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
 
-  # Databricks SQL warehouse ID for SQL queries
+  # Databricks SQL warehouse ID（用於 SQL 查詢）
   warehouse_id: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
 
-  # Workspace folder for uploading files (e.g., /Workspace/Users/email/project)
+  # workspace 資料夾（用於上傳檔案，例如 /Workspace/Users/email/project）
   workspace_folder: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
 
-  # Relationships
+  # 關聯
   project: Mapped['Project'] = relationship('Project', back_populates='conversations')
   messages: Mapped[List['Message']] = relationship(
     'Message', back_populates='conversation', cascade='all, delete-orphan'
@@ -91,7 +91,7 @@ class Conversation(Base):
   __table_args__ = (Index('ix_conversations_project_created', 'project_id', 'created_at'),)
 
   def to_dict(self) -> dict[str, Any]:
-    """Convert to dictionary with messages."""
+    """轉換為包含訊息的字典。"""
     return {
       'id': self.id,
       'project_id': self.project_id,
@@ -107,7 +107,7 @@ class Conversation(Base):
     }
 
   def to_dict_summary(self) -> dict[str, Any]:
-    """Convert to dictionary without messages (for list views)."""
+    """轉換為不含訊息的字典（用於列表檢視）。"""
     return {
       'id': self.id,
       'project_id': self.project_id,
@@ -123,7 +123,7 @@ class Conversation(Base):
 
 
 class Message(Base):
-  """Message model - individual chat messages within a conversation."""
+  """Message 模型 - 對話中的個別聊天訊息。"""
 
   __tablename__ = 'messages'
 
@@ -131,20 +131,20 @@ class Message(Base):
   conversation_id: Mapped[str] = mapped_column(
     String(50), ForeignKey('conversations.id', ondelete='CASCADE'), nullable=False
   )
-  role: Mapped[str] = mapped_column(String(20), nullable=False)  # "user" or "assistant"
+  role: Mapped[str] = mapped_column(String(20), nullable=False)  # "user" 或 "assistant"
   content: Mapped[str] = mapped_column(Text, nullable=False)
   timestamp: Mapped[datetime] = mapped_column(
     DateTime(timezone=True), default=utc_now, nullable=False
   )
   is_error: Mapped[bool] = mapped_column(Boolean, default=False)
 
-  # Relationships
+  # 關聯
   conversation: Mapped['Conversation'] = relationship('Conversation', back_populates='messages')
 
   __table_args__ = (Index('ix_messages_conversation_timestamp', 'conversation_id', 'timestamp'),)
 
   def to_dict(self) -> dict[str, Any]:
-    """Convert to dictionary."""
+    """轉換為字典。"""
     return {
       'id': self.id,
       'conversation_id': self.conversation_id,
@@ -156,7 +156,7 @@ class Message(Base):
 
 
 class ProjectBackup(Base):
-  """Stores zipped backup of project files for restore after app restart."""
+  """儲存專案檔案的壓縮備份，用於應用程式重啟後恢復。"""
 
   __tablename__ = 'project_backup'
 
@@ -170,10 +170,9 @@ class ProjectBackup(Base):
 
 
 class Execution(Base):
-  """Stores execution state for session independence.
+  """儲存執行狀態以實現 session 獨立性。
 
-  Allows users to reconnect to running/completed executions after
-  navigating away or refreshing the page.
+  允許使用者在離開或重新整理頁面後重新連接到執行中或已完成的執行。
   """
 
   __tablename__ = 'executions'
@@ -190,7 +189,7 @@ class Execution(Base):
   )  # running, completed, cancelled, error
   events_json: Mapped[str] = mapped_column(
     Text, nullable=False, default='[]'
-  )  # JSON array of events
+  )  # events 的 JSON 陣列
   error: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
   created_at: Mapped[datetime] = mapped_column(
     DateTime(timezone=True), default=utc_now, nullable=False
@@ -205,7 +204,7 @@ class Execution(Base):
   )
 
   def to_dict(self) -> dict[str, Any]:
-    """Convert to dictionary."""
+    """轉換為字典。"""
     import json
     return {
       'id': self.id,

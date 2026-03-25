@@ -1,14 +1,14 @@
-# Task-Specific AI Functions — Full Reference
+# 任務專用 AI Functions — 完整參考
 
-These functions require no model endpoint selection. They call pre-configured Foundation Model APIs optimized for each task. All require DBR 15.1+ (15.4 ML LTS for batch); `ai_parse_document` requires DBR 17.1+.
+這些函式不需要選擇 model endpoint。它們會呼叫針對各任務最佳化的預先設定 Foundation Model API。全部都需要 DBR 15.1+（批次處理建議 15.4 ML LTS）；`ai_parse_document` 需要 DBR 17.1+。
 
 ---
 
 ## `ai_analyze_sentiment`
 
-**Docs:** https://docs.databricks.com/aws/en/sql/language-manual/functions/ai_analyze_sentiment
+**文件：** https://docs.databricks.com/aws/en/sql/language-manual/functions/ai_analyze_sentiment
 
-Returns one of: `positive`, `negative`, `neutral`, `mixed`, or `NULL`.
+會回傳以下其中之一：`positive`、`negative`、`neutral`、`mixed` 或 `NULL`。
 
 ```sql
 SELECT ai_analyze_sentiment(review_text) AS sentiment
@@ -25,17 +25,17 @@ df.withColumn("sentiment", expr("ai_analyze_sentiment(review_text)")).display()
 
 ## `ai_classify`
 
-**Docs:** https://docs.databricks.com/aws/en/sql/language-manual/functions/ai_classify
+**文件：** https://docs.databricks.com/aws/en/sql/language-manual/functions/ai_classify
 
-**Syntax:** `ai_classify(content, labels)`
-- `content`: STRING — text to classify
-- `labels`: ARRAY\<STRING\> — 2 to 20 mutually exclusive categories
+**語法：** `ai_classify(content, labels)`
+- `content`: STRING — 要分類的文字
+- `labels`: ARRAY\<STRING\> — 2 到 20 個互斥類別
 
-Returns the matching label or `NULL`.
+回傳符合的標籤，或 `NULL`。
 
 ```sql
 SELECT ticket_text,
-       ai_classify(ticket_text, ARRAY('urgent', 'not urgent', 'spam')) AS priority
+       ai_classify(ticket_text, ARRAY('緊急', '不緊急', '垃圾訊息')) AS priority
 FROM support_tickets;
 ```
 
@@ -44,36 +44,36 @@ from pyspark.sql.functions import expr
 df = spark.table("support_tickets")
 df.withColumn(
     "priority",
-    expr("ai_classify(ticket_text, array('urgent', 'not urgent', 'spam'))")
+    expr("ai_classify(ticket_text, array('緊急', '不緊急', '垃圾訊息'))")
 ).display()
 ```
 
-**Tips:**
-- Fewer labels = more consistent results (2–5 is optimal)
-- Labels should be mutually exclusive and clearly distinguishable
-- Not suitable for multi-label classification — run multiple calls if needed
+**提示：**
+- 標籤越少，結果通常越一致（2–5 個最佳）
+- 標籤應互斥且容易清楚區分
+- 不適合多標籤分類；如有需要請分次呼叫
 
 ---
 
 ## `ai_extract`
 
-**Docs:** https://docs.databricks.com/aws/en/sql/language-manual/functions/ai_extract
+**文件：** https://docs.databricks.com/aws/en/sql/language-manual/functions/ai_extract
 
-**Syntax:** `ai_extract(content, labels)`
-- `content`: STRING — source text
-- `labels`: ARRAY\<STRING\> — entity types to extract
+**語法：** `ai_extract(content, labels)`
+- `content`: STRING — 來源文字
+- `labels`: ARRAY\<STRING\> — 要擷取的實體類型
 
-Returns a STRUCT where each field name matches a label. Fields are `NULL` if not found.
+回傳一個 STRUCT，其中每個欄位名稱都對應到標籤。若找不到，欄位值會是 `NULL`。
 
 ```sql
--- Extract and access fields directly
+-- 擷取後直接存取欄位
 SELECT
     entities.person,
     entities.location,
     entities.date
 FROM (
     SELECT ai_extract(
-        'John Doe called from New York on 2024-01-15.',
+        'John Doe 於 2024-01-15 從 New York 來電。',
         ARRAY('person', 'location', 'date')
     ) AS entities
     FROM messages
@@ -90,17 +90,17 @@ df = df.withColumn(
 df.select("entities.person", "entities.location", "entities.date").display()
 ```
 
-**Use `ai_query` instead when:** the output has nested arrays or more than ~5 levels of hierarchy.
+**改用 `ai_query` 的情況：** 輸出包含巢狀陣列，或階層深度超過約 5 層。
 
 ---
 
 ## `ai_fix_grammar`
 
-**Docs:** https://docs.databricks.com/aws/en/sql/language-manual/functions/ai_fix_grammar
+**文件：** https://docs.databricks.com/aws/en/sql/language-manual/functions/ai_fix_grammar
 
-**Syntax:** `ai_fix_grammar(content)` — Returns corrected STRING.
+**語法：** `ai_fix_grammar(content)` — 回傳修正後的 STRING。
 
-Optimized for English. Useful for cleaning user-generated content before downstream processing.
+針對英文最佳化。適合在下游處理前，先清理使用者產生的內容。
 
 ```sql
 SELECT ai_fix_grammar(user_comment) AS corrected FROM user_feedback;
@@ -116,15 +116,15 @@ df.withColumn("corrected", expr("ai_fix_grammar(user_comment)")).display()
 
 ## `ai_gen`
 
-**Docs:** https://docs.databricks.com/aws/en/sql/language-manual/functions/ai_gen
+**文件：** https://docs.databricks.com/aws/en/sql/language-manual/functions/ai_gen
 
-**Syntax:** `ai_gen(prompt)` — Returns a generated STRING.
+**語法：** `ai_gen(prompt)` — 回傳產生的 STRING。
 
-Use for free-form text generation where the output format doesn't need to be structured. For structured JSON output, use `ai_query` with `responseFormat`.
+適合用於自由格式文字生成，不需要結構化輸出格式時使用。若要產生結構化 JSON，請改用搭配 `responseFormat` 的 `ai_query`。
 
 ```sql
 SELECT product_name,
-       ai_gen(CONCAT('Write a one-sentence marketing tagline for: ', product_name)) AS tagline
+       ai_gen(CONCAT('為以下產品撰寫一句行銷標語：', product_name)) AS tagline
 FROM products;
 ```
 
@@ -133,7 +133,7 @@ from pyspark.sql.functions import expr
 df = spark.table("products")
 df.withColumn(
     "tagline",
-    expr("ai_gen(concat('Write a one-sentence marketing tagline for: ', product_name))")
+    expr("ai_gen(concat('為以下產品撰寫一句行銷標語：', product_name))")
 ).display()
 ```
 
@@ -141,15 +141,15 @@ df.withColumn(
 
 ## `ai_mask`
 
-**Docs:** https://docs.databricks.com/aws/en/sql/language-manual/functions/ai_mask
+**文件：** https://docs.databricks.com/aws/en/sql/language-manual/functions/ai_mask
 
-**Syntax:** `ai_mask(content, labels)`
-- `content`: STRING — text with sensitive data
-- `labels`: ARRAY\<STRING\> — entity types to redact
+**語法：** `ai_mask(content, labels)`
+- `content`: STRING — 含有敏感資料的文字
+- `labels`: ARRAY\<STRING\> — 要遮罩的實體類型
 
-Returns text with identified entities replaced by `[MASKED]`.
+回傳把已識別實體替換成 `[MASKED]` 的文字。
 
-Common label values: `'person'`, `'email'`, `'phone'`, `'address'`, `'ssn'`, `'credit_card'`
+常見標籤值：`'person'`、`'email'`、`'phone'`、`'address'`、`'ssn'`、`'credit_card'`
 
 ```sql
 SELECT ai_mask(
@@ -172,14 +172,14 @@ df.withColumn(
 
 ## `ai_similarity`
 
-**Docs:** https://docs.databricks.com/aws/en/sql/language-manual/functions/ai_similarity
+**文件：** https://docs.databricks.com/aws/en/sql/language-manual/functions/ai_similarity
 
-**Syntax:** `ai_similarity(expr1, expr2)` — Returns a FLOAT between 0.0 and 1.0.
+**語法：** `ai_similarity(expr1, expr2)` — 回傳介於 0.0 到 1.0 的 FLOAT。
 
-Use for fuzzy deduplication, search result ranking, or item matching across datasets.
+可用於模糊去重、搜尋結果排序，或跨資料集項目比對。
 
 ```sql
--- Deduplicate company names (similarity > 0.85 = likely duplicate)
+-- 公司名稱去重（相似度 > 0.85 = 很可能是重複）
 SELECT a.id, b.id, a.name, b.name,
        ai_similarity(a.name, b.name) AS score
 FROM companies a
@@ -201,17 +201,17 @@ df.withColumn(
 
 ## `ai_summarize`
 
-**Docs:** https://docs.databricks.com/aws/en/sql/language-manual/functions/ai_summarize
+**文件：** https://docs.databricks.com/aws/en/sql/language-manual/functions/ai_summarize
 
-**Syntax:** `ai_summarize(content [, max_words])`
-- `content`: STRING — text to summarize
-- `max_words`: INTEGER (optional) — word limit; default 50; use `0` for uncapped
+**語法：** `ai_summarize(content [, max_words])`
+- `content`: STRING — 要摘要的文字
+- `max_words`: INTEGER（選用）— 字數上限；預設 50；使用 `0` 代表不設上限
 
 ```sql
--- Default (50 words)
+-- 預設（50 字）
 SELECT ai_summarize(article_body) AS summary FROM news_articles;
 
--- Custom word limit
+-- 自訂字數上限
 SELECT ai_summarize(article_body, 20)  AS brief   FROM news_articles;
 SELECT ai_summarize(article_body, 0)   AS full    FROM news_articles;
 ```
@@ -226,21 +226,21 @@ df.withColumn("summary", expr("ai_summarize(article_body, 30)")).display()
 
 ## `ai_translate`
 
-**Docs:** https://docs.databricks.com/aws/en/sql/language-manual/functions/ai_translate
+**文件：** https://docs.databricks.com/aws/en/sql/language-manual/functions/ai_translate
 
-**Syntax:** `ai_translate(content, to_lang)`
-- `content`: STRING — source text
-- `to_lang`: STRING — target language code
+**語法：** `ai_translate(content, to_lang)`
+- `content`: STRING — 來源文字
+- `to_lang`: STRING — 目標語言代碼
 
-**Supported languages:** `en`, `de`, `fr`, `it`, `pt`, `hi`, `es`, `th`
+**支援語言：** `en`、`de`、`fr`、`it`、`pt`、`hi`、`es`、`th`
 
-For unsupported languages, use `ai_query` with a multilingual model endpoint.
+若是不支援的語言，請改用搭配多語模型 endpoint 的 `ai_query`。
 
 ```sql
--- Single language
+-- 單一語言
 SELECT ai_translate(product_description, 'es') AS description_es FROM products;
 
--- Multi-language fanout
+-- 多語言展開
 SELECT
     description,
     ai_translate(description, 'fr') AS description_fr,
@@ -261,42 +261,42 @@ df.withColumn(
 
 ## `ai_parse_document`
 
-**Docs:** https://docs.databricks.com/aws/en/sql/language-manual/functions/ai_parse_document
+**文件：** https://docs.databricks.com/aws/en/sql/language-manual/functions/ai_parse_document
 
-**Requires:** DBR 17.1+
+**需求：** DBR 17.1+
 
-**Syntax:** `ai_parse_document(content [, options])`
-- `content`: BINARY — document content loaded from `read_files()` or `spark.read.format("binaryFile")`
-- `options`: MAP\<STRING, STRING\> (optional) — parsing configuration
+**語法：** `ai_parse_document(content [, options])`
+- `content`: BINARY — 由 `read_files()` 或 `spark.read.format("binaryFile")` 載入的文件內容
+- `options`: MAP\<STRING, STRING\>（選用）— 解析設定
 
-**Supported formats:** PDF, JPG/JPEG, PNG, DOCX, PPTX
+**支援格式：** PDF、JPG/JPEG、PNG、DOCX、PPTX
 
-Returns a VARIANT with pages, elements (text paragraphs, tables, figures, headers, footers), bounding boxes, and error metadata.
+回傳包含頁面、元素（文字段落、表格、圖形、頁首、頁尾）、邊界框與錯誤中繼資料的 VARIANT。
 
-**Options:**
+**選項：**
 
-| Key | Values | Description |
+| 鍵 | 值 | 說明 |
 |-----|--------|-------------|
-| `version` | `'2.0'` | Output schema version |
-| `imageOutputPath` | Volume path | Save rendered page images |
-| `descriptionElementTypes` | `''`, `'figure'`, `'*'` | AI-generated descriptions (default: `'*'` for all) |
+| `version` | `'2.0'` | 輸出結構描述版本 |
+| `imageOutputPath` | Volume path | 儲存轉譯後的頁面影像 |
+| `descriptionElementTypes` | `''`, `'figure'`, `'*'` | AI 產生的描述（預設：`'*'` 表示全部） |
 
-**Output schema:**
+**輸出結構描述：**
 
 ```
 document
-├── pages[]          -- page id, image_uri
-└── elements[]       -- extracted content
-    ├── type         -- "text", "table", "figure", etc.
-    ├── content      -- extracted text
-    ├── bbox         -- bounding box coordinates
-    └── description  -- AI-generated description
-metadata             -- file info, schema version
-error_status[]       -- errors per page (if any)
+├── pages[]          -- 頁面 id、image_uri
+└── elements[]       -- 擷取出的內容
+    ├── type         -- "text"、"table"、"figure" 等
+    ├── content      -- 擷取出的文字
+    ├── bbox         -- 邊界框座標
+    └── description  -- AI 產生的描述
+metadata             -- 檔案資訊、結構描述版本
+error_status[]       -- 各頁錯誤（若有）
 ```
 
 ```sql
--- Parse and extract text blocks
+-- 解析並擷取文字區塊
 SELECT
     path,
     parsed:pages[*].elements[*].content AS text_blocks,
@@ -306,7 +306,7 @@ FROM (
     FROM read_files('/Volumes/catalog/schema/landing/docs/', format => 'binaryFile')
 );
 
--- Parse with options (image output + descriptions)
+-- 使用 options 解析（輸出影像 + 描述）
 SELECT ai_parse_document(
     content,
     map(
@@ -333,7 +333,7 @@ df = (
     .filter("parse_error IS NULL")
 )
 
-# Chain with task-specific functions on the extracted text
+# 將任務專用函式串接到擷取出的文字上
 df = (
     df.withColumn("summary",  expr("ai_summarize(text_blocks, 50)"))
       .withColumn("entities", expr("ai_extract(text_blocks, array('date', 'amount', 'vendor'))"))
@@ -342,7 +342,7 @@ df = (
 df.display()
 ```
 
-**Limitations:**
-- Processing is slow for dense or low-resolution documents
-- Suboptimal for non-Latin alphabets and digitally signed PDFs
-- Custom models not supported — always uses the built-in parsing model
+**限制：**
+- 對內容密集或低解析度文件而言，處理速度較慢
+- 對非拉丁字母與數位簽章 PDF 的效果較不理想
+- 不支援自訂模型；一律使用內建解析模型

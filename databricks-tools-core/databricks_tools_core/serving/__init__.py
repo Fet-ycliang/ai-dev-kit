@@ -1,7 +1,7 @@
 """
-Model Serving Operations
+模型服務作業
 
-Functions for managing and querying Databricks Model Serving endpoints.
+用於管理及查詢 Databricks Model Serving endpoints 的函式。
 """
 
 from .endpoints import (

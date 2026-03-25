@@ -1,35 +1,35 @@
-# Filters (Global vs Page-Level)
+# 篩選器（全域 vs 頁面層級）
 
-> **CRITICAL**: Filter widgets use DIFFERENT widget types than charts!
-> - Valid types: `filter-multi-select`, `filter-single-select`, `filter-date-range-picker`
-> - **DO NOT** use `widgetType: "filter"` - this does not exist and will cause errors
-> - Filters use `spec.version: 2`
-> - **ALWAYS include `frame` with `showTitle: true`** for filter widgets
+> **重要**：篩選器元件使用的 widget type 與圖表不同！
+> - 有效類型：`filter-multi-select`、`filter-single-select`、`filter-date-range-picker`
+> - **不要**使用 `widgetType: "filter"` - 這個類型不存在，且會造成錯誤
+> - 篩選器使用 `spec.version: 2`
+> - **篩選器元件一律包含 `frame` 並設定 `showTitle: true`**
 
-**Filter widget types:**
-- `filter-date-range-picker`: for DATE/TIMESTAMP fields
-- `filter-single-select`: categorical with single selection
-- `filter-multi-select`: categorical with multiple selections
+**篩選器元件類型：**
+- `filter-date-range-picker`：用於 DATE/TIMESTAMP 欄位
+- `filter-single-select`：單選類別欄位
+- `filter-multi-select`：多選類別欄位
 
 ---
 
-## Global Filters vs Page-Level Filters
+## 全域篩選器 vs 頁面層級篩選器
 
-| Type | Placement | Scope | Use Case |
+| 類型 | 放置位置 | 影響範圍 | 使用情境 |
 |------|-----------|-------|----------|
-| **Global Filter** | Dedicated page with `"pageType": "PAGE_TYPE_GLOBAL_FILTERS"` | Affects ALL pages that have datasets with the filter field | Cross-dashboard filtering (e.g., date range, campaign) |
-| **Page-Level Filter** | Regular page with `"pageType": "PAGE_TYPE_CANVAS"` | Affects ONLY widgets on that same page | Page-specific filtering (e.g., platform filter on breakdown page only) |
+| **全域篩選器** | 使用 `"pageType": "PAGE_TYPE_GLOBAL_FILTERS"` 的專用頁面 | 影響所有包含該篩選欄位資料集的頁面 | 跨儀表板篩選（例如日期範圍、活動） |
+| **頁面層級篩選器** | 使用 `"pageType": "PAGE_TYPE_CANVAS"` 的一般頁面 | 只影響同一頁上的元件 | 頁面專屬篩選（例如只在 breakdown 頁使用 platform 篩選器） |
 
-**Key Insight**: A filter only affects datasets that contain the filter field. To have a filter affect only specific pages:
-1. Include the filter dimension in datasets for pages that should be filtered
-2. Exclude the filter dimension from datasets for pages that should NOT be filtered
+**關鍵概念**：篩選器只會影響包含該篩選欄位的資料集。若要讓篩選器只影響特定頁面：
+1. 在需要被篩選的頁面資料集中納入該篩選維度
+2. 在不應被篩選的頁面資料集中排除該篩選維度
 
 ---
 
-## Filter Widget Structure
+## 篩選器元件結構
 
-> **CRITICAL**: Do NOT use `associative_filter_predicate_group` - it causes SQL errors!
-> Use a simple field expression instead.
+> **重要**：不要使用 `associative_filter_predicate_group` - 這會造成 SQL 錯誤！
+> 請改用簡單欄位 expression。
 
 ```json
 {
@@ -51,11 +51,11 @@
       "encodings": {
         "fields": [{
           "fieldName": "region",
-          "displayName": "Region",
+          "displayName": "區域",
           "queryName": "ds_data_region"
         }]
       },
-      "frame": {"showTitle": true, "title": "Region"}
+      "frame": {"showTitle": true, "title": "區域"}
     }
   },
   "position": {"x": 0, "y": 0, "width": 2, "height": 2}
@@ -64,14 +64,14 @@
 
 ---
 
-## Global Filter Example
+## 全域篩選器範例
 
-Place on a dedicated filter page:
+放在專用的篩選器頁面上：
 
 ```json
 {
   "name": "filters",
-  "displayName": "Filters",
+  "displayName": "篩選器",
   "pageType": "PAGE_TYPE_GLOBAL_FILTERS",
   "layout": [
     {
@@ -91,11 +91,11 @@ Place on a dedicated filter page:
           "encodings": {
             "fields": [{
               "fieldName": "campaign_name",
-              "displayName": "Campaign",
+              "displayName": "活動",
               "queryName": "ds_campaign"
             }]
           },
-          "frame": {"showTitle": true, "title": "Campaign"}
+          "frame": {"showTitle": true, "title": "活動"}
         }
       },
       "position": {"x": 0, "y": 0, "width": 2, "height": 2}
@@ -106,20 +106,20 @@ Place on a dedicated filter page:
 
 ---
 
-## Page-Level Filter Example
+## 頁面層級篩選器範例
 
-Place directly on a canvas page (affects only that page):
+直接放在 canvas 頁面上（只影響該頁）：
 
 ```json
 {
   "name": "platform_breakdown",
-  "displayName": "Platform Breakdown",
+  "displayName": "平台拆解",
   "pageType": "PAGE_TYPE_CANVAS",
   "layout": [
     {
       "widget": {
         "name": "page-title",
-        "multilineTextboxSpec": {"lines": ["## Platform Breakdown"]}
+        "multilineTextboxSpec": {"lines": ["## 平台拆解"]}
       },
       "position": {"x": 0, "y": 0, "width": 4, "height": 1}
     },
@@ -140,24 +140,24 @@ Place directly on a canvas page (affects only that page):
           "encodings": {
             "fields": [{
               "fieldName": "platform",
-              "displayName": "Platform",
+              "displayName": "平台",
               "queryName": "ds_platform"
             }]
           },
-          "frame": {"showTitle": true, "title": "Platform"}
+          "frame": {"showTitle": true, "title": "平台"}
         }
       },
       "position": {"x": 4, "y": 0, "width": 2, "height": 2}
     }
-    // ... other widgets on this page
+    // ... 此頁上的其他元件
   ]
 }
 ```
 
 ---
 
-## Filter Layout Guidelines
+## 篩選器版面配置指引
 
-- Global filters: Position on dedicated filter page, stack vertically at `x=0`
-- Page-level filters: Position in header area of page (e.g., top-right corner)
-- Typical sizing: `width: 2, height: 2`
+- 全域篩選器：放在專用篩選器頁面上，於 `x=0` 垂直堆疊
+- 頁面層級篩選器：放在頁面標頭區域（例如右上角）
+- 常見尺寸：`width: 2, height: 2`

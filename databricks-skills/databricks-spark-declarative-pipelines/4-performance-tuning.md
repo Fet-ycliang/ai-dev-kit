@@ -1,21 +1,21 @@
-# Performance Tuning for SDP
+# SDP 效能調校
 
-Performance optimization strategies including **Liquid Clustering** (modern approach), materialized view refresh, state management, and compute configuration.
+涵蓋 **Liquid Clustering**（現代化作法）、materialized view 重新整理、狀態管理與運算資源設定的效能最佳化策略。
 
 ---
 
-## Liquid Clustering (Recommended)
+## Liquid Clustering（建議）
 
-**Liquid Clustering** is the recommended approach for data layout optimization. It replaces manual `PARTITION BY` and `Z-ORDER`.
+**Liquid Clustering** 是建議使用的資料配置最佳化方式，可取代手動 `PARTITION BY` 與 `Z-ORDER`。
 
-### What is Liquid Clustering?
+### 什麼是 Liquid Clustering？
 
-- **Adaptive**: Adjusts to data distribution changes
-- **Multi-dimensional**: Clusters on multiple columns simultaneously
-- **Automatic file sizing**: Maintains optimal file sizes
-- **Self-optimizing**: Reduces manual OPTIMIZE commands
+- **自適應**：可依資料分布變化自動調整
+- **多維度**：可同時依多個欄位進行 clustering
+- **自動檔案大小調整**：維持最佳檔案大小
+- **自我最佳化**：減少手動執行 OPTIMIZE 指令的需求
 
-### Basic Syntax
+### 基本語法
 
 **SQL**:
 ```sql
@@ -38,25 +38,25 @@ def bronze_events():
     return spark.readStream.format("cloudFiles").load("/data")
 ```
 
-### Automatic Cluster Key Selection
+### 自動選擇叢集鍵
 
 ```sql
--- Let Databricks choose based on query patterns
+-- 讓 Databricks 根據查詢模式自行選擇
 CREATE OR REPLACE STREAMING TABLE bronze_events
 CLUSTER BY (AUTO)
 AS SELECT ...;
 ```
 
-**When to use AUTO**: Learning phase, unknown access patterns, prototyping
-**When to define manually**: Well-known query patterns, production workloads
+**何時使用 AUTO**：學習階段、存取模式未知、原型開發
+**何時手動定義**：查詢模式明確、生產工作負載
 
 ---
 
-## Cluster Key Selection by Layer
+## 依層級選擇叢集鍵
 
-### Bronze Layer
+### Bronze 層
 
-Cluster by event type + date:
+依事件類型 + 日期進行 clustering：
 
 ```sql
 CREATE OR REPLACE STREAMING TABLE bronze_events
@@ -70,11 +70,11 @@ SELECT
 FROM read_files('/mnt/raw/events/', format => 'json');
 ```
 
-**Why**: Bronze filtered by event type for processing and by date for incremental loads.
+**原因**：Bronze 層通常會依事件類型篩選以進行處理，並依日期進行增量載入。
 
-### Silver Layer
+### Silver 層
 
-Cluster by primary key + business dimension:
+依主鍵 + 業務維度進行 clustering：
 
 ```sql
 CREATE OR REPLACE STREAMING TABLE silver_orders
@@ -87,11 +87,11 @@ SELECT
 FROM STREAM bronze_orders;
 ```
 
-**Why**: Entity lookups (by ID) and time-range queries (by date).
+**原因**：支援實體查找（依 ID）與時間區間查詢（依日期）。
 
-### Gold Layer
+### Gold 層
 
-Cluster by aggregation dimensions:
+依聚合維度進行 clustering：
 
 ```sql
 CREATE OR REPLACE MATERIALIZED VIEW gold_sales_summary
@@ -107,28 +107,28 @@ FROM silver_orders
 GROUP BY product_category, DATE_FORMAT(order_date, 'yyyy-MM');
 ```
 
-**Why**: Dashboard filters (category, region, time period).
+**原因**：符合儀表板常見篩選條件（類別、區域、時間區間）。
 
-### Selection Guidelines
+### 選擇指引
 
-| Layer | Good Keys | Rationale |
-|-------|-----------|-----------|
-| **Bronze** | event_type, ingestion_date | Filter by type; date for incremental |
-| **Silver** | primary_key, business_date | Entity lookups + time ranges |
-| **Gold** | aggregation_dimensions | Dashboard filters |
+| 層級 | 適合的鍵 | 理由 |
+|------|----------|------|
+| **Bronze** | event_type, ingestion_date | 依類型篩選；依日期增量處理 |
+| **Silver** | primary_key, business_date | 實體查找 + 時間區間 |
+| **Gold** | aggregation_dimensions | 儀表板篩選 |
 
-**Best practices**:
-- First key: Most selective filter (e.g., customer_id)
-- Second key: Next common filter (e.g., date)
-- Order matters: Most selective first
-- Limit to 4 keys: Diminishing returns beyond 4
-- **Use AUTO if unsure**
+**最佳實務**：
+- 第一個鍵：選擇性最高的篩選欄位（例如 customer_id）
+- 第二個鍵：下一個常見篩選欄位（例如 date）
+- 順序很重要：選擇性最高的欄位放前面
+- 最多 4 個鍵：超過 4 個後效益會遞減
+- **若不確定，請使用 AUTO**
 
 ---
 
-## Migration from Legacy PARTITION BY
+## 從舊版 PARTITION BY 遷移
 
-### Before (Legacy)
+### 之前（舊版）
 
 ```sql
 CREATE OR REPLACE STREAMING TABLE events
@@ -137,9 +137,9 @@ TBLPROPERTIES ('pipelines.autoOptimize.zOrderCols' = 'user_id,event_type')
 AS SELECT ...;
 ```
 
-**Issues**: Fixed keys, small file problem, skewed distribution, manual OPTIMIZE required.
+**問題**：鍵值固定、小檔案問題、資料分布偏斜，而且需要手動執行 OPTIMIZE。
 
-### After (Modern with Liquid Clustering)
+### 之後（採用 Liquid Clustering 的現代作法）
 
 ```sql
 CREATE OR REPLACE STREAMING TABLE events
@@ -147,21 +147,21 @@ CLUSTER BY (date, user_id, event_type)
 AS SELECT ...;
 ```
 
-**Benefits**: Adaptive, no small files, automatic optimization, 20-50% performance improvement.
+**效益**：可自適應、避免 small files、自動最佳化，效能可提升 20-50%。
 
-### When to Still Use PARTITION BY
+### 何時仍應使用 PARTITION BY
 
-**Only use for**:
-1. **Regulatory** requirements (physical separation)
-2. **Data lifecycle**: Need to `DROP` partitions for retention
-3. **Compatibility**: Older Delta Lake versions (< DBR 13.3)
-4. **Existing large tables**: Migration cost outweighs benefits
+**僅在以下情況使用**：
+1. **法規要求**（需要實體隔離）
+2. **資料生命週期管理**：需要以 `DROP` partitions 實作保留政策
+3. **相容性**：較舊的 Delta Lake 版本（< DBR 13.3）
+4. **既有大型資料表**：遷移成本高於效益
 
-**Otherwise, prefer Liquid Clustering.**
+**其他情況請優先使用 Liquid Clustering。**
 
 ---
 
-## Table Properties
+## 資料表屬性
 
 ### Auto-Optimize
 
@@ -174,7 +174,7 @@ TBLPROPERTIES (
 AS SELECT * FROM read_files(...);
 ```
 
-**Benefits**: Reduces small files, improves reads, automatic compaction.
+**效益**：減少小檔案、改善讀取效能、自動執行 compact。
 
 ### Change Data Feed
 
@@ -184,9 +184,9 @@ TBLPROPERTIES ('delta.enableChangeDataFeed' = 'true')
 AS SELECT * FROM STREAM bronze_customers;
 ```
 
-**Use when**: Downstream systems need efficient change tracking.
+**適用時機**：下游系統需要高效率的變更追蹤。
 
-### Retention Periods
+### 保留期間
 
 ```sql
 CREATE OR REPLACE STREAMING TABLE bronze_high_volume
@@ -197,16 +197,16 @@ TBLPROPERTIES (
 AS SELECT * FROM read_files(...);
 ```
 
-**Use for**: High-volume tables to reduce storage costs.
+**適用於**：高流量資料表，以降低儲存成本。
 
 ---
 
-## Materialized View Refresh
+## Materialized View 重新整理
 
-### Refresh Frequency
+### 重新整理頻率
 
 ```sql
--- Near-real-time (frequent)
+-- 接近即時（高頻率）
 CREATE OR REPLACE MATERIALIZED VIEW gold_live_metrics
 REFRESH EVERY 5 MINUTES
 AS
@@ -217,7 +217,7 @@ SELECT
 FROM silver_metrics
 GROUP BY metric_name;
 
--- Daily reports (scheduled)
+-- 每日報表（排程）
 CREATE OR REPLACE MATERIALIZED VIEW gold_daily_summary
 REFRESH EVERY 1 DAY
 AS
@@ -226,12 +226,12 @@ FROM silver_sales
 GROUP BY report_date;
 ```
 
-### Incremental Refresh (Automatic)
+### 增量重新整理（自動）
 
-Materialized views auto-use incremental refresh when possible:
+materialized views 在可行時會自動使用增量重新整理：
 
 ```sql
--- Refreshes incrementally if source has row tracking
+-- 若來源啟用 row tracking，會以增量方式重新整理
 CREATE OR REPLACE MATERIALIZED VIEW gold_aggregates AS
 SELECT
   product_id,
@@ -241,12 +241,12 @@ FROM silver_sales
 GROUP BY product_id;
 ```
 
-**Requirements**: Source has Delta row tracking, no row filters, supported aggregations.
+**需求**：來源已啟用 Delta row tracking、沒有 row filters，且使用受支援的 aggregations。
 
-### Pre-Aggregation
+### 預先聚合
 
 ```sql
--- Instead of querying large table repeatedly
+-- 避免反覆查詢大型資料表
 CREATE OR REPLACE MATERIALIZED VIEW orders_monthly AS
 SELECT
   customer_id,
@@ -256,46 +256,46 @@ SELECT
 FROM large_orders_table
 GROUP BY customer_id, YEAR(order_date), MONTH(order_date);
 
--- Query the MV (fast)
+-- 查詢 MV（快速）
 SELECT * FROM orders_monthly WHERE year = 2024;
 ```
 
 ---
 
-## State Management for Streaming
+## Streaming 的狀態管理
 
-### Understand State Growth
+### 了解狀態成長
 
 ```sql
--- High state: Every unique combination creates state
+-- 高狀態：每個唯一組合都會建立狀態
 SELECT
-  user_id,       -- 1M users
-  product_id,    -- 10K products
-  session_id,    -- 100M sessions
+  user_id,       -- 100 萬名使用者
+  product_id,    -- 1 萬個產品
+  session_id,    -- 1 億個工作階段
   COUNT(*) AS events
 FROM STREAM bronze_events
-GROUP BY user_id, product_id, session_id;  -- Massive state!
+GROUP BY user_id, product_id, session_id;  -- 龐大的狀態！
 ```
 
-### Reduce State Size
+### 降低狀態大小
 
-**Strategy 1: Reduce cardinality**
+**策略 1：降低基數**
 
 ```sql
--- Aggregate at higher level
+-- 在較高層級進行聚合
 SELECT
   user_id,
-  product_category,  -- 100 categories (not 10K products)
+  product_category,  -- 100 個類別（不是 1 萬個產品）
   DATE(event_time) AS event_date,
   COUNT(*) AS events
 FROM STREAM bronze_events
 GROUP BY user_id, product_category, DATE(event_time);
 ```
 
-**Strategy 2: Use time windows**
+**策略 2：使用時間視窗**
 
 ```sql
--- Bounded state with windows
+-- 以視窗限制狀態範圍
 SELECT
   user_id,
   window(event_time, '1 hour') AS time_window,
@@ -304,10 +304,10 @@ FROM STREAM bronze_events
 GROUP BY user_id, window(event_time, '1 hour');
 ```
 
-**Strategy 3: Materialize intermediates**
+**策略 3：具體化中介結果**
 
 ```sql
--- Streaming aggregation (maintains state)
+-- Streaming 聚合（會維護狀態）
 CREATE OR REPLACE STREAMING TABLE user_daily_stats AS
 SELECT
   user_id,
@@ -316,7 +316,7 @@ SELECT
 FROM STREAM bronze_events
 GROUP BY user_id, DATE(event_time);
 
--- Batch aggregation (no streaming state)
+-- Batch 聚合（沒有 streaming 狀態）
 CREATE OR REPLACE MATERIALIZED VIEW user_monthly_stats AS
 SELECT
   user_id,
@@ -328,26 +328,26 @@ GROUP BY user_id, DATE_TRUNC('month', event_date);
 
 ---
 
-## Join Optimization
+## Join 最佳化
 
-### Stream-to-Static (Efficient)
+### Stream-to-Static（高效率）
 
 ```sql
--- Small static dimension, large streaming fact
+-- 小型靜態維度搭配大型 streaming 事實表
 CREATE OR REPLACE STREAMING TABLE sales_enriched AS
 SELECT
   s.sale_id, s.product_id, s.amount,
-  p.product_name, p.category  -- From small static table
+  p.product_name, p.category  -- 來自小型靜態資料表
 FROM STREAM bronze_sales s
 LEFT JOIN dim_products p ON s.product_id = p.product_id;
 ```
 
-**Best practice**: Keep static dimensions small (<10K rows) for broadcast.
+**最佳實務**：靜態維度請保持精簡（<10K 列），以利 broadcast。
 
-### Stream-to-Stream (Stateful)
+### Stream-to-Stream（具狀態）
 
 ```sql
--- Time bounds limit state retention
+-- 以時間界限限制狀態保留
 CREATE OR REPLACE STREAMING TABLE orders_with_payments AS
 SELECT
   o.order_id, o.amount AS order_amount,
@@ -358,46 +358,46 @@ INNER JOIN STREAM bronze_payments p
   AND p.payment_time BETWEEN o.order_time AND o.order_time + INTERVAL 1 HOUR;
 ```
 
-**Optimization**: Use time bounds in join condition.
+**最佳化方式**：在 join 條件中加入時間界限。
 
 ---
 
-## Compute Configuration
+## 運算資源設定
 
-### Serverless vs Classic
+### Serverless 與 Classic
 
-| Aspect | Serverless | Classic |
-|--------|-----------|---------|
-| Startup | Fast (seconds) | Slower (minutes) |
-| Scaling | Automatic, instant | Manual/autoscaling |
-| Cost | Pay-per-use | Pay for cluster time |
-| Best for | Variable workloads, dev/test | Steady workloads |
+| 面向 | Serverless | Classic |
+|------|------------|---------|
+| 啟動 | 快（數秒） | 較慢（數分鐘） |
+| 擴縮 | 自動、即時 | 手動／自動擴縮 |
+| 成本 | 按使用量計費 | 依叢集執行時間計費 |
+| 最適合 | 變動型工作負載、dev/test | 穩定型工作負載 |
 
-### Serverless (Recommended)
+### Serverless（建議）
 
-Enable at pipeline level:
+在管線層級啟用：
 
 ```yaml
-execution_mode: continuous  # or triggered
+execution_mode: continuous  # 或 triggered
 serverless: true
 ```
 
-**Advantages**: No cluster management, instant scaling, lower cost for bursty workloads.
+**優點**：不需管理叢集、可即時擴縮，對突發型工作負載成本更低。
 
 ---
 
-## Query Optimization
+## 查詢最佳化
 
-### Filter Early
+### 及早過濾
 
 ```sql
--- ✅ Filter at source
+-- ✅ 在來源端過濾
 CREATE OR REPLACE STREAMING TABLE silver_recent AS
 SELECT *
 FROM STREAM bronze_events
 WHERE event_date >= CURRENT_DATE() - INTERVAL 7 DAYS;
 
--- ❌ Filter late
+-- ❌ 延後過濾
 CREATE OR REPLACE STREAMING TABLE silver_all AS
 SELECT * FROM STREAM bronze_events;
 
@@ -406,34 +406,34 @@ SELECT * FROM silver_all
 WHERE event_date >= CURRENT_DATE() - INTERVAL 7 DAYS;
 ```
 
-### Select Specific Columns
+### 選取特定欄位
 
 ```sql
--- ❌ Reads all columns
+-- ❌ 讀取所有欄位
 SELECT * FROM large_table;
 
--- ✅ Only needed columns
+-- ✅ 只讀取需要的欄位
 SELECT customer_id, order_date, amount FROM large_table;
 ```
 
-### Use GROUP BY Over DISTINCT
+### 優先使用 GROUP BY 而非 DISTINCT
 
 ```sql
--- ❌ Expensive on high-cardinality
+-- ❌ 在高基數資料上成本高
 SELECT DISTINCT transaction_id FROM huge_table;
 
--- ✅ Better
+-- ✅ 較佳
 SELECT transaction_id, COUNT(*) FROM huge_table GROUP BY transaction_id;
 ```
 
 ---
 
-## Monitoring
+## 監控
 
-Track key metrics:
+追蹤關鍵指標：
 
 ```sql
--- Data freshness
+-- 資料新鮮度
 SELECT
   table_name,
   MAX(event_timestamp) AS latest_event,
@@ -443,20 +443,20 @@ FROM pipeline_monitoring.table_metrics
 GROUP BY table_name;
 ```
 
-**Check for**:
-1. Slow streaming tables (high processing lag)
-2. Large state operations (high memory)
-3. Expensive joins (long processing times)
-4. Small files (many small files in Delta)
+**請檢查**：
+1. 速度慢的 streaming tables（處理延遲高）
+2. 大型狀態操作（記憶體用量高）
+3. 成本高的 joins（處理時間長）
+4. 小檔案（Delta 中存在大量小檔案）
 
 ---
 
-## Common Issues
+## 常見問題
 
-| Issue | Solution |
-|-------|----------|
-| Pipeline running slowly | Check partitioning, state size, join patterns |
-| High memory usage | Unbounded state - add time windows, reduce cardinality |
-| Many small files | Enable auto-optimize, run OPTIMIZE command |
-| Expensive queries on large tables | Add clustering, create filtered MVs |
-| MV refresh slow | Enable row tracking on source, verify incremental refresh |
+| 問題 | 解法 |
+|------|------|
+| 管線執行緩慢 | 檢查 partitioning、狀態大小與 join 模式 |
+| 記憶體使用量高 | 無界狀態：加入時間視窗、降低基數 |
+| 小檔案很多 | 啟用 auto-optimize，執行 OPTIMIZE 指令 |
+| 大型資料表查詢成本高 | 加入 clustering，建立已過濾的 MVs |
+| MV 重新整理緩慢 | 在來源啟用 row tracking，並確認使用增量重新整理 |

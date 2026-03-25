@@ -1,7 +1,7 @@
 """
-Vector Search Endpoint Operations
+Vector Search 端點操作
 
-Functions for creating, managing, and deleting Databricks Vector Search endpoints.
+用於建立、管理及刪除 Databricks Vector Search 端點的函式。
 """
 
 import logging
@@ -17,23 +17,23 @@ def create_vs_endpoint(
     endpoint_type: str = "STANDARD",
 ) -> Dict[str, Any]:
     """
-    Create a Vector Search endpoint.
+    建立 Vector Search 端點。
 
-    Endpoint creation is asynchronous. Use get_vs_endpoint() to check status.
+    端點建立為非同步作業。請使用 get_vs_endpoint() 檢查狀態。
 
-    Args:
-        name: Endpoint name (unique within workspace)
-        endpoint_type: "STANDARD" (low-latency, <100ms) or
-            "STORAGE_OPTIMIZED" (cost-effective, ~250ms, 1B+ vectors)
+    參數:
+        name: 端點名稱（在 workspace 內必須唯一）
+        endpoint_type: "STANDARD"（低延遲，<100ms）或
+            "STORAGE_OPTIMIZED"（具成本效益，約 ~250ms，支援 1B+ vectors）
 
-    Returns:
-        Dictionary with:
-        - name: Endpoint name
-        - endpoint_type: Type of endpoint created
-        - status: Creation status
+    回傳:
+        包含以下內容的字典：
+        - name: 端點名稱
+        - endpoint_type: 已建立的端點類型
+        - status: 建立狀態
 
-    Raises:
-        Exception: If creation fails
+    引發:
+        Exception: 當建立失敗時
     """
     client = get_workspace_client()
 
@@ -50,7 +50,7 @@ def create_vs_endpoint(
             "name": name,
             "endpoint_type": endpoint_type,
             "status": "CREATING",
-            "message": f"Endpoint '{name}' creation initiated. Use get_vs_endpoint('{name}') to check status.",
+            "message": f"已啟動端點 '{name}' 的建立作業。請使用 get_vs_endpoint('{name}') 檢查狀態。",
         }
     except Exception as e:
         error_msg = str(e)
@@ -59,30 +59,30 @@ def create_vs_endpoint(
                 "name": name,
                 "endpoint_type": endpoint_type,
                 "status": "ALREADY_EXISTS",
-                "error": f"Endpoint '{name}' already exists",
+                "error": f"端點 '{name}' 已存在",
             }
-        raise Exception(f"Failed to create vector search endpoint '{name}': {error_msg}")
+        raise Exception(f"建立 vector search 端點 '{name}' 失敗：{error_msg}")
 
 
 def get_vs_endpoint(name: str) -> Dict[str, Any]:
     """
-    Get Vector Search endpoint status and details.
+    取得 Vector Search 端點狀態與詳細資訊。
 
-    Args:
-        name: Endpoint name
+    參數:
+        name: 端點名稱
 
-    Returns:
-        Dictionary with:
-        - name: Endpoint name
-        - endpoint_type: STANDARD or STORAGE_OPTIMIZED
-        - state: Current state (e.g., ONLINE, PROVISIONING, OFFLINE)
-        - creation_timestamp: When endpoint was created
-        - last_updated_timestamp: When endpoint was last updated
-        - num_indexes: Number of indexes on this endpoint
-        - error: Error message if endpoint is in error state
+    回傳:
+        包含以下內容的字典：
+        - name: 端點名稱
+        - endpoint_type: STANDARD 或 STORAGE_OPTIMIZED
+        - state: 目前狀態（例如 ONLINE、PROVISIONING、OFFLINE）
+        - creation_timestamp: 端點建立時間
+        - last_updated_timestamp: 端點最後更新時間
+        - num_indexes: 此端點上的索引數量
+        - error: 若端點處於錯誤狀態時的錯誤訊息
 
-    Raises:
-        Exception: If API request fails
+    引發:
+        Exception: 當 API 請求失敗時
     """
     client = get_workspace_client()
 
@@ -94,9 +94,9 @@ def get_vs_endpoint(name: str) -> Dict[str, Any]:
             return {
                 "name": name,
                 "state": "NOT_FOUND",
-                "error": f"Endpoint '{name}' not found",
+                "error": f"找不到端點 '{name}'",
             }
-        raise Exception(f"Failed to get vector search endpoint '{name}': {error_msg}")
+        raise Exception(f"取得 vector search 端點 '{name}' 失敗：{error_msg}")
 
     result: Dict[str, Any] = {
         "name": endpoint.name,
@@ -128,27 +128,27 @@ def get_vs_endpoint(name: str) -> Dict[str, Any]:
 
 def list_vs_endpoints() -> List[Dict[str, Any]]:
     """
-    List all Vector Search endpoints in the workspace.
+    列出 workspace 中所有 Vector Search 端點。
 
-    Returns:
-        List of endpoint dictionaries with:
-        - name: Endpoint name
-        - endpoint_type: STANDARD or STORAGE_OPTIMIZED
-        - state: Current state
-        - num_indexes: Number of indexes on endpoint
+    回傳:
+        端點字典列表，包含：
+        - name: 端點名稱
+        - endpoint_type: STANDARD 或 STORAGE_OPTIMIZED
+        - state: 目前狀態
+        - num_indexes: 端點上的索引數量
 
-    Raises:
-        Exception: If API request fails
+    引發:
+        Exception: 當 API 請求失敗時
     """
     client = get_workspace_client()
 
     try:
         response = client.vector_search_endpoints.list_endpoints()
     except Exception as e:
-        raise Exception(f"Failed to list vector search endpoints: {str(e)}")
+        raise Exception(f"列出 vector search 端點失敗：{str(e)}")
 
     result = []
-    # SDK may return a generator or an object with .endpoints attribute
+    # SDK 可能回傳 generator，或是具有 .endpoints 屬性的物件
     if hasattr(response, "endpoints"):
         endpoints = response.endpoints if response.endpoints else []
     else:
@@ -175,20 +175,20 @@ def list_vs_endpoints() -> List[Dict[str, Any]]:
 
 def delete_vs_endpoint(name: str) -> Dict[str, Any]:
     """
-    Delete a Vector Search endpoint.
+    刪除 Vector Search 端點。
 
-    All indexes on the endpoint must be deleted first.
+    必須先刪除此端點上的所有索引。
 
-    Args:
-        name: Endpoint name to delete
+    參數:
+        name: 要刪除的端點名稱
 
-    Returns:
-        Dictionary with:
-        - name: Endpoint name
-        - status: "deleted" or error info
+    回傳:
+        包含以下內容的字典：
+        - name: 端點名稱
+        - status: "deleted" 或錯誤資訊
 
-    Raises:
-        Exception: If deletion fails
+    引發:
+        Exception: 當刪除失敗時
     """
     client = get_workspace_client()
 
@@ -204,6 +204,6 @@ def delete_vs_endpoint(name: str) -> Dict[str, Any]:
             return {
                 "name": name,
                 "status": "NOT_FOUND",
-                "error": f"Endpoint '{name}' not found",
+                "error": f"找不到端點 '{name}'",
             }
-        raise Exception(f"Failed to delete vector search endpoint '{name}': {error_msg}")
+        raise Exception(f"刪除 vector search 端點 '{name}' 失敗：{error_msg}")

@@ -1,7 +1,7 @@
 """
-Spark Declarative Pipelines - Workspace File Operations
+Spark Declarative Pipelines - Workspace 檔案作業
 
-Functions for managing workspace files and directories for SDP pipelines.
+用於管理 SDP pipelines 的 workspace 檔案與目錄的函式。
 """
 
 import base64
@@ -13,20 +13,20 @@ from ..auth import get_workspace_client
 
 def list_files(path: str) -> List[ObjectInfo]:
     """
-    List files and directories in a workspace path.
+    列出 workspace 路徑中的檔案與目錄。
 
-    Args:
-        path: Workspace path to list
+    參數:
+        path: 要列出的 Workspace 路徑
 
-    Returns:
-        List of ObjectInfo objects with file/directory metadata:
-        - path: Full workspace path
-        - object_type: DIRECTORY, NOTEBOOK, FILE, LIBRARY, or REPO
-        - language: For notebooks (PYTHON, SQL, SCALA, R)
-        - object_id: Unique identifier
+    回傳:
+        包含檔案/目錄中繼資料的 ObjectInfo objects 清單：
+        - path: 完整 workspace 路徑
+        - object_type: DIRECTORY、NOTEBOOK、FILE、LIBRARY 或 REPO
+        - language: 適用於 notebooks (PYTHON、SQL、SCALA、R)
+        - object_id: 唯一識別碼
 
-    Raises:
-        DatabricksError: If API request fails
+    引發:
+        DatabricksError: 若 API 請求失敗
     """
     w = get_workspace_client()
     return list(w.workspace.list(path=path))
@@ -34,23 +34,23 @@ def list_files(path: str) -> List[ObjectInfo]:
 
 def get_file_status(path: str) -> ObjectInfo:
     """
-    Get file or directory metadata.
+    取得檔案或目錄的中繼資料。
 
-    Args:
-        path: Workspace path
+    參數:
+        path: Workspace 路徑
 
-    Returns:
-        ObjectInfo object with metadata:
-        - path: Full workspace path
-        - object_type: DIRECTORY, NOTEBOOK, FILE, LIBRARY, or REPO
-        - language: For notebooks (PYTHON, SQL, SCALA, R)
-        - object_id: Unique identifier
-        - size: File size in bytes (for files)
-        - created_at: Creation timestamp
-        - modified_at: Last modification timestamp
+    回傳:
+        包含中繼資料的 ObjectInfo object：
+        - path: 完整 workspace 路徑
+        - object_type: DIRECTORY、NOTEBOOK、FILE、LIBRARY 或 REPO
+        - language: 適用於 notebooks (PYTHON、SQL、SCALA、R)
+        - object_id: 唯一識別碼
+        - size: 檔案大小（位元組，僅適用於檔案）
+        - created_at: 建立時間戳記
+        - modified_at: 上次修改時間戳記
 
-    Raises:
-        DatabricksError: If API request fails
+    引發:
+        DatabricksError: 若 API 請求失敗
     """
     w = get_workspace_client()
     return w.workspace.get_status(path=path)
@@ -58,40 +58,40 @@ def get_file_status(path: str) -> ObjectInfo:
 
 def read_file(path: str) -> str:
     """
-    Read workspace file contents.
+    讀取 workspace 檔案內容。
 
-    Args:
-        path: Workspace file path
+    參數:
+        path: Workspace 檔案路徑
 
-    Returns:
-        Decoded file contents as string
+    回傳:
+        解碼後的字串檔案內容
 
-    Raises:
-        DatabricksError: If API request fails
+    引發:
+        DatabricksError: 若 API 請求失敗
     """
     w = get_workspace_client()
     response = w.workspace.export(path=path, format=ExportFormat.SOURCE)
 
-    # SDK returns ExportResponse with .content field (base64 encoded)
+    # SDK 會回傳帶有 .content 欄位的 ExportResponse（base64 編碼）
     return base64.b64decode(response.content).decode("utf-8")
 
 
 def write_file(path: str, content: str, language: str = "PYTHON", overwrite: bool = True) -> None:
     """
-    Write or update workspace file.
+    寫入或更新 workspace 檔案。
 
-    Args:
-        path: Workspace file path
-        content: File content as string
-        language: PYTHON, SQL, SCALA, or R
-        overwrite: If True, replaces existing file
+    參數:
+        path: Workspace 檔案路徑
+        content: 字串形式的檔案內容
+        language: PYTHON、SQL、SCALA 或 R
+        overwrite: 若為 True，會取代現有檔案
 
-    Raises:
-        DatabricksError: If API request fails
+    引發:
+        DatabricksError: 若 API 請求失敗
     """
     w = get_workspace_client()
 
-    # Convert language string to enum
+    # 將 language 字串轉為 enum
     lang_map = {
         "PYTHON": Language.PYTHON,
         "SQL": Language.SQL,
@@ -100,7 +100,7 @@ def write_file(path: str, content: str, language: str = "PYTHON", overwrite: boo
     }
     lang_enum = lang_map.get(language.upper(), Language.PYTHON)
 
-    # Base64 encode content
+    # 將內容做 Base64 編碼
     content_b64 = base64.b64encode(content.encode("utf-8")).decode("utf-8")
 
     w.workspace.import_(
@@ -114,13 +114,13 @@ def write_file(path: str, content: str, language: str = "PYTHON", overwrite: boo
 
 def create_directory(path: str) -> None:
     """
-    Create workspace directory.
+    建立 workspace 目錄。
 
-    Args:
-        path: Workspace directory path
+    參數:
+        path: Workspace 目錄路徑
 
-    Raises:
-        DatabricksError: If API request fails
+    引發:
+        DatabricksError: 若 API 請求失敗
     """
     w = get_workspace_client()
     w.workspace.mkdirs(path=path)
@@ -128,14 +128,14 @@ def create_directory(path: str) -> None:
 
 def delete_path(path: str, recursive: bool = False) -> None:
     """
-    Delete workspace file or directory.
+    刪除 workspace 檔案或目錄。
 
-    Args:
-        path: Workspace path to delete
-        recursive: If True, recursively deletes directories
+    參數:
+        path: 要刪除的 Workspace 路徑
+        recursive: 若為 True，會遞迴刪除目錄
 
-    Raises:
-        DatabricksError: If API request fails
+    引發:
+        DatabricksError: 若 API 請求失敗
     """
     w = get_workspace_client()
     w.workspace.delete(path=path, recursive=recursive)

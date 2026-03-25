@@ -1,7 +1,7 @@
 #!/bin/bash
 #
-# Setup script for databricks-mcp-server
-# Creates virtual environment and installs dependencies
+# databricks-mcp-server 的設定腳本
+# 建立虛擬環境並安裝相依套件
 #
 
 set -e
@@ -19,7 +19,7 @@ echo "Setting up Databricks MCP Server"
 echo "======================================"
 echo ""
 
-# Check for uv
+# 檢查是否已安裝 uv
 if ! command -v uv &> /dev/null; then
     echo "Error: 'uv' is not installed."
     echo "Install it with: curl -LsSf https://astral.sh/uv/install.sh | sh"
@@ -27,7 +27,7 @@ if ! command -v uv &> /dev/null; then
 fi
 echo "✓ uv is installed"
 
-# Check if tools-core directory exists
+# 檢查 tools-core 目錄是否存在
 if [ ! -d "$TOOLS_CORE_DIR" ]; then
     echo "Error: databricks-tools-core not found at $TOOLS_CORE_DIR"
     exit 1
@@ -35,14 +35,14 @@ fi
 echo "✓ databricks-tools-core found"
 
 
-# Create virtual environment
+# 建立虛擬環境
 echo ""
 echo "Creating virtual environment..."
 uv venv --python 3.11
 echo "✓ Virtual environment created"
 
 
-# Install packages
+# 安裝套件
 echo ""
 echo "Installing databricks-tools-core (editable)..."
 uv pip install --python .venv/bin/python -e "$TOOLS_CORE_DIR" --quiet
@@ -54,7 +54,7 @@ echo "Installing databricks-mcp-server (editable)..."
 uv pip install --python .venv/bin/python -e "$SCRIPT_DIR" --quiet
 echo "✓ databricks-mcp-server installed"
 
-# Verify
+# 驗證
 echo ""
 echo "Verifying installation..."
 if .venv/bin/python -c "import databricks_mcp_server; print('✓ MCP server can be imported')"; then

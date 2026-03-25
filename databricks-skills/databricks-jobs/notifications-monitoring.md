@@ -1,18 +1,18 @@
-# Notifications and Monitoring Reference
+# 通知與監控參考
 
-## Contents
-- [Email Notifications](#email-notifications)
-- [Webhook Notifications](#webhook-notifications)
-- [Health Rules](#health-rules)
-- [Timeout Configuration](#timeout-configuration)
-- [Retry Configuration](#retry-configuration)
-- [Run Queue Settings](#run-queue-settings)
+## 目錄
+- [電子郵件通知](#電子郵件通知)
+- [Webhook 通知](#webhook-通知)
+- [健康狀態規則](#健康狀態規則)
+- [逾時設定](#逾時設定)
+- [重試設定](#重試設定)
+- [執行佇列設定](#執行佇列設定)
 
 ---
 
-## Email Notifications
+## 電子郵件通知
 
-Send email alerts for job lifecycle events.
+針對作業生命週期事件傳送電子郵件警示。
 
 ### DABs YAML
 
@@ -20,7 +20,7 @@ Send email alerts for job lifecycle events.
 resources:
   jobs:
     monitored_job:
-      name: "Monitored Job"
+      name: "受監控作業"
       email_notifications:
         on_start:
           - "team@example.com"
@@ -47,7 +47,7 @@ from databricks.sdk.service.jobs import JobEmailNotifications
 w = WorkspaceClient()
 
 job = w.jobs.create(
-    name="Monitored Job",
+    name="受監控作業",
     email_notifications=JobEmailNotifications(
         on_start=["team@example.com"],
         on_success=["team@example.com"],
@@ -59,17 +59,17 @@ job = w.jobs.create(
 )
 ```
 
-### Email Notification Events
+### 電子郵件通知事件
 
-| Event | Description |
+| 事件 | 說明 |
 |-------|-------------|
-| `on_start` | When job run starts |
-| `on_success` | When job run completes successfully |
-| `on_failure` | When job run fails |
-| `on_duration_warning_threshold_exceeded` | When run exceeds duration warning threshold |
-| `on_streaming_backlog_exceeded` | When streaming backlog exceeds threshold |
+| `on_start` | 當作業執行開始時 |
+| `on_success` | 當作業執行成功完成時 |
+| `on_failure` | 當作業執行失敗時 |
+| `on_duration_warning_threshold_exceeded` | 當執行時間超過警告門檻時 |
+| `on_streaming_backlog_exceeded` | 當串流積壓超過門檻時 |
 
-### Task-Level Email Notifications
+### 任務層級電子郵件通知
 
 ```yaml
 tasks:
@@ -87,15 +87,15 @@ tasks:
 
 ---
 
-## Webhook Notifications
+## Webhook 通知
 
-Send HTTP webhooks for job events (Slack, PagerDuty, custom endpoints).
+針對作業事件傳送 HTTP webhook（Slack、PagerDuty、自訂端點）。
 
-### Create Notification Destination First
+### 先建立通知目的地
 
-Before using webhooks, create a notification destination in the workspace:
+使用 webhook 之前，請先在 workspace 中建立通知目的地：
 
-**Python SDK:**
+**Python SDK：**
 ```python
 from databricks.sdk import WorkspaceClient
 from databricks.sdk.service.settings import (
@@ -106,15 +106,15 @@ from databricks.sdk.service.settings import (
 
 w = WorkspaceClient()
 
-# Create Slack destination
+# 建立 Slack 目的地
 destination = w.notification_destinations.create(
-    display_name="Slack Alerts",
+    display_name="Slack 警示",
     config=SlackConfig(
         url="https://hooks.slack.com/services/XXX/YYY/ZZZ"
     )
 )
 
-print(f"Destination ID: {destination.id}")
+print(f"目的地 ID: {destination.id}")
 ```
 
 ### DABs YAML
@@ -123,7 +123,7 @@ print(f"Destination ID: {destination.id}")
 resources:
   jobs:
     webhook_job:
-      name: "Job with Webhooks"
+      name: "含 Webhook 的作業"
       webhook_notifications:
         on_start:
           - id: "notification-destination-uuid"
@@ -148,7 +148,7 @@ from databricks.sdk.service.jobs import WebhookNotifications, Webhook
 w = WorkspaceClient()
 
 job = w.jobs.create(
-    name="Job with Webhooks",
+    name="含 Webhook 的作業",
     webhook_notifications=WebhookNotifications(
         on_start=[Webhook(id="notification-destination-uuid")],
         on_success=[Webhook(id="notification-destination-uuid")],
@@ -159,17 +159,17 @@ job = w.jobs.create(
 )
 ```
 
-### Supported Destinations
+### 支援的目的地
 
-| Type | Configuration |
+| 類型 | 設定 |
 |------|---------------|
 | Slack | Slack webhook URL |
 | Microsoft Teams | Teams webhook URL |
-| PagerDuty | PagerDuty integration key |
-| Generic Webhook | Custom HTTP endpoint |
-| Email | Email addresses |
+| PagerDuty | PagerDuty 整合金鑰 |
+| 一般 Webhook | 自訂 HTTP 端點 |
+| 電子郵件 | 電子郵件地址 |
 
-### Task-Level Webhooks
+### 任務層級 Webhook
 
 ```yaml
 tasks:
@@ -183,9 +183,9 @@ tasks:
 
 ---
 
-## Health Rules
+## 健康狀態規則
 
-Monitor job health metrics and trigger alerts.
+監控作業健康狀態指標並觸發警示。
 
 ### DABs YAML
 
@@ -193,24 +193,24 @@ Monitor job health metrics and trigger alerts.
 resources:
   jobs:
     health_monitored:
-      name: "Health Monitored Job"
+      name: "健康監控作業"
       health:
         rules:
           - metric: RUN_DURATION_SECONDS
             op: GREATER_THAN
-            value: 3600  # Alert if run > 1 hour
+            value: 3600  # 若執行超過 1 小時則警示
           - metric: STREAMING_BACKLOG_BYTES
             op: GREATER_THAN
-            value: 1073741824  # Alert if backlog > 1GB
+            value: 1073741824  # 若積壓超過 1GB 則警示
           - metric: STREAMING_BACKLOG_SECONDS
             op: GREATER_THAN
-            value: 300  # Alert if backlog > 5 minutes
+            value: 300  # 若積壓超過 5 分鐘則警示
           - metric: STREAMING_BACKLOG_FILES
             op: GREATER_THAN
-            value: 1000  # Alert if backlog > 1000 files
+            value: 1000  # 若積壓超過 1000 個檔案則警示
           - metric: STREAMING_BACKLOG_RECORDS
             op: GREATER_THAN
-            value: 100000  # Alert if backlog > 100k records
+            value: 100000  # 若積壓超過 10 萬筆記錄則警示
       email_notifications:
         on_duration_warning_threshold_exceeded:
           - "oncall@example.com"
@@ -231,7 +231,7 @@ from databricks.sdk.service.jobs import JobsHealthRules, JobsHealthRule, JobsHea
 w = WorkspaceClient()
 
 job = w.jobs.create(
-    name="Health Monitored Job",
+    name="健康監控作業",
     health=JobsHealthRules(
         rules=[
             JobsHealthRule(
@@ -250,46 +250,46 @@ job = w.jobs.create(
 )
 ```
 
-### Health Metrics
+### 健康狀態指標
 
-| Metric | Description | Use Case |
+| 指標 | 說明 | 使用情境 |
 |--------|-------------|----------|
-| `RUN_DURATION_SECONDS` | Total run time | Detect stuck/slow jobs |
-| `STREAMING_BACKLOG_BYTES` | Unprocessed data size | Streaming lag |
-| `STREAMING_BACKLOG_SECONDS` | Processing delay time | Streaming lag |
-| `STREAMING_BACKLOG_FILES` | Unprocessed file count | File processing lag |
-| `STREAMING_BACKLOG_RECORDS` | Unprocessed record count | Record processing lag |
+| `RUN_DURATION_SECONDS` | 總執行時間 | 偵測卡住／緩慢的作業 |
+| `STREAMING_BACKLOG_BYTES` | 未處理資料大小 | 串流延遲 |
+| `STREAMING_BACKLOG_SECONDS` | 處理延遲時間 | 串流延遲 |
+| `STREAMING_BACKLOG_FILES` | 未處理檔案數量 | 檔案處理延遲 |
+| `STREAMING_BACKLOG_RECORDS` | 未處理記錄數量 | 記錄處理延遲 |
 
-### Operators
+### 運算子
 
-| Operator | Description |
+| 運算子 | 說明 |
 |----------|-------------|
-| `GREATER_THAN` | Value exceeds threshold |
+| `GREATER_THAN` | 值超過門檻 |
 
 ---
 
-## Timeout Configuration
+## 逾時設定
 
-### Job-Level Timeout
+### 作業層級逾時
 
 ```yaml
 resources:
   jobs:
     timeout_job:
-      name: "Job with Timeout"
-      timeout_seconds: 7200  # 2 hours max run time
+      name: "含逾時設定的作業"
+      timeout_seconds: 7200  # 最長執行時間 2 小時
       tasks:
         - task_key: main
           notebook_task:
             notebook_path: ../src/main.py
 ```
 
-### Task-Level Timeout
+### 任務層級逾時
 
 ```yaml
 tasks:
   - task_key: long_running
-    timeout_seconds: 3600  # 1 hour max for this task
+    timeout_seconds: 3600  # 此任務最長 1 小時
     notebook_task:
       notebook_path: ../src/long_running.py
 ```
@@ -308,24 +308,24 @@ Task(
 )
 ```
 
-### Timeout Behavior
+### 逾時行為
 
-- Value `0` = no timeout (default)
-- When timeout exceeds, task/job is cancelled
-- Partial results may be lost
-- Triggers `on_failure` notifications
+- 值為 `0` = 不設逾時（預設）
+- 超過逾時時間時，task/job 會被取消
+- 部分結果可能遺失
+- 會觸發 `on_failure` 通知
 
 ---
 
-## Retry Configuration
+## 重試設定
 
-### Task Retry Settings
+### 任務重試設定
 
 ```yaml
 tasks:
   - task_key: flaky_task
     max_retries: 3
-    min_retry_interval_millis: 30000  # 30 seconds between retries
+    min_retry_interval_millis: 30000  # 每次重試間隔 30 秒
     retry_on_timeout: true
     notebook_task:
       notebook_path: ../src/flaky_task.py
@@ -347,51 +347,51 @@ Task(
 )
 ```
 
-### Retry Parameters
+### 重試參數
 
-| Parameter | Default | Description |
+| 參數 | 預設值 | 說明 |
 |-----------|---------|-------------|
-| `max_retries` | 0 | Number of retry attempts |
-| `min_retry_interval_millis` | 0 | Minimum wait between retries |
-| `retry_on_timeout` | false | Retry when task times out |
+| `max_retries` | 0 | 重試次數 |
+| `min_retry_interval_millis` | 0 | 兩次重試之間的最短等待時間 |
+| `retry_on_timeout` | false | 任務逾時時重試 |
 
-### Retry Behavior
+### 重試行為
 
-- Retries only apply to task failures
-- Each retry is a new task attempt
-- Retry count resets for each job run
-- Dependencies wait for retries to complete
+- 重試僅適用於任務失敗
+- 每次重試都是新的任務嘗試
+- 每次作業執行都會重新計算重試次數
+- 相依任務會等待重試完成
 
 ---
 
-## Run Queue Settings
+## 執行佇列設定
 
-Control concurrent run behavior.
+控制並行執行行為。
 
-### Maximum Concurrent Runs
+### 最大並行執行數
 
 ```yaml
 resources:
   jobs:
     concurrent_job:
-      name: "Concurrent Job"
-      max_concurrent_runs: 5  # Allow up to 5 simultaneous runs
+      name: "並行作業"
+      max_concurrent_runs: 5  # 最多允許 5 個同時執行
       tasks:
         - task_key: main
           notebook_task:
             notebook_path: ../src/main.py
 ```
 
-### Queue Settings
+### 佇列設定
 
 ```yaml
 resources:
   jobs:
     queued_job:
-      name: "Queued Job"
+      name: "佇列作業"
       max_concurrent_runs: 1
       queue:
-        enabled: true  # Queue additional runs instead of skipping
+        enabled: true  # 將額外執行排入佇列，而不是略過
       tasks:
         - task_key: main
           notebook_task:
@@ -407,34 +407,34 @@ from databricks.sdk.service.jobs import QueueSettings
 w = WorkspaceClient()
 
 job = w.jobs.create(
-    name="Queued Job",
+    name="佇列作業",
     max_concurrent_runs=1,
     queue=QueueSettings(enabled=True),
     tasks=[...]
 )
 ```
 
-### Behavior Options
+### 行為選項
 
-| Setting | Behavior |
+| 設定 | 行為 |
 |---------|----------|
-| `max_concurrent_runs=1`, `queue.enabled=false` | Skip if already running |
-| `max_concurrent_runs=1`, `queue.enabled=true` | Queue runs, execute sequentially |
-| `max_concurrent_runs=N` | Allow N simultaneous runs |
+| `max_concurrent_runs=1`, `queue.enabled=false` | 若已在執行中則略過 |
+| `max_concurrent_runs=1`, `queue.enabled=true` | 將執行排入佇列並依序執行 |
+| `max_concurrent_runs=N` | 允許 N 個同時執行 |
 
 ---
 
-## Notification Settings
+## 通知設定
 
-Fine-tune notification behavior.
+微調通知行為。
 
-### Job-Level Settings
+### 作業層級設定
 
 ```yaml
 resources:
   jobs:
     notification_settings_job:
-      name: "Job with Notification Settings"
+      name: "含通知設定的作業"
       notification_settings:
         no_alert_for_skipped_runs: true
         no_alert_for_canceled_runs: true
@@ -456,7 +456,7 @@ from databricks.sdk.service.jobs import JobNotificationSettings
 w = WorkspaceClient()
 
 job = w.jobs.create(
-    name="Job with Notification Settings",
+    name="含通知設定的作業",
     notification_settings=JobNotificationSettings(
         no_alert_for_skipped_runs=True,
         no_alert_for_canceled_runs=True
@@ -465,37 +465,37 @@ job = w.jobs.create(
 )
 ```
 
-### Settings
+### 設定
 
-| Setting | Default | Description |
+| 設定 | 預設值 | 說明 |
 |---------|---------|-------------|
-| `no_alert_for_skipped_runs` | false | Suppress alerts when runs are skipped |
-| `no_alert_for_canceled_runs` | false | Suppress alerts when runs are canceled |
+| `no_alert_for_skipped_runs` | false | 當執行被略過時不發送警示 |
+| `no_alert_for_canceled_runs` | false | 當執行被取消時不發送警示 |
 
 ---
 
-## Complete Monitoring Example
+## 完整監控範例
 
 ```yaml
 resources:
   jobs:
     fully_monitored:
-      name: "[${bundle.target}] Fully Monitored ETL"
+      name: "[${bundle.target}] 完整監控 ETL"
 
-      # Timeout and retries
-      timeout_seconds: 14400  # 4 hours max
+      # 逾時與重試
+      timeout_seconds: 14400  # 最多 4 小時
       max_concurrent_runs: 1
       queue:
         enabled: true
 
-      # Health monitoring
+      # 健康狀態監控
       health:
         rules:
           - metric: RUN_DURATION_SECONDS
             op: GREATER_THAN
-            value: 7200  # Warn if > 2 hours
+            value: 7200  # 若超過 2 小時則警告
 
-      # Email notifications
+      # 電子郵件通知
       email_notifications:
         on_start:
           - "team@example.com"
@@ -508,14 +508,14 @@ resources:
           - "oncall@example.com"
         no_alert_for_skipped_runs: true
 
-      # Webhook notifications
+      # Webhook 通知
       webhook_notifications:
         on_failure:
           - id: "pagerduty-destination-uuid"
         on_duration_warning_threshold_exceeded:
           - id: "slack-alerts-uuid"
 
-      # Notification settings
+      # 通知設定
       notification_settings:
         no_alert_for_canceled_runs: true
 
@@ -539,7 +539,7 @@ resources:
           depends_on:
             - task_key: transform
           timeout_seconds: 1800
-          # Critical task - specific notifications
+          # 關鍵任務 - 特定通知
           email_notifications:
             on_failure:
               - "data-team-lead@example.com"

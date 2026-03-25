@@ -1,34 +1,34 @@
 # Unity Catalog Volumes
 
-Comprehensive reference for working with Unity Catalog Volumes: file operations, permissions, and best practices.
+Unity Catalog Volumes 完整參考：檔案操作、權限管理與最佳實踐。
 
-## Overview
+## 概覽
 
-Volumes are a Unity Catalog capability for accessing, storing, and governing files. Unlike tables (structured data), volumes store unstructured or semi-structured files.
+Volumes 是 Unity Catalog 用於存取、儲存和管理檔案的功能。與資料表（結構化資料）不同，Volumes 儲存非結構化或半結構化的檔案。
 
-| Volume Type | Description | Storage |
-|-------------|-------------|---------|
-| **Managed** | Databricks manages the storage location | Default metastore location |
-| **External** | You manage the storage location | Your cloud storage (S3, ADLS, GCS) |
+| Volume 類型 | 說明 | 儲存位置 |
+|------------|------|---------|
+| **Managed（受管）** | Databricks 管理儲存位置 | 預設 Metastore 位置 |
+| **External（外部）** | 使用者自行管理儲存位置 | 您的雲端儲存（S3、ADLS、GCS） |
 
-**Common Use Cases:**
-- ML training data (images, audio, video, PDFs)
-- Data exploration and staging
-- Library files (.whl, .jar)
-- Config files and scripts
-- ETL landing zones
+**常見使用情境：**
+- ML 訓練資料（影像、音訊、影片、PDF）
+- 資料探索與暫存
+- 函式庫檔案（.whl、.jar）
+- 設定檔與腳本
+- ETL 落地區（Landing Zone）
 
 ---
 
-## Volume Path Format
+## Volume 路徑格式
 
-All volume operations use the path format:
+所有 Volume 操作使用以下路徑格式：
 
 ```
 /Volumes/<catalog>/<schema>/<volume>/<path_to_file>
 ```
 
-**Examples:**
+**範例：**
 ```
 /Volumes/main/default/my_volume/data.csv
 /Volumes/analytics/raw/landing_zone/2024/01/orders.parquet
@@ -37,77 +37,77 @@ All volume operations use the path format:
 
 ---
 
-## MCP Tools
+## MCP 工具
 
-### List Files in Volume
+### 列出 Volume 中的檔案
 
 ```python
-# List files and directories
+# 列出檔案與目錄
 list_volume_files(
     volume_path="/Volumes/main/default/my_volume/data/"
 )
-# Returns: [{"name": "file.csv", "path": "...", "is_directory": false, "file_size": 1024, "last_modified": "..."}]
+# 回傳：[{"name": "file.csv", "path": "...", "is_directory": false, "file_size": 1024, "last_modified": "..."}]
 ```
 
-### Upload File to Volume
+### 上傳檔案至 Volume
 
 ```python
-# Upload a local file
+# 上傳本地檔案
 upload_to_volume(
     local_path="/tmp/data.csv",
     volume_path="/Volumes/main/default/my_volume/data.csv",
     overwrite=True
 )
-# Returns: {"local_path": "...", "volume_path": "...", "success": true}
+# 回傳：{"local_path": "...", "volume_path": "...", "success": true}
 ```
 
-### Download File from Volume
+### 從 Volume 下載檔案
 
 ```python
-# Download to local path
+# 下載至本地路徑
 download_from_volume(
     volume_path="/Volumes/main/default/my_volume/data.csv",
     local_path="/tmp/downloaded.csv",
     overwrite=True
 )
-# Returns: {"volume_path": "...", "local_path": "...", "success": true}
+# 回傳：{"volume_path": "...", "local_path": "...", "success": true}
 ```
 
-### Create Directory
+### 建立目錄
 
 ```python
-# Create directory (creates parents like mkdir -p)
+# 建立目錄（類似 mkdir -p，自動建立父目錄）
 create_volume_directory(
     volume_path="/Volumes/main/default/my_volume/data/2024/01"
 )
-# Returns: {"volume_path": "...", "success": true}
+# 回傳：{"volume_path": "...", "success": true}
 ```
 
-### Delete File
+### 刪除檔案
 
 ```python
-# Delete a file
+# 刪除檔案
 delete_volume_file(
     volume_path="/Volumes/main/default/my_volume/old_data.csv"
 )
-# Returns: {"volume_path": "...", "success": true}
+# 回傳：{"volume_path": "...", "success": true}
 ```
 
-### Get File Info
+### 取得檔案資訊
 
 ```python
-# Get file metadata
+# 取得檔案中繼資料
 get_volume_file_info(
     volume_path="/Volumes/main/default/my_volume/data.csv"
 )
-# Returns: {"name": "data.csv", "file_size": 1024, "last_modified": "...", "success": true}
+# 回傳：{"name": "data.csv", "file_size": 1024, "last_modified": "...", "success": true}
 ```
 
 ---
 
-## Python SDK Examples
+## Python SDK 範例
 
-### Volume CRUD Operations
+### Volume CRUD 操作
 
 ```python
 from databricks.sdk import WorkspaceClient
@@ -115,44 +115,44 @@ from databricks.sdk.service.catalog import VolumeType
 
 w = WorkspaceClient()
 
-# List volumes in a schema
+# 列出 Schema 中的 Volumes
 for volume in w.volumes.list(catalog_name="main", schema_name="default"):
     print(f"{volume.full_name}: {volume.volume_type}")
 
-# Get volume details
+# 取得 Volume 詳情
 volume = w.volumes.read(name="main.default.my_volume")
 print(f"Storage: {volume.storage_location}")
 
-# Create managed volume
+# 建立受管 Volume
 managed = w.volumes.create(
     catalog_name="main",
     schema_name="default",
     name="my_managed_volume",
     volume_type=VolumeType.MANAGED,
-    comment="Managed volume for ML data"
+    comment="ML 資料用受管 Volume"
 )
 
-# Create external volume
+# 建立外部 Volume
 external = w.volumes.create(
     catalog_name="main",
     schema_name="default",
     name="my_external_volume",
     volume_type=VolumeType.EXTERNAL,
     storage_location="s3://my-bucket/volumes/data",
-    comment="External volume on S3"
+    comment="S3 上的外部 Volume"
 )
 
-# Update volume
+# 更新 Volume
 w.volumes.update(
     name="main.default.my_volume",
-    comment="Updated description"
+    comment="已更新的說明"
 )
 
-# Delete volume
+# 刪除 Volume
 w.volumes.delete(name="main.default.my_volume")
 ```
 
-### File Operations
+### 檔案操作
 
 ```python
 from databricks.sdk import WorkspaceClient
@@ -160,7 +160,7 @@ import io
 
 w = WorkspaceClient()
 
-# Upload file from memory
+# 從記憶體上傳檔案
 data = b"col1,col2\n1,2\n3,4"
 w.files.upload(
     file_path="/Volumes/main/default/my_volume/data.csv",
@@ -168,52 +168,52 @@ w.files.upload(
     overwrite=True
 )
 
-# Upload file from disk (recommended for large files)
+# 從磁碟上傳（大型檔案建議使用）
 w.files.upload_from(
     file_path="/Volumes/main/default/my_volume/large_file.parquet",
     source_path="/local/path/large_file.parquet",
     overwrite=True,
-    use_parallel=True  # Parallel upload for large files
+    use_parallel=True  # 大型檔案使用平行上傳
 )
 
-# List directory contents
+# 列出目錄內容
 for entry in w.files.list_directory_contents("/Volumes/main/default/my_volume/"):
-    file_type = "dir" if entry.is_directory else "file"
+    file_type = "目錄" if entry.is_directory else "檔案"
     print(f"{entry.name}: {file_type} ({entry.file_size} bytes)")
 
-# Download file to memory
+# 下載檔案至記憶體
 response = w.files.download("/Volumes/main/default/my_volume/data.csv")
 content = response.contents.read()
 
-# Download file to disk (recommended for large files)
+# 下載檔案至磁碟（大型檔案建議使用）
 w.files.download_to(
     file_path="/Volumes/main/default/my_volume/large_file.parquet",
     destination="/local/path/downloaded.parquet",
-    use_parallel=True  # Parallel download for large files
+    use_parallel=True  # 大型檔案使用平行下載
 )
 
-# Create directory
+# 建立目錄
 w.files.create_directory("/Volumes/main/default/my_volume/new_folder/")
 
-# Delete file
+# 刪除檔案
 w.files.delete("/Volumes/main/default/my_volume/old_data.csv")
 
-# Delete empty directory
+# 刪除空目錄
 w.files.delete_directory("/Volumes/main/default/my_volume/empty_folder/")
 
-# Get file metadata
+# 取得檔案中繼資料
 metadata = w.files.get_metadata("/Volumes/main/default/my_volume/data.csv")
 print(f"Size: {metadata.content_length}, Modified: {metadata.last_modified}")
 ```
 
 ---
 
-## SQL Operations
+## SQL 操作
 
-### Query Volume Metadata
+### 查詢 Volume 中繼資料
 
 ```sql
--- List all volumes in a catalog
+-- 列出某 Catalog 下的所有 Volumes
 SELECT
     volume_catalog,
     volume_schema,
@@ -227,19 +227,19 @@ FROM system.information_schema.volumes
 WHERE volume_catalog = 'analytics'
 ORDER BY volume_schema, volume_name;
 
--- Find volumes by type
+-- 依類型篩選 Volumes
 SELECT volume_name, storage_location
 FROM system.information_schema.volumes
 WHERE volume_type = 'EXTERNAL';
 ```
 
-### Read Files from Volumes
+### 從 Volumes 讀取檔案
 
 ```sql
--- Read CSV file
+-- 讀取 CSV 檔案
 SELECT * FROM read_files('/Volumes/main/default/my_volume/data.csv');
 
--- Read with options
+-- 讀取時指定選項
 SELECT * FROM read_files(
     '/Volumes/main/default/my_volume/data/',
     format => 'csv',
@@ -247,32 +247,32 @@ SELECT * FROM read_files(
     inferSchema => true
 );
 
--- Read Parquet files
+-- 讀取 Parquet 檔案
 SELECT * FROM read_files(
     '/Volumes/main/default/my_volume/parquet_data/',
     format => 'parquet'
 );
 
--- Read JSON files
+-- 讀取 JSON 檔案
 SELECT * FROM read_files(
     '/Volumes/main/default/my_volume/events/*.json',
     format => 'json'
 );
 
--- Create table from volume files
+-- 從 Volume 檔案建立資料表
 CREATE TABLE analytics.bronze.raw_orders AS
 SELECT * FROM read_files('/Volumes/analytics/raw/landing/orders/');
 ```
 
-### Write Files to Volumes
+### 寫入檔案至 Volumes
 
 ```sql
--- Copy data to volume as Parquet
+-- 匯出為 Parquet 至 Volume
 COPY INTO '/Volumes/main/default/my_volume/export/'
 FROM (SELECT * FROM analytics.gold.customers)
 FILEFORMAT = PARQUET;
 
--- Export as CSV
+-- 匯出為 CSV
 COPY INTO '/Volumes/main/default/my_volume/export/'
 FROM (SELECT * FROM analytics.gold.report)
 FILEFORMAT = CSV
@@ -281,37 +281,37 @@ HEADER = true;
 
 ---
 
-## Permissions
+## 權限管理
 
-### Required Permissions
+### 所需權限
 
-| Operation | Required Privilege |
-|-----------|-------------------|
-| List files | `READ VOLUME` |
-| Read files | `READ VOLUME` |
-| Write files | `WRITE VOLUME` |
-| Create volume | `CREATE VOLUME` on schema |
-| Delete volume | Owner or `MANAGE` |
+| 操作 | 所需權限 |
+|------|---------|
+| 列出檔案 | `READ VOLUME` |
+| 讀取檔案 | `READ VOLUME` |
+| 寫入檔案 | `WRITE VOLUME` |
+| 建立 Volume | Schema 上的 `CREATE VOLUME` |
+| 刪除 Volume | 擁有者或 `MANAGE` |
 
-**Note:** Also requires `USE CATALOG` on parent catalog and `USE SCHEMA` on parent schema.
+> **注意：** 同時需要父 Catalog 的 `USE CATALOG` 與父 Schema 的 `USE SCHEMA` 權限。
 
-### Grant Permissions
+### 授予權限（SQL）
 
 ```sql
--- Grant read access to a volume
+-- 授予讀取權限
 GRANT READ VOLUME ON VOLUME main.default.my_volume TO `data_readers`;
 
--- Grant write access
+-- 授予寫入權限
 GRANT WRITE VOLUME ON VOLUME main.default.my_volume TO `data_writers`;
 
--- Grant ability to create volumes in a schema
+-- 授予在 Schema 中建立 Volume 的權限
 GRANT CREATE VOLUME ON SCHEMA main.default TO `data_engineers`;
 
--- Revoke access
+-- 撤銷權限
 REVOKE WRITE VOLUME ON VOLUME main.default.my_volume FROM `data_writers`;
 ```
 
-### Python SDK Permissions
+### 授予權限（Python SDK）
 
 ```python
 from databricks.sdk import WorkspaceClient
@@ -319,7 +319,7 @@ from databricks.sdk.service.catalog import SecurableType, PermissionsChange, Pri
 
 w = WorkspaceClient()
 
-# Grant permissions
+# 授予權限
 w.grants.update(
     securable_type=SecurableType.VOLUME,
     full_name="main.default.my_volume",
@@ -331,7 +331,7 @@ w.grants.update(
     ]
 )
 
-# Get current permissions
+# 查看目前權限
 grants = w.grants.get(
     securable_type=SecurableType.VOLUME,
     full_name="main.default.my_volume"
@@ -342,49 +342,49 @@ for grant in grants.privilege_assignments:
 
 ---
 
-## Best Practices
+## 最佳實踐
 
-### Organization
+### 目錄組織
 
-1. **Use meaningful paths** - Organize by date, source, or type
+1. **使用有意義的路徑** — 依日期、來源或類型組織
    ```
    /Volumes/catalog/schema/volume/year=2024/month=01/file.parquet
    /Volumes/catalog/schema/volume/source=salesforce/accounts.csv
    ```
 
-2. **Separate raw and processed** - Use different volumes for landing vs. curated
+2. **區分原始資料與處理後資料** — 使用不同 Volume 區分落地區與整理後資料
    ```
-   /Volumes/analytics/raw/landing_zone/    # Raw uploads
-   /Volumes/analytics/curated/processed/   # Cleaned data
+   /Volumes/analytics/raw/landing_zone/    # 原始上傳
+   /Volumes/analytics/curated/processed/   # 清理後資料
    ```
 
-3. **Archive old data** - Move infrequently accessed files to archive volumes
+3. **封存舊資料** — 將不常存取的檔案移至封存 Volume
 
-### Performance
+### 效能
 
-1. **Use parallel uploads** for large files (SDK v0.72.0+)
+1. **大型檔案使用平行上傳**（SDK v0.72.0+）
    ```python
    w.files.upload_from(..., use_parallel=True)
    ```
 
-2. **Batch small files** - Combine many small files into larger archives
+2. **合併小檔案** — 將大量小檔案合併為較大的封存檔
 
-3. **Use Parquet** for analytics - Columnar format is more efficient
+3. **使用 Parquet 格式** — 欄位式格式更適合分析查詢
 
-4. **Partition by date** - Enables efficient pruning in queries
+4. **依日期分區** — 讓查詢可有效剪枝
 
-### Security
+### 資安
 
-1. **Use managed volumes** when Databricks should control storage
+1. 當 Databricks 應管理儲存時，**使用受管 Volume**
 
-2. **Use external volumes** when you need:
-   - Existing data in cloud storage
-   - Cross-workspace access
-   - Custom retention policies
+2. 在以下情況**使用外部 Volume**：
+   - 現有雲端儲存中已有資料
+   - 需要跨工作區存取
+   - 需要自訂資料保留政策
 
-3. **Apply least privilege** - Grant only required permissions
+3. **最小權限原則** — 僅授予必要的權限
 
-4. **Audit access** - Monitor volume access in audit logs
+4. **稽核存取記錄** — 在稽核日誌中監控 Volume 存取
    ```sql
    SELECT *
    FROM system.access.audit
@@ -394,27 +394,27 @@ for grant in grants.privilege_assignments:
 
 ---
 
-## Troubleshooting
+## 疑難排解
 
-### Common Errors
+### 常見錯誤
 
-| Error | Cause | Solution |
-|-------|-------|----------|
-| `PERMISSION_DENIED` | Missing volume permissions | Grant `READ VOLUME` or `WRITE VOLUME` |
-| `NOT_FOUND` | Volume or path doesn't exist | Check path spelling, ensure volume exists |
-| `ALREADY_EXISTS` | File exists, overwrite=False | Set `overwrite=True` or delete first |
-| `RESOURCE_DOES_NOT_EXIST` | Parent directory doesn't exist | Create parent directories first |
-| `INVALID_PARAMETER_VALUE` | Invalid path format | Use `/Volumes/catalog/schema/volume/path` format |
+| 錯誤 | 原因 | 解決方式 |
+|------|------|---------|
+| `PERMISSION_DENIED` | 缺少 Volume 權限 | 授予 `READ VOLUME` 或 `WRITE VOLUME` |
+| `NOT_FOUND` | Volume 或路徑不存在 | 確認路徑拼寫，確保 Volume 已存在 |
+| `ALREADY_EXISTS` | 檔案已存在且 overwrite=False | 設定 `overwrite=True` 或先刪除檔案 |
+| `RESOURCE_DOES_NOT_EXIST` | 父目錄不存在 | 先建立父目錄 |
+| `INVALID_PARAMETER_VALUE` | 路徑格式不正確 | 使用 `/Volumes/catalog/schema/volume/path` 格式 |
 
-### Debug Checklist
+### 除錯清單
 
-1. **Verify volume exists:**
+1. **確認 Volume 存在：**
    ```sql
    SELECT * FROM system.information_schema.volumes
    WHERE volume_name = 'my_volume';
    ```
 
-2. **Check permissions:**
+2. **確認權限：**
    ```python
    grants = w.grants.get(
        securable_type=SecurableType.VOLUME,
@@ -422,37 +422,37 @@ for grant in grants.privilege_assignments:
    )
    ```
 
-3. **Verify path format:**
-   - Must start with `/Volumes/`
-   - Three-level namespace: `catalog/schema/volume`
-   - No double slashes (`//`)
+3. **確認路徑格式：**
+   - 必須以 `/Volumes/` 開頭
+   - 三層命名空間：`catalog/schema/volume`
+   - 不可有連續斜線（`//`）
 
-4. **Check file exists:**
+4. **確認檔案存在：**
    ```python
    try:
        w.files.get_metadata("/Volumes/catalog/schema/volume/file.csv")
    except Exception as e:
-       print(f"File not found: {e}")
+       print(f"找不到檔案：{e}")
    ```
 
-### External Volume Issues
+### 外部 Volume 問題
 
-1. **Storage credential required** - External volumes need a storage credential
+1. **需要 Storage Credential** — 外部 Volume 須有對應的 Storage Credential
    ```python
-   # Create storage credential first
+   # 先建立 Storage Credential
    w.storage_credentials.create(
        name="my_s3_cred",
        aws_iam_role={"role_arn": "arn:aws:iam::..."}
    )
-   
-   # Create external location
+
+   # 建立 External Location
    w.external_locations.create(
        name="my_s3_location",
        url="s3://my-bucket/path",
        credential_name="my_s3_cred"
    )
-   
-   # Then create external volume
+
+   # 再建立外部 Volume
    w.volumes.create(
        ...
        volume_type=VolumeType.EXTERNAL,
@@ -460,6 +460,6 @@ for grant in grants.privilege_assignments:
    )
    ```
 
-2. **Network access** - Ensure workspace can reach cloud storage
+2. **網路存取** — 確認工作區可連接雲端儲存
 
-3. **IAM permissions** - Verify IAM role has bucket access
+3. **IAM 權限** — 確認 IAM Role 具有 Bucket 存取權限

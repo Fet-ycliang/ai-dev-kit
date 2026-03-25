@@ -1,7 +1,7 @@
-"""Backup manager service for project files.
+"""專案檔案的備份管理服務。
 
-Handles zipping project folders and storing/restoring from PostgreSQL.
-Runs a background loop every 10 minutes to process pending backups.
+處理專案資料夾的壓縮並從 PostgreSQL 儲存/還原。
+執行背景迴圈每 10 分鐘處理待備份項目。
 """
 
 import asyncio
@@ -20,38 +20,37 @@ from ..db.models import ProjectBackup
 
 logger = logging.getLogger(__name__)
 
-# Configuration
-BACKUP_INTERVAL = 600  # 10 minutes
+# 設定
+BACKUP_INTERVAL = 600  # 10 分鐘
 PROJECTS_BASE_DIR = os.getenv('PROJECTS_BASE_DIR', './projects')
 
-# In-memory queue of project IDs needing backup
+# 需要備份的 project ID 記憶體佇列
 _backup_queue: set[str] = set()
 _backup_task: Optional[asyncio.Task] = None
 
 
 def mark_for_backup(project_id: str) -> None:
-  """Mark a project for backup.
+  """標記專案進行備份。
 
-  Called after agent query completes. The project will be backed up
-  in the next backup loop iteration.
+  在 agent query 完成後呼叫。專案將在下一個備份迴圈中備份。
 
   Args:
-      project_id: The project UUID to backup
+      project_id: 要備份的 project UUID
   """
   _backup_queue.add(project_id)
   logger.debug(f'Project {project_id} marked for backup')
 
 
 async def create_backup(project_id: str) -> bool:
-  """Create a backup of the project folder.
+  """建立專案資料夾的備份。
 
-  Zips all files in the project directory and stores in the database.
+  壓縮專案目錄中的所有檔案並儲存到資料庫。
 
   Args:
-      project_id: The project UUID to backup
+      project_id: 要備份的 project UUID
 
   Returns:
-      True if backup was created, False if project folder doesn't exist
+      若備份已建立則回傳 True，若專案資料夾不存在則回傳 False
   """
   project_dir = Path(PROJECTS_BASE_DIR).resolve() / project_id
 
@@ -59,7 +58,7 @@ async def create_backup(project_id: str) -> bool:
     logger.warning(f'Project directory does not exist: {project_dir}')
     return False
 
-  # Create zip in memory
+  # 在記憶體中建立 zip
   buffer = BytesIO()
   file_count = 0
 
@@ -76,7 +75,7 @@ async def create_backup(project_id: str) -> bool:
 
   backup_data = buffer.getvalue()
 
-  # Upsert to database (INSERT ON CONFLICT UPDATE)
+  # Upsert 到資料庫（INSERT ON CONFLICT UPDATE）
   async with session_scope() as session:
     stmt = insert(ProjectBackup).values(
       project_id=project_id,
@@ -93,15 +92,15 @@ async def create_backup(project_id: str) -> bool:
 
 
 async def restore_backup(project_id: str) -> bool:
-  """Restore a project from backup.
+  """從備份還原專案。
 
-  Downloads the zip from database and extracts to project directory.
+  從資料庫下載 zip 並解壓縮到專案目錄。
 
   Args:
-      project_id: The project UUID to restore
+      project_id: 要還原的 project UUID
 
   Returns:
-      True if restored, False if no backup exists
+      若已還原則回傳 True，若無備份存在則回傳 False
   """
   async with session_scope() as session:
     result = await session.execute(
@@ -115,11 +114,11 @@ async def restore_backup(project_id: str) -> bool:
 
     backup_data = row
 
-  # Create project directory
+  # 建立專案目錄
   project_dir = Path(PROJECTS_BASE_DIR).resolve() / project_id
   project_dir.mkdir(parents=True, exist_ok=True)
 
-  # Extract zip
+  # 解壓縮 zip
   buffer = BytesIO(backup_data)
   with zipfile.ZipFile(buffer, 'r') as zf:
     zf.extractall(project_dir)
@@ -129,10 +128,10 @@ async def restore_backup(project_id: str) -> bool:
 
 
 def _create_default_claude_md(project_dir: Path) -> None:
-  """Create a default CLAUDE.md file for a new project.
+  """為新專案建立預設的 CLAUDE.md 檔案。
 
   Args:
-      project_dir: Path to the project directory
+      project_dir: 專案目錄的路徑
   """
   claude_md_path = project_dir / 'CLAUDE.md'
   if claude_md_path.exists():
@@ -175,18 +174,18 @@ Add any project-specific notes or context here.
 
 
 def ensure_project_directory(project_id: str) -> Path:
-  """Ensure project directory exists, restoring from backup if needed.
+  """確保專案目錄存在，必要時從備份還原。
 
-  This is the main entry point for getting a project directory.
-  If the directory doesn't exist, attempts to restore from backup.
-  If no backup exists, creates an empty directory.
-  Also ensures skills are copied to the project and CLAUDE.md exists.
+  這是取得專案目錄的主要入口點。
+  若目錄不存在，嘗試從備份還原。
+  若無備份存在，建立空目錄。
+  同時確保技能已複製到專案且 CLAUDE.md 存在。
 
   Args:
-      project_id: The project UUID
+      project_id: Project UUID
 
   Returns:
-      Path to the project directory
+      專案目錄的路徑
   """
   from .skills_manager import copy_skills_to_project
 
@@ -195,14 +194,14 @@ def ensure_project_directory(project_id: str) -> Path:
   is_new_project = not project_dir.exists()
 
   if not project_dir.exists():
-    # Try to restore from backup
+    # 嘗試從備份還原
     try:
       loop = asyncio.get_event_loop()
       if loop.is_running():
-        # We're in an async context, create a new task
+        # 我們在非同步上下文中，建立新任務
         future = asyncio.ensure_future(restore_backup(project_id))
-        # This is a sync function called from async code, we need to handle this
-        # For now, just create the directory - the restore will happen async
+        # 這是從非同步程式碼呼叫的同步函式，我們需要處理這個
+        # 目前只建立目錄 - 還原將非同步進行
         project_dir.mkdir(parents=True, exist_ok=True)
         logger.debug(f'Created empty project directory: {project_dir}')
       else:
@@ -211,17 +210,17 @@ def ensure_project_directory(project_id: str) -> Path:
           project_dir.mkdir(parents=True, exist_ok=True)
           logger.debug(f'Created empty project directory: {project_dir}')
     except RuntimeError:
-      # No event loop, use asyncio.run
+      # 無 event loop，使用 asyncio.run
       restored = asyncio.run(restore_backup(project_id))
       if not restored:
         project_dir.mkdir(parents=True, exist_ok=True)
         logger.debug(f'Created empty project directory: {project_dir}')
 
-  # Copy skills to project if needed
+  # 必要時複製技能到專案
   if needs_skills:
     copy_skills_to_project(project_dir)
 
-  # Create default CLAUDE.md for new projects (or if it doesn't exist)
+  # 為新專案建立預設 CLAUDE.md（或若不存在）
   if is_new_project or not (project_dir / 'CLAUDE.md').exists():
     _create_default_claude_md(project_dir)
 
@@ -229,13 +228,13 @@ def ensure_project_directory(project_id: str) -> Path:
 
 
 async def ensure_project_directory_async(project_id: str) -> Path:
-  """Async version of ensure_project_directory.
+  """ensure_project_directory 的非同步版本。
 
   Args:
-      project_id: The project UUID
+      project_id: Project UUID
 
   Returns:
-      Path to the project directory
+      專案目錄的路徑
   """
   project_dir = Path(PROJECTS_BASE_DIR).resolve() / project_id
 
@@ -249,7 +248,7 @@ async def ensure_project_directory_async(project_id: str) -> Path:
 
 
 async def _backup_loop() -> None:
-  """Background loop that processes pending backups every 10 minutes."""
+  """背景迴圈每 10 分鐘處理待備份項目。"""
   logger.info(f'Backup worker started (interval: {BACKUP_INTERVAL}s)')
 
   while True:
@@ -258,7 +257,7 @@ async def _backup_loop() -> None:
     if not _backup_queue:
       continue
 
-    # Get and clear pending backups
+    # 取得並清除待備份項目
     pending = _backup_queue.copy()
     _backup_queue.clear()
 
@@ -272,9 +271,9 @@ async def _backup_loop() -> None:
 
 
 def start_backup_worker() -> None:
-  """Start the background backup loop.
+  """啟動背景備份迴圈。
 
-  Should be called during app startup.
+  應在應用程式啟動時呼叫。
   """
   global _backup_task
   _backup_task = asyncio.create_task(_backup_loop())
@@ -282,9 +281,9 @@ def start_backup_worker() -> None:
 
 
 def stop_backup_worker() -> None:
-  """Stop the background backup loop.
+  """停止背景備份迴圈。
 
-  Should be called during app shutdown.
+  應在應用程式關閉時呼叫。
   """
   global _backup_task
   if _backup_task:

@@ -1,6 +1,6 @@
 /**
- * Client API for the databricks-builder-app backend.
- * All routes are under /api (proxied in dev).
+ * databricks-builder-app 後端的客戶端 API。
+ * 所有路由皆位於 /api 之下（開發環境會透過 proxy 轉送）。
  */
 
 import type { Cluster, Conversation, Execution, Project, UserInfo, Warehouse } from '@/lib/types';
@@ -36,13 +36,13 @@ async function request<T>(
   return res.json() as Promise<T>;
 }
 
-// --- Config / user ---
+// --- 設定 / 使用者 ---
 
 export async function fetchUserInfo(): Promise<UserInfo> {
   return request<UserInfo>('/me');
 }
 
-// --- Projects ---
+// --- 專案 ---
 
 export async function fetchProjects(): Promise<Project[]> {
   return request<Project[]>('/projects');
@@ -64,7 +64,7 @@ export async function deleteProject(projectId: string): Promise<void> {
   return request(`/projects/${projectId}`, { method: 'DELETE' });
 }
 
-// --- Conversations ---
+// --- 對話 ---
 
 export async function fetchConversations(projectId: string): Promise<Conversation[]> {
   return request<Conversation[]>(`/projects/${projectId}/conversations`);
@@ -79,7 +79,7 @@ export async function fetchConversation(
 
 export async function createConversation(
   projectId: string,
-  title: string = 'New Conversation'
+  title: string = '新對話'
 ): Promise<Conversation> {
   return request<Conversation>(`/projects/${projectId}/conversations`, {
     method: 'POST',
@@ -96,7 +96,7 @@ export async function deleteConversation(
   });
 }
 
-// --- Clusters & warehouses ---
+// --- Clusters 與 warehouses ---
 
 export async function fetchClusters(): Promise<Cluster[]> {
   return request<Cluster[]>('/clusters');
@@ -106,7 +106,7 @@ export async function fetchWarehouses(): Promise<Warehouse[]> {
   return request<Warehouse[]>('/warehouses');
 }
 
-// --- Agent (invoke + streaming) ---
+// --- Agent（呼叫與串流） ---
 
 export interface InvokeAgentParams {
   projectId: string;
@@ -246,10 +246,10 @@ async function streamProgress(params: {
       }
 
       const reader = res.body?.getReader();
-      if (!reader) {
-        onError(new Error('No response body'));
-        return;
-      }
+        if (!reader) {
+          onError(new Error('沒有回應內容'));
+          return;
+        }
 
       const decoder = new TextDecoder();
       let buffer = '';
@@ -282,7 +282,7 @@ async function streamProgress(params: {
             }
             onEvent(event);
           } catch {
-            // skip malformed
+            // 略過格式不正確的事件
           }
         }
         if (shouldReconnect) break;
@@ -300,7 +300,7 @@ async function streamProgress(params: {
   }
 }
 
-// --- Stop execution ---
+// --- 停止執行 ---
 
 export async function stopExecution(executionId: string): Promise<{ success: boolean; message: string }> {
   return request<{ success: boolean; message: string }>(`/stop_stream/${executionId}`, {
@@ -308,7 +308,7 @@ export async function stopExecution(executionId: string): Promise<{ success: boo
   });
 }
 
-// --- Executions ---
+// --- 執行紀錄 ---
 
 export async function fetchExecutions(
   projectId: string,

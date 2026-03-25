@@ -1,11 +1,11 @@
 """
-Unity Catalog Operations
+Unity Catalog 作業
 
-Functions for managing Unity Catalog objects, permissions, storage,
-governance metadata, monitors, and data sharing.
+用於管理 Unity Catalog 物件、權限、儲存體、
+governance 中繼資料、監視器與資料分享的函式。
 """
 
-# Catalogs
+# Catalogs 相關
 from .catalogs import (
     list_catalogs,
     get_catalog,
@@ -14,7 +14,7 @@ from .catalogs import (
     delete_catalog,
 )
 
-# Schemas
+# Schemas 相關
 from .schemas import (
     list_schemas,
     get_schema,
@@ -23,7 +23,7 @@ from .schemas import (
     delete_schema,
 )
 
-# Tables
+# Tables 相關
 from .tables import (
     list_tables,
     get_table,
@@ -31,7 +31,7 @@ from .tables import (
     delete_table,
 )
 
-# Volumes
+# Volumes 相關
 from .volumes import (
     list_volumes,
     get_volume,
@@ -40,7 +40,7 @@ from .volumes import (
     delete_volume,
 )
 
-# Volume Files
+# Volume Files 相關
 from .volume_files import (
     VolumeFileInfo,
     VolumeUploadResult,
@@ -54,14 +54,14 @@ from .volume_files import (
     get_volume_file_metadata,
 )
 
-# Functions
+# Functions 相關
 from .functions_uc import (
     list_functions,
     get_function,
     delete_function,
 )
 
-# Grants
+# Grants 相關
 from .grants import (
     grant_privileges,
     revoke_privileges,
@@ -69,7 +69,7 @@ from .grants import (
     get_effective_grants,
 )
 
-# Storage credentials and external locations
+# Storage credentials 與 external locations
 from .storage import (
     list_storage_credentials,
     get_storage_credential,
@@ -84,7 +84,7 @@ from .storage import (
     delete_external_location,
 )
 
-# Connections (Lakehouse Federation)
+# Connections（Lakehouse Federation）
 from .connections import (
     list_connections,
     get_connection,
@@ -94,7 +94,7 @@ from .connections import (
     create_foreign_catalog,
 )
 
-# Tags and comments
+# Tags 與 comments
 from .tags import (
     set_tags,
     unset_tags,
@@ -103,7 +103,7 @@ from .tags import (
     query_column_tags,
 )
 
-# Security policies (RLS, column masking)
+# Security policies（RLS、column masking）
 from .security_policies import (
     create_security_function,
     set_row_filter,
@@ -112,7 +112,7 @@ from .security_policies import (
     drop_column_mask,
 )
 
-# Quality monitors
+# Quality monitors 相關
 from .monitors import (
     create_monitor,
     get_monitor,
@@ -121,7 +121,7 @@ from .monitors import (
     delete_monitor,
 )
 
-# Metric Views
+# Metric Views 相關
 from .metric_views import (
     create_metric_view,
     alter_metric_view,
@@ -131,7 +131,7 @@ from .metric_views import (
     grant_metric_view,
 )
 
-# Delta Sharing
+# Delta Sharing 相關
 from .sharing import (
     list_shares,
     get_share,
@@ -152,30 +152,30 @@ from .sharing import (
 )
 
 __all__ = [
-    # Catalogs
+    # Catalogs 相關
     "list_catalogs",
     "get_catalog",
     "create_catalog",
     "update_catalog",
     "delete_catalog",
-    # Schemas
+    # Schemas 相關
     "list_schemas",
     "get_schema",
     "create_schema",
     "update_schema",
     "delete_schema",
-    # Tables
+    # Tables 相關
     "list_tables",
     "get_table",
     "create_table",
     "delete_table",
-    # Volumes
+    # Volumes 相關
     "list_volumes",
     "get_volume",
     "create_volume",
     "update_volume",
     "delete_volume",
-    # Volume Files
+    # Volume Files 相關
     "VolumeFileInfo",
     "VolumeUploadResult",
     "VolumeDownloadResult",
@@ -186,16 +186,16 @@ __all__ = [
     "delete_volume_directory",
     "create_volume_directory",
     "get_volume_file_metadata",
-    # Functions
+    # Functions 相關
     "list_functions",
     "get_function",
     "delete_function",
-    # Grants
+    # Grants 相關
     "grant_privileges",
     "revoke_privileges",
     "get_grants",
     "get_effective_grants",
-    # Storage
+    # Storage 相關
     "list_storage_credentials",
     "get_storage_credential",
     "create_storage_credential",
@@ -207,39 +207,39 @@ __all__ = [
     "create_external_location",
     "update_external_location",
     "delete_external_location",
-    # Connections
+    # Connections 相關
     "list_connections",
     "get_connection",
     "create_connection",
     "update_connection",
     "delete_connection",
     "create_foreign_catalog",
-    # Tags and comments
+    # Tags 與 comments
     "set_tags",
     "unset_tags",
     "set_comment",
     "query_table_tags",
     "query_column_tags",
-    # Security policies
+    # Security policies 相關
     "create_security_function",
     "set_row_filter",
     "drop_row_filter",
     "set_column_mask",
     "drop_column_mask",
-    # Quality monitors
+    # Quality monitors 相關
     "create_monitor",
     "get_monitor",
     "run_monitor_refresh",
     "list_monitor_refreshes",
     "delete_monitor",
-    # Metric Views
+    # Metric Views 相關
     "create_metric_view",
     "alter_metric_view",
     "drop_metric_view",
     "describe_metric_view",
     "query_metric_view",
     "grant_metric_view",
-    # Sharing
+    # Sharing 相關
     "list_shares",
     "get_share",
     "create_share",

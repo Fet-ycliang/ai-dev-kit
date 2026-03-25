@@ -1,12 +1,12 @@
-# SCD Query Patterns
+# SCD 查詢模式
 
-How to query SCD Type 2 history tables effectively, including current state queries, point-in-time analysis, and change tracking.
+如何有效查詢 SCD Type 2 歷程資料表，包含當前狀態查詢、時間點分析及異動追蹤。
 
 ---
 
-## Understanding SCD Type 2 Structure
+## 了解 SCD Type 2 結構
 
-When you create an SCD Type 2 flow, the system automatically adds temporal columns:
+建立 SCD Type 2 flow 後，系統會自動新增時序欄位：
 
 ```sql
 CREATE FLOW customers_scd2_flow AS
@@ -18,28 +18,28 @@ STORED AS SCD TYPE 2
 TRACK HISTORY ON *;
 ```
 
-**Resulting table structure** (Lakeflow uses double-underscore temporal columns):
+**產生的資料表結構**（Lakeflow 使用雙底線時序欄位）：
 ```
 customers_history
-├── customer_id        -- Business key
+├── customer_id        -- 業務鍵
 ├── customer_name
 ├── email
 ├── phone
-├── __START_AT         -- When this version became effective (auto-generated)
-├── __END_AT           -- When this version expired (NULL for current)
-└── ...other columns
+├── __START_AT         -- 此版本生效的時間（自動產生）
+├── __END_AT           -- 此版本失效的時間（NULL 表示當前版本）
+└── ...其他欄位
 ```
 
-**Important:** Query using `__START_AT` and `__END_AT` (double underscore), not `START_AT`/`END_AT`.
+**重要：** 查詢時使用 `__START_AT` 與 `__END_AT`（雙底線），而非 `START_AT`/`END_AT`。
 
 ---
 
-## Current State Queries
+## 當前狀態查詢
 
-### All Current Records
+### 所有當前記錄
 
 ```sql
--- __END_AT IS NULL indicates active record (Lakeflow uses double underscore)
+-- __END_AT IS NULL 表示有效記錄（Lakeflow 使用雙底線）
 CREATE OR REPLACE MATERIALIZED VIEW dim_customers_current AS
 SELECT
   customer_id, customer_name, email, phone, address,
@@ -48,7 +48,7 @@ FROM customers_history
 WHERE __END_AT IS NULL;
 ```
 
-### Specific Customer
+### 特定客戶
 
 ```sql
 SELECT *
@@ -59,14 +59,14 @@ WHERE customer_id = '12345'
 
 ---
 
-## Point-in-Time Queries
+## 時間點查詢
 
-### As-Of Date Query
+### 指定日期的資料狀態
 
-Get state of records as they were on a specific date:
+取得特定日期時的記錄狀態：
 
 ```sql
--- Products as of January 1, 2024 (use __START_AT / __END_AT)
+-- 2024 年 1 月 1 日時的產品資料（使用 __START_AT / __END_AT）
 CREATE OR REPLACE MATERIALIZED VIEW products_as_of_2024_01_01 AS
 SELECT
   product_id, product_name, price, category,
@@ -78,12 +78,12 @@ WHERE __START_AT <= '2024-01-01'
 
 ---
 
-## Change Analysis
+## 異動分析
 
-### Track All Changes for Entity
+### 追蹤實體的所有異動
 
 ```sql
--- Complete history for a customer (use __START_AT / __END_AT)
+-- 客戶的完整歷程（使用 __START_AT / __END_AT）
 SELECT
   customer_id, customer_name, email, phone,
   __START_AT, __END_AT,
@@ -96,10 +96,10 @@ WHERE customer_id = '12345'
 ORDER BY __START_AT DESC;
 ```
 
-### Changes Within Time Period
+### 指定時間區間內的異動
 
 ```sql
--- Customers who changed during Q1 2024 (use __START_AT)
+-- 2024 年 Q1 異動的客戶（使用 __START_AT）
 SELECT
   customer_id, customer_name,
   __START_AT AS change_timestamp,
@@ -116,12 +116,12 @@ ORDER BY __START_AT;
 
 ---
 
-## Joining Facts with Historical Dimensions
+## 事實資料表與歷史維度的 Join
 
-### Enrich Facts with Dimension at Transaction Time
+### 以交易時間的維度資料豐富事實資料
 
 ```sql
--- Join sales with product prices at time of sale
+-- 以銷售當時的產品售價 join 銷售記錄
 CREATE OR REPLACE MATERIALIZED VIEW sales_with_historical_prices AS
 SELECT
   s.sale_id, s.product_id, s.sale_date, s.quantity,
@@ -135,10 +135,10 @@ INNER JOIN products_history p
   AND (s.sale_date < p.__END_AT OR p.__END_AT IS NULL);
 ```
 
-### Join with Current Dimension
+### 與當前維度 Join
 
 ```sql
--- Join sales with current product information
+-- 以當前產品資訊 join 銷售記錄
 CREATE OR REPLACE MATERIALIZED VIEW sales_with_current_prices AS
 SELECT
   s.sale_id, s.product_id, s.sale_date, s.quantity,
@@ -149,43 +149,43 @@ SELECT
 FROM sales_fact s
 INNER JOIN products_history p
   ON s.product_id = p.product_id
-  AND p.__END_AT IS NULL;  -- Current version only
+  AND p.__END_AT IS NULL;  -- 僅取當前版本
 ```
 
 ---
 
-## Selective History Tracking
+## 選擇性歷程追蹤
 
-When using `TRACK HISTORY ON specific_columns`:
+使用 `TRACK HISTORY ON specific_columns` 時：
 
 ```sql
--- Only price changes trigger new versions
+-- 只有 price 異動才觸發新版本
 CREATE FLOW products_scd2_flow AS
 AUTO CDC INTO products_history
 FROM stream(products_cdc_clean)
 KEYS (product_id)
 SEQUENCE BY event_timestamp
 STORED AS SCD TYPE 2
-TRACK HISTORY ON price, cost;  -- Only these columns
+TRACK HISTORY ON price, cost;  -- 僅追蹤這些欄位
 ```
 
 ---
 
-## Optimization Patterns
+## 最佳化模式
 
-### Pre-Filter Materialized Views
+### 預先過濾的物化視圖
 
 ```sql
--- Current state view (most common pattern)
+-- 當前狀態視圖（最常見的模式）
 CREATE OR REPLACE MATERIALIZED VIEW dim_products_current AS
 SELECT * FROM products_history WHERE __END_AT IS NULL;
 
--- Recent changes only
+-- 僅最近的異動
 CREATE OR REPLACE MATERIALIZED VIEW dim_recent_changes AS
 SELECT * FROM products_history
 WHERE __START_AT >= CURRENT_DATE() - INTERVAL 90 DAYS;
 
--- Change frequency stats
+-- 異動頻率統計
 CREATE OR REPLACE MATERIALIZED VIEW product_change_stats AS
 SELECT
   product_id,
@@ -198,34 +198,34 @@ GROUP BY product_id;
 
 ---
 
-## Best Practices
+## 最佳實踐
 
-### 1. Always Filter by __END_AT for Current (Lakeflow uses double underscore)
+### 1. 當前記錄務必以 __END_AT 過濾（Lakeflow 使用雙底線）
 
 ```sql
--- ✅ Efficient
+-- ✅ 效率高
 WHERE __END_AT IS NULL
 
--- ❌ Less efficient
+-- ❌ 效率較低
 WHERE __START_AT = (SELECT MAX(__START_AT) FROM table WHERE ...)
 ```
 
-### 2. Use Inclusive Lower, Exclusive Upper
+### 2. 使用包含下界、排除上界的模式
 
 ```sql
--- ✅ Standard pattern
+-- ✅ 標準模式
 WHERE __START_AT <= '2024-01-01'
   AND (__END_AT > '2024-01-01' OR __END_AT IS NULL)
 ```
 
-### 3. Create MVs for Common Patterns
+### 3. 為常用模式建立物化視圖
 
 ```sql
--- Current state
+-- 當前狀態
 CREATE OR REPLACE MATERIALIZED VIEW dim_current AS
 SELECT * FROM history WHERE __END_AT IS NULL;
 
--- Recent changes
+-- 最近異動
 CREATE OR REPLACE MATERIALIZED VIEW dim_recent_changes AS
 SELECT * FROM history
 WHERE __START_AT >= CURRENT_DATE() - INTERVAL 90 DAYS;
@@ -233,11 +233,11 @@ WHERE __START_AT >= CURRENT_DATE() - INTERVAL 90 DAYS;
 
 ---
 
-## Common Issues
+## 常見問題
 
-| Issue | Solution |
-|-------|----------|
-| Multiple rows for same key | Missing `__END_AT IS NULL` filter for current state |
-| Point-in-time no results | Use `__START_AT <= date AND (__END_AT > date OR __END_AT IS NULL)` |
-| Slow temporal join | Create materialized view for specific time period |
-| Unexpected duplicates | Multiple changes same day - use SEQUENCE BY with high precision |
+| 問題 | 解決方式 |
+|------|---------|
+| 相同鍵出現多筆資料 | 查詢當前狀態時缺少 `__END_AT IS NULL` 過濾條件 |
+| 時間點查詢無結果 | 使用 `__START_AT <= date AND (__END_AT > date OR __END_AT IS NULL)` |
+| 時序 join 速度慢 | 為特定時間區間建立物化視圖 |
+| 意外重複資料 | 同一天有多次異動——使用高精度的 SEQUENCE BY |

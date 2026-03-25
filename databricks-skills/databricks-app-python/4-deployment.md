@@ -1,20 +1,20 @@
-# Deploying Databricks Apps
+# 部署 Databricks Apps
 
-Three deployment options: Databricks CLI (simplest), Asset Bundles (multi-environment), or MCP tools (programmatic).
+三種部署方式：Databricks CLI（最簡單）、Asset Bundles（多環境）或 MCP 工具（程式化）。
 
-**Cookbook deployment guide**: https://apps-cookbook.dev/docs/deploy
+**Cookbook 部署指南**：https://apps-cookbook.dev/docs/deploy
 
 ---
 
-## Option 1: Databricks CLI
+## 方式一：Databricks CLI
 
-**Best for**: quick deployments, single environment.
+**最適用於**：快速部署、單一環境。
 
-### Step 1: Create app.yaml
+### 步驟一：建立 app.yaml
 
 ```yaml
 command:
-  - "python"        # Adjust per framework — see table below
+  - "python"        # 依框架調整——請見下方表格
   - "app.py"
 
 env:
@@ -24,10 +24,10 @@ env:
     value: "false"
 ```
 
-### app.yaml Commands Per Framework
+### 各框架的 app.yaml 指令
 
-| Framework | Command |
-|-----------|---------|
+| 框架 | 指令 |
+|------|------|
 | Dash | `["python", "app.py"]` |
 | Streamlit | `["streamlit", "run", "app.py"]` |
 | Gradio | `["python", "app.py"]` |
@@ -35,27 +35,27 @@ env:
 | FastAPI | `["uvicorn", "app:app", "--host", "0.0.0.0", "--port", "8000"]` |
 | Reflex | `["reflex", "run", "--env", "prod"]` |
 
-### Step 2: Create and Deploy
+### 步驟二：建立並部署
 
 ```bash
-# Create the app
+# 建立應用程式
 databricks apps create <app-name>
 
-# Upload source code
+# 上傳原始碼
 databricks workspace mkdirs /Workspace/Users/<user>/apps/<app-name>
 databricks workspace import-dir . /Workspace/Users/<user>/apps/<app-name>
 
-# Deploy
+# 部署
 databricks apps deploy <app-name> \
   --source-code-path /Workspace/Users/<user>/apps/<app-name>
 
-# Add resources via UI (SQL warehouse, Lakebase, etc.)
+# 透過 UI 新增資源（SQL warehouse、Lakebase 等）
 
-# Check status and URL
+# 確認狀態與 URL
 databricks apps get <app-name>
 ```
 
-### Redeployment
+### 重新部署
 
 ```bash
 databricks workspace delete /Workspace/Users/<user>/apps/<app-name> --recursive
@@ -66,13 +66,13 @@ databricks apps deploy <app-name> \
 
 ---
 
-## Option 2: Databricks Asset Bundles (DABs)
+## 方式二：Databricks Asset Bundles（DABs）
 
-**Best for**: multi-environment deployments (dev/staging/prod), version-controlled infrastructure.
+**最適用於**：多環境部署（dev/staging/prod）、版本控制的基礎設施。
 
-**Recommended workflow**: deploy via CLI first to validate, then generate bundle config.
+**建議工作流程**：先以 CLI 部署驗證，再產生 bundle 設定。
 
-### Generate Bundle from Existing App
+### 從既有應用程式產生 Bundle
 
 ```bash
 databricks bundle generate app \
@@ -80,63 +80,63 @@ databricks bundle generate app \
   --key <resource_key>
 ```
 
-This creates:
-- `resources/<key>.app.yml` — app resource definition
-- `src/app/` — app source files including `app.yaml`
+此指令會建立：
+- `resources/<key>.app.yml` — 應用程式資源定義
+- `src/app/` — 應用程式原始檔，包含 `app.yaml`
 
-### Deploy with Bundles
+### 以 Bundles 部署
 
 ```bash
-# Validate
+# 驗證
 databricks bundle validate -t dev
 
-# Deploy
+# 部署
 databricks bundle deploy -t dev
 
-# Start the app (required after deployment)
+# 啟動應用程式（部署後必須執行）
 databricks bundle run <resource_key> -t dev
 
-# Production
+# 正式環境
 databricks bundle deploy -t prod
 databricks bundle run <resource_key> -t prod
 ```
 
-**Key difference from other resources**: environment variables go in `src/app/app.yaml`, not `databricks.yml`.
+**與其他資源的關鍵差異**：環境變數須寫入 `src/app/app.yaml`，而非 `databricks.yml`。
 
-For complete DABs guidance, use the **databricks-bundles** skill.
-
----
-
-## Option 3: MCP Tools
-
-For programmatic app lifecycle management, see [6-mcp-approach.md](6-mcp-approach.md).
+完整 DABs 指引請使用 **databricks-bundles** skill。
 
 ---
 
-## Post-Deployment
+## 方式三：MCP 工具
 
-### Check Logs
+程式化應用程式生命週期管理，請見 [6-mcp-approach.md](6-mcp-approach.md)。
+
+---
+
+## 部署後驗證
+
+### 查看日誌
 
 ```bash
 databricks apps logs <app-name>
 ```
 
-**Key patterns in logs**:
-- `[SYSTEM]` — deployment status, file updates, dependency installation
-- `[APP]` — application output, framework messages
-- `Deployment successful` — app deployed correctly
-- `App started successfully` — app is running
-- `Error:` — check stack traces
+**日誌中的關鍵模式**：
+- `[SYSTEM]` — 部署狀態、檔案更新、套件安裝
+- `[APP]` — 應用程式輸出、框架訊息
+- `Deployment successful` — 應用程式已成功部署
+- `App started successfully` — 應用程式正在執行
+- `Error:` — 請檢查 stack trace
 
-### Verify
+### 確認
 
-1. Access app URL (from `databricks apps get <app-name>`)
-2. Check all pages load correctly
-3. Verify data connectivity (look for backend initialization messages in logs)
-4. Test user authorization flow if enabled
+1. 存取應用程式 URL（從 `databricks apps get <app-name>` 取得）
+2. 確認所有頁面正常載入
+3. 驗證資料連線（查看日誌中的後端初始化訊息）
+4. 若已啟用，測試使用者授權流程
 
-### Configure Permissions
+### 設定權限
 
-- Set `CAN USE` for approved users/groups
-- Set `CAN MANAGE` only for trusted developers
-- Verify service principal has required resource permissions
+- 授予已核准的使用者／群組 `CAN USE`
+- 僅授予受信任開發人員 `CAN MANAGE`
+- 確認 service principal 擁有所需的資源存取權限

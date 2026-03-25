@@ -1,7 +1,7 @@
 """
-Jobs - Data Models and Enums
+Jobs - 資料模型與列舉
 
-Data classes and enums for job operations.
+用於 job 作業的資料類別與列舉。
 """
 
 from dataclasses import dataclass, field
@@ -10,7 +10,7 @@ from typing import Optional, List, Dict, Any
 
 
 class JobStatus(Enum):
-    """Job lifecycle status enum."""
+    """Job 生命週期狀態列舉。"""
 
     RUNNING = "RUNNING"
     QUEUED = "QUEUED"
@@ -22,7 +22,7 @@ class JobStatus(Enum):
 
 
 class RunLifecycleState(Enum):
-    """Run lifecycle state enum."""
+    """Run 生命週期狀態列舉。"""
 
     PENDING = "PENDING"
     RUNNING = "RUNNING"
@@ -36,7 +36,7 @@ class RunLifecycleState(Enum):
 
 
 class RunResultState(Enum):
-    """Run result state enum."""
+    """Run 結果狀態列舉。"""
 
     SUCCESS = "SUCCESS"
     FAILED = "FAILED"
@@ -51,40 +51,40 @@ class RunResultState(Enum):
 @dataclass
 class JobRunResult:
     """
-    Result from a job run operation with detailed status for LLM consumption.
+    job run 作業的結果，包含供 LLM 使用的詳細狀態資訊。
 
-    This dataclass provides comprehensive information about job runs
-    to help LLMs understand what happened and take appropriate action.
+    此 dataclass 提供 job runs 的完整資訊，
+    協助 LLM 瞭解發生了什麼事並採取適當動作。
     """
 
-    # Job identification
+    # Job 識別資訊
     job_id: int
     run_id: int
     job_name: Optional[str] = None
 
-    # Run status
+    # Run 狀態
     lifecycle_state: Optional[str] = None
     result_state: Optional[str] = None
     success: bool = False
 
-    # Timing
+    # 時間資訊
     duration_seconds: Optional[float] = None
-    start_time: Optional[int] = None  # epoch millis
-    end_time: Optional[int] = None  # epoch millis
+    start_time: Optional[int] = None  # epoch 毫秒
+    end_time: Optional[int] = None  # epoch 毫秒
 
-    # Run details
+    # Run 詳細資訊
     run_page_url: Optional[str] = None
     state_message: Optional[str] = None
 
-    # Error details (if failed)
+    # 錯誤詳細資訊（若失敗）
     error_message: Optional[str] = None
     errors: List[Dict[str, Any]] = field(default_factory=list)
 
-    # Human-readable status
+    # 人類可讀狀態
     message: str = ""
 
     def to_dict(self) -> Dict[str, Any]:
-        """Convert to dictionary for JSON serialization."""
+        """轉換為可供 JSON 序列化的字典。"""
         return {
             "job_id": self.job_id,
             "run_id": self.run_id,
@@ -104,7 +104,7 @@ class JobRunResult:
 
 
 class JobError(Exception):
-    """Exception raised for job-related errors."""
+    """job 相關錯誤所引發的例外。"""
 
     def __init__(self, message: str, job_id: Optional[int] = None, run_id: Optional[int] = None):
         self.job_id = job_id

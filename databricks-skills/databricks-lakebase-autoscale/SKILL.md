@@ -1,62 +1,62 @@
 ---
 name: databricks-lakebase-autoscale
-description: "Patterns and best practices for Lakebase Autoscaling (next-gen managed PostgreSQL). Use when creating or managing Lakebase Autoscaling projects, configuring autoscaling compute or scale-to-zero, working with database branching for dev/test workflows, implementing reverse ETL via synced tables, or connecting applications to Lakebase with OAuth credentials."
+description: "Lakebase Autoscaling（新一代受管 PostgreSQL）的模式與最佳實務。當你要建立或管理 Lakebase Autoscaling 專案、設定自動縮放運算資源或 scale-to-zero、在 dev/test 工作流程中使用資料庫分支、透過 synced tables 實作 reverse ETL，或使用 OAuth 憑證將應用程式連線至 Lakebase 時適用。"
 ---
 
 # Lakebase Autoscaling
 
-Patterns and best practices for using Lakebase Autoscaling, the next-generation managed PostgreSQL on Databricks with autoscaling compute, branching, scale-to-zero, and instant restore.
+使用 Lakebase Autoscaling 的模式與最佳實務；它是在 Databricks 上具備自動縮放運算資源、分支、scale-to-zero 與即時還原功能的新一代受管 PostgreSQL。
 
-## When to Use
+## 何時使用
 
-Use this skill when:
-- Building applications that need a PostgreSQL database with autoscaling compute
-- Working with database branching for dev/test/staging workflows
-- Adding persistent state to applications with scale-to-zero cost savings
-- Implementing reverse ETL from Delta Lake to an operational database via synced tables
-- Managing Lakebase Autoscaling projects, branches, computes, or credentials
+當你有以下需求時，請使用這項技能：
+- 建置需要 PostgreSQL 資料庫且具備自動縮放運算資源的應用程式
+- 在 dev/test/staging 工作流程中使用資料庫分支
+- 為應用程式加入持久狀態，同時透過 scale-to-zero 節省成本
+- 透過 synced tables，從 Delta Lake 將資料 reverse ETL 到作業型資料庫
+- 管理 Lakebase Autoscaling 專案、分支、運算資源或憑證
 
-## Overview
+## 概觀
 
-Lakebase Autoscaling is Databricks' next-generation managed PostgreSQL service for OLTP workloads. It provides autoscaling compute, Git-like branching, scale-to-zero, and instant point-in-time restore.
+Lakebase Autoscaling 是 Databricks 針對 OLTP 工作負載推出的新一代受管 PostgreSQL 服務。它提供自動縮放運算資源、類似 Git 的分支功能、scale-to-zero，以及即時時間點還原。
 
-| Feature | Description |
+| 功能 | 說明 |
 |---------|-------------|
-| **Autoscaling Compute** | 0.5-112 CU with 2 GB RAM per CU; scales dynamically based on load |
-| **Scale-to-Zero** | Compute suspends after configurable inactivity timeout |
-| **Branching** | Create isolated database environments (like Git branches) for dev/test |
-| **Instant Restore** | Point-in-time restore from any moment within the configured window (up to 35 days) |
-| **OAuth Authentication** | Token-based auth via Databricks SDK (1-hour expiry) |
-| **Reverse ETL** | Sync data from Delta tables to PostgreSQL via synced tables |
+| **自動縮放運算資源** | 0.5-112 CU，每個 CU 具備 2 GB RAM；會依負載動態縮放 |
+| **Scale-to-Zero** | 運算資源會在可設定的不活動逾時後暫停 |
+| **分支** | 建立隔離的資料庫環境（類似 Git branches），用於 dev/test |
+| **即時還原** | 可在設定的視窗內，從任意時間點進行還原（最長 35 天） |
+| **OAuth 驗證** | 透過 Databricks SDK 以 Token 進行驗證（1 小時到期） |
+| **Reverse ETL** | 透過 synced tables，將資料從 Delta tables 同步至 PostgreSQL |
 
-**Available Regions (AWS):** us-east-1, us-east-2, eu-central-1, eu-west-1, eu-west-2, ap-south-1, ap-southeast-1, ap-southeast-2
+**可用區域（AWS）：** us-east-1, us-east-2, eu-central-1, eu-west-1, eu-west-2, ap-south-1, ap-southeast-1, ap-southeast-2
 
-**Available Regions (Azure Beta):** eastus2, westeurope, westus
+**可用區域（Azure Beta）：** eastus2, westeurope, westus
 
-## Project Hierarchy
+## 專案階層
 
-Understanding the hierarchy is essential for working with Lakebase Autoscaling:
+了解此階層對於使用 Lakebase Autoscaling 至關重要：
 
 ```
-Project (top-level container)
-  └── Branch(es) (isolated database environments)
-        ├── Compute (primary R/W endpoint)
-        ├── Read Replica(s) (optional, read-only)
-        ├── Role(s) (Postgres roles)
-        └── Database(s) (Postgres databases)
-              └── Schema(s)
+專案（頂層容器）
+  └── 分支（隔離的資料庫環境）
+        ├── 運算資源（主要讀寫端點）
+        ├── 讀取複本（選用，唯讀）
+        ├── 角色（Postgres roles）
+        └── 資料庫（Postgres databases）
+              └── Schemas
 ```
 
-| Object | Description |
+| 物件 | 說明 |
 |--------|-------------|
-| **Project** | Top-level container. Created via `w.postgres.create_project()`. |
-| **Branch** | Isolated database environment with copy-on-write storage. Default branch is `production`. |
-| **Compute** | Postgres server powering a branch. Configurable CU sizing and autoscaling. |
-| **Database** | Standard Postgres database within a branch. Default is `databricks_postgres`. |
+| **專案** | 頂層容器。透過 `w.postgres.create_project()` 建立。 |
+| **分支** | 具備寫入時複製儲存體的隔離資料庫環境。預設分支為 `production`。 |
+| **運算資源** | 為分支提供 Postgres 服務的伺服器。可設定 CU 規模與自動縮放。 |
+| **資料庫** | 分支中的標準 Postgres 資料庫。預設為 `databricks_postgres`。 |
 
-## Quick Start
+## 快速開始
 
-Create a project and connect:
+建立專案並連線：
 
 ```python
 from databricks.sdk import WorkspaceClient
@@ -64,38 +64,38 @@ from databricks.sdk.service.postgres import Project, ProjectSpec
 
 w = WorkspaceClient()
 
-# Create a project (long-running operation)
+# 建立專案（長時間執行的作業）
 operation = w.postgres.create_project(
     project=Project(
         spec=ProjectSpec(
-            display_name="My Application",
+            display_name="我的應用程式",
             pg_version="17"
         )
     ),
     project_id="my-app"
 )
 result = operation.wait()
-print(f"Created project: {result.name}")
+print(f"已建立專案: {result.name}")
 ```
 
-## Common Patterns
+## 常見模式
 
-### Generate OAuth Token
+### 產生 OAuth 權杖
 
 ```python
 from databricks.sdk import WorkspaceClient
 
 w = WorkspaceClient()
 
-# Generate database credential for connecting (optionally scoped to an endpoint)
+# 產生用於連線資料庫的憑證（可選擇限定到特定端點）
 cred = w.postgres.generate_database_credential(
     endpoint="projects/my-app/branches/production/endpoints/ep-primary"
 )
-token = cred.token  # Use as password in connection string
-# Token expires after 1 hour
+token = cred.token  # 用作連線字串中的密碼
+# Token 會在 1 小時後到期
 ```
 
-### Connect from Notebook
+### 從 Notebook 連線
 
 ```python
 import psycopg
@@ -103,18 +103,18 @@ from databricks.sdk import WorkspaceClient
 
 w = WorkspaceClient()
 
-# Get endpoint details
+# 取得端點詳細資料
 endpoint = w.postgres.get_endpoint(
     name="projects/my-app/branches/production/endpoints/ep-primary"
 )
 host = endpoint.status.hosts.host
 
-# Generate token (scoped to endpoint)
+# 產生權杖（限定到端點）
 cred = w.postgres.generate_database_credential(
     endpoint="projects/my-app/branches/production/endpoints/ep-primary"
 )
 
-# Connect using psycopg3
+# 使用 psycopg3 連線
 conn_string = (
     f"host={host} "
     f"dbname=databricks_postgres "
@@ -128,31 +128,31 @@ with psycopg.connect(conn_string) as conn:
         print(cur.fetchone())
 ```
 
-### Create a Branch for Development
+### 為開發建立分支
 
 ```python
 from databricks.sdk.service.postgres import Branch, BranchSpec, Duration
 
-# Create a dev branch with 7-day expiration
+# 建立 7 天後到期的開發分支
 branch = w.postgres.create_branch(
     parent="projects/my-app",
     branch=Branch(
         spec=BranchSpec(
             source_branch="projects/my-app/branches/production",
-            ttl=Duration(seconds=604800)  # 7 days
+            ttl=Duration(seconds=604800)  # 7 天
         )
     ),
     branch_id="development"
 ).wait()
-print(f"Branch created: {branch.name}")
+print(f"已建立分支: {branch.name}")
 ```
 
-### Resize Compute (Autoscaling)
+### 調整運算資源大小（自動縮放）
 
 ```python
 from databricks.sdk.service.postgres import Endpoint, EndpointSpec, FieldMask
 
-# Update compute to autoscale between 2-8 CU
+# 將運算資源更新為在 2-8 CU 之間自動縮放
 w.postgres.update_endpoint(
     name="projects/my-app/branches/production/endpoints/ep-primary",
     endpoint=Endpoint(
@@ -169,126 +169,126 @@ w.postgres.update_endpoint(
 ).wait()
 ```
 
-## MCP Tools
+## MCP 工具
 
-The following MCP tools are available for managing Lakebase infrastructure. Use `type="autoscale"` for Lakebase Autoscaling.
+以下 MCP 工具可用於管理 Lakebase 基礎架構。對於 Lakebase Autoscaling，請使用 `type="autoscale"`。
 
-### Database (Project) Management
+### 資料庫（專案）管理
 
-| Tool | Description |
+| 工具 | 說明 |
 |------|-------------|
-| `create_or_update_lakebase_database` | Create or update a database. Finds by name, creates if new, updates if existing. Use `type="autoscale"`, `display_name`, `pg_version` params. A new project auto-creates a production branch, default compute, and databricks_postgres database. |
-| `get_lakebase_database` | Get database details (including branches and endpoints) or list all. Pass `name` to get one, omit to list all. Use `type="autoscale"` to filter. |
-| `delete_lakebase_database` | Delete a project and all its branches, computes, and data. Use `type="autoscale"`. |
+| `create_or_update_lakebase_database` | 建立或更新資料庫。會依名稱尋找，若不存在則建立，已存在則更新。使用 `type="autoscale"`、`display_name`、`pg_version` 參數。新專案會自動建立 production 分支、預設運算資源，以及 databricks_postgres 資料庫。 |
+| `get_lakebase_database` | 取得資料庫詳細資料（包含分支與端點）或列出全部。傳入 `name` 可取得單一項目，省略則列出全部。使用 `type="autoscale"` 進行篩選。 |
+| `delete_lakebase_database` | 刪除專案及其所有分支、運算資源與資料。使用 `type="autoscale"`。 |
 
-### Branch Management
+### 分支管理
 
-| Tool | Description |
+| 工具 | 說明 |
 |------|-------------|
-| `create_or_update_lakebase_branch` | Create or update a branch with its compute endpoint. Params: `project_name`, `branch_id`, `source_branch`, `ttl_seconds`, `is_protected`, plus compute params (`autoscaling_limit_min_cu`, `autoscaling_limit_max_cu`, `scale_to_zero_seconds`). |
-| `delete_lakebase_branch` | Delete a branch and its compute endpoints. |
+| `create_or_update_lakebase_branch` | 建立或更新分支及其運算端點。參數：`project_name`、`branch_id`、`source_branch`、`ttl_seconds`、`is_protected`，以及運算資源參數（`autoscaling_limit_min_cu`、`autoscaling_limit_max_cu`、`scale_to_zero_seconds`）。 |
+| `delete_lakebase_branch` | 刪除分支及其運算端點。 |
 
-### Credentials
+### 憑證
 
-| Tool | Description |
+| 工具 | 說明 |
 |------|-------------|
-| `generate_lakebase_credential` | Generate OAuth token for PostgreSQL connections (1-hour expiry). Pass `endpoint` resource name for autoscale. |
+| `generate_lakebase_credential` | 為 PostgreSQL 連線產生 OAuth Token（1 小時到期）。對 autoscale 請傳入 `endpoint` 資源名稱。 |
 
-## Reference Files
+## 參考檔案
 
-- [projects.md](projects.md) - Project management patterns and settings
-- [branches.md](branches.md) - Branching workflows, protection, and expiration
-- [computes.md](computes.md) - Compute sizing, autoscaling, and scale-to-zero
-- [connection-patterns.md](connection-patterns.md) - Connection patterns for different use cases
-- [reverse-etl.md](reverse-etl.md) - Synced tables from Delta Lake to Lakebase
+- [projects.md](projects.md) - 專案管理模式與設定
+- [branches.md](branches.md) - 分支工作流程、保護與到期設定
+- [computes.md](computes.md) - 運算資源規模、自動縮放與 scale-to-zero
+- [connection-patterns.md](connection-patterns.md) - 各種使用情境的連線模式
+- [reverse-etl.md](reverse-etl.md) - 從 Delta Lake 到 Lakebase 的 synced tables
 
-## CLI Quick Reference
+## CLI 快速參考
 
 ```bash
-# Create a project
+# 建立專案
 databricks postgres create-project \
     --project-id my-app \
-    --json '{"spec": {"display_name": "My App", "pg_version": "17"}}'
+    --json '{"spec": {"display_name": "我的應用程式", "pg_version": "17"}}'
 
-# List projects
+# 列出專案
 databricks postgres list-projects
 
-# Get project details
+# 取得專案詳細資料
 databricks postgres get-project projects/my-app
 
-# Create a branch
+# 建立分支
 databricks postgres create-branch projects/my-app development \
     --json '{"spec": {"source_branch": "projects/my-app/branches/production", "no_expiry": true}}'
 
-# List branches
+# 列出分支
 databricks postgres list-branches projects/my-app
 
-# Get endpoint details
+# 取得端點詳細資料
 databricks postgres get-endpoint projects/my-app/branches/production/endpoints/ep-primary
 
-# Delete a project
+# 刪除專案
 databricks postgres delete-project projects/my-app
 ```
 
-## Key Differences from Lakebase Provisioned
+## 與 Lakebase Provisioned 的主要差異
 
-| Aspect | Provisioned | Autoscaling |
+| 面向 | Provisioned | Autoscaling |
 |--------|-------------|-------------|
-| SDK module | `w.database` | `w.postgres` |
-| Top-level resource | Instance | Project |
-| Capacity | CU_1, CU_2, CU_4, CU_8 (16 GB/CU) | 0.5-112 CU (2 GB/CU) |
-| Branching | Not supported | Full branching support |
-| Scale-to-zero | Not supported | Configurable timeout |
-| Operations | Synchronous | Long-running operations (LRO) |
-| Read replicas | Readable secondaries | Dedicated read-only endpoints |
+| SDK 模組 | `w.database` | `w.postgres` |
+| 頂層資源 | 執行個體 | 專案 |
+| 容量 | CU_1, CU_2, CU_4, CU_8（16 GB/CU） | 0.5-112 CU（2 GB/CU） |
+| 分支 | 不支援 | 完整支援分支 |
+| Scale-to-zero | 不支援 | 可設定逾時 |
+| 作業 | 同步 | 長時間執行作業（LRO） |
+| 讀取複本 | 可讀取的次要節點 | 專用唯讀端點 |
 
-## Common Issues
+## 常見問題
 
-| Issue | Solution |
+| 問題 | 解決方式 |
 |-------|----------|
-| **Token expired during long query** | Implement token refresh loop; tokens expire after 1 hour |
-| **Connection refused after scale-to-zero** | Compute wakes automatically on connection; reactivation takes a few hundred ms; implement retry logic |
-| **DNS resolution fails on macOS** | Use `dig` command to resolve hostname, pass `hostaddr` to psycopg |
-| **Branch deletion blocked** | Delete child branches first; cannot delete branches with children |
-| **Autoscaling range too wide** | Max - min cannot exceed 8 CU (e.g., 8-16 CU is valid, 0.5-32 CU is not) |
-| **SSL required error** | Always use `sslmode=require` in connection string |
-| **Update mask required** | All update operations require an `update_mask` specifying fields to modify |
-| **Connection closed after 24h idle** | All connections have a 24-hour idle timeout and 3-day max lifetime; implement retry logic |
+| **長時間查詢期間 Token 過期** | 實作 Token 重新整理迴圈；Token 會在 1 小時後到期 |
+| **scale-to-zero 後連線被拒** | 運算資源會在連線時自動喚醒；重新啟用約需數百毫秒；請實作重試邏輯 |
+| **macOS 上 DNS 解析失敗** | 使用 `dig` 指令解析主機名稱，並將 `hostaddr` 傳給 psycopg |
+| **分支刪除受阻** | 先刪除子分支；無法刪除仍有子分支的分支 |
+| **自動縮放範圍過大** | Max - min 不可超過 8 CU（例如 8-16 CU 有效，0.5-32 CU 無效） |
+| **出現 SSL required 錯誤** | 連線字串中務必使用 `sslmode=require` |
+| **必須提供 update_mask** | 所有更新作業都需要 `update_mask` 來指定要修改的欄位 |
+| **連線在閒置 24 小時後關閉** | 所有連線皆有 24 小時閒置逾時與 3 天最長存活時間；請實作重試邏輯 |
 
-## Current Limitations
+## 目前限制
 
-These features are NOT yet supported in Lakebase Autoscaling:
-- High availability with readable secondaries (use read replicas instead)
-- Databricks Apps UI integration (Apps can connect manually via credentials)
-- Feature Store integration
-- Stateful AI agents (LangChain memory)
-- Postgres-to-Delta sync (only Delta-to-Postgres reverse ETL)
-- Custom billing tags and serverless budget policies
-- Direct migration from Lakebase Provisioned (use pg_dump/pg_restore or reverse ETL)
+Lakebase Autoscaling 目前尚不支援以下功能：
+- 具備可讀取次要節點的高可用性（請改用讀取複本）
+- Databricks Apps UI 整合（Apps 可透過憑證手動連線）
+- Feature Store 整合
+- 有狀態的 AI agents（LangChain memory）
+- Postgres-to-Delta 同步（僅支援 Delta-to-Postgres reverse ETL）
+- 自訂計費標籤與 serverless 預算政策
+- 直接從 Lakebase Provisioned 遷移（請使用 pg_dump/pg_restore 或 reverse ETL）
 
-## SDK Version Requirements
+## SDK 版本需求
 
-- **Databricks SDK for Python**: >= 0.81.0 (for `w.postgres` module)
-- **psycopg**: 3.x (supports `hostaddr` parameter for DNS workaround)
-- **SQLAlchemy**: 2.x with `postgresql+psycopg` driver
+- **Databricks SDK for Python**：>= 0.81.0（適用於 `w.postgres` 模組）
+- **psycopg**：3.x（支援 `hostaddr` 參數作為 DNS 解法）
+- **SQLAlchemy**：2.x，搭配 `postgresql+psycopg` driver
 
 ```python
 %pip install -U "databricks-sdk>=0.81.0" "psycopg[binary]>=3.0" sqlalchemy
 ```
 
-## Notes
+## 注意事項
 
-- **Compute Units** in Autoscaling provide ~2 GB RAM each (vs 16 GB in Provisioned).
-- **Resource naming** follows hierarchical paths: `projects/{id}/branches/{id}/endpoints/{id}`.
-- All create/update/delete operations are **long-running** -- use `.wait()` in the SDK.
-- Tokens are short-lived (1 hour) -- production apps MUST implement token refresh.
-- **Postgres versions** 16 and 17 are supported.
+- **運算單位（Compute Units）** 在 Autoscaling 中每單位約提供 2 GB RAM（Provisioned 為 16 GB）。
+- **資源命名** 採用階層式路徑：`projects/{id}/branches/{id}/endpoints/{id}`。
+- 所有 create/update/delete 作業皆為 **長時間執行** -- 請在 SDK 中使用 `.wait()`。
+- Token 存續時間很短（1 小時） -- 正式環境應用程式**必須**實作 Token 重新整理。
+- 支援 **Postgres versions** 16 與 17。
 
-## Related Skills
+## 相關技能
 
-- **[databricks-lakebase-provisioned](../databricks-lakebase-provisioned/SKILL.md)** - fixed-capacity managed PostgreSQL (predecessor)
-- **[databricks-app-apx](../databricks-app-apx/SKILL.md)** - full-stack apps that can use Lakebase for persistence
-- **[databricks-app-python](../databricks-app-python/SKILL.md)** - Python apps with Lakebase backend
-- **[databricks-python-sdk](../databricks-python-sdk/SKILL.md)** - SDK used for project management and token generation
-- **[databricks-bundles](../databricks-bundles/SKILL.md)** - deploying apps with Lakebase resources
-- **[databricks-jobs](../databricks-jobs/SKILL.md)** - scheduling reverse ETL sync jobs
+- **[databricks-lakebase-provisioned](../databricks-lakebase-provisioned/SKILL.md)** - 固定容量的受管 PostgreSQL（前一代）
+- **[databricks-app-apx](../databricks-app-apx/SKILL.md)** - 可使用 Lakebase 作為持久層的全端應用程式
+- **[databricks-app-python](../databricks-app-python/SKILL.md)** - 使用 Lakebase 作為後端的 Python 應用程式
+- **[databricks-python-sdk](../databricks-python-sdk/SKILL.md)** - 用於專案管理與 Token 產生的 SDK
+- **[databricks-bundles](../databricks-bundles/SKILL.md)** - 部署包含 Lakebase 資源的應用程式
+- **[databricks-jobs](../databricks-jobs/SKILL.md)** - 排程 reverse ETL 同步工作

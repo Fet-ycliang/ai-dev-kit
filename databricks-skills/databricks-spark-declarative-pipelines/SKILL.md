@@ -1,215 +1,215 @@
 ---
 name: databricks-spark-declarative-pipelines
-description: "Creates, configures, and updates Databricks Lakeflow Spark Declarative Pipelines (SDP/LDP) using serverless compute. Handles streaming tables, materialized views, CDC, SCD Type 2, and Auto Loader ingestion patterns. Use when building data pipelines, working with Delta Live Tables, ingesting streaming data, implementing change data capture, or when the user mentions SDP, LDP, DLT, Lakeflow pipelines, streaming tables, or bronze/silver/gold medallion architectures."
+description: "使用無伺服器計算建立、設定及更新 Databricks Lakeflow Spark Declarative Pipelines（SDP/LDP）。處理串流資料表、物化視圖、CDC、SCD Type 2 及 Auto Loader 攝取模式。適用於建立資料管道、處理 Delta Live Tables、攝取串流資料、實作異動資料擷取，或當使用者提及 SDP、LDP、DLT、Lakeflow 管道、串流資料表，或 bronze/silver/gold 三層式架構時使用。"
 ---
 
-# Lakeflow Spark Declarative Pipelines (SDP)
+# Lakeflow Spark Declarative Pipelines（SDP）
 
-IMPORTANT: If this is a new pipeline (one does not already exist), see Quick Start. Be sure to use whatever language user has specified only (Python or SQL). Be sure to use Databricks Asset Bundles for new projects.
+重要事項：若為全新管道（尚未存在），請參閱快速入門。務必僅使用使用者指定的語言（Python 或 SQL）。新專案務必使用 Databricks Asset Bundles。
 
 ---
 
-## Critical Rules (always follow)
-- **MUST** confirm language as Python or SQL. Stick with that language unless told otherwise.
-- **MUST** if not modifying an existing pipeline, use [Quick Start](#quick-start) below.
-- **MUST** create serverless pipelines  by default. ** Only use classic clusters if user explicitly requires R language, Spark RDD APIs, or JAR libraries.
+## 關鍵規則（必須遵守）
+- **必須**確認語言為 Python 或 SQL。除非另有指示，否則維持該語言。
+- **必須**若非修改現有管道，請使用下方[快速入門](#快速入門)。
+- **必須**預設建立無伺服器管道。**只有在使用者明確要求 R 語言、Spark RDD API 或 JAR 函式庫時，才使用傳統叢集。
 
 
-## Required Steps
+## 必要步驟
 
-Copy this checklist and verify each item:
+複製此清單並逐一確認：
 ```
-- [ ] Language selected: Python or SQL
-- [ ] Compute type decided: serverless or classic compute
-- [ ] Decide on multiple catalogs or schemas vs. all in one default schema
-- [ ] Consider what should be parameterized at the pipeline level to make deployment easy.
-- [ ] Consider [Multi-Schema Patterns](#multi-schema-patterns) below, ask if unclear on best choices.
-- [ ] Consider [Modern Defaults](#modern-defaults) below, ask if unclear on best choices.
+- [ ] 語言已選定：Python 或 SQL
+- [ ] 計算類型已決定：無伺服器或傳統計算
+- [ ] 決定使用多個 Catalog/Schema 或統一使用單一預設 Schema
+- [ ] 考慮哪些設定應在管道層級參數化以便於部署
+- [ ] 考慮下方[多 Schema 模式](#多-schema-模式)，不確定最佳選擇時請提問
+- [ ] 考慮下方[現代預設值](#現代預設值)，不確定最佳選擇時請提問
 
 
-## Quick Start: Initialize New Pipeline Project
+## 快速入門：初始化新管道專案
 
-**RECOMMENDED**: Use `databricks pipelines init` to create production-ready Asset Bundle projects with multi-environment support.
+**建議**：使用 `databricks pipelines init` 建立具備多環境支援的生產就緒 Asset Bundle 專案。
 
-### When to Use Bundle Initialization
+### 何時使用 Bundle 初始化
 
-Use bundle initialization for **New pipeline projects** for a professional structure from the start
+使用 bundle 初始化適合**全新管道專案**，從一開始就獲得專業結構
 
-Use manual workflow for:
-- Quick prototyping without multi-environment needs
-- Existing manual projects you want to continue
-- Learning/experimentation
+使用手動流程適合：
+- 無需多環境支援的快速原型
+- 您想繼續使用的現有手動專案
+- 學習/實驗用途
 
-### Step 1: Initialize Project
+### 步驟一：初始化專案
 
-I will automatically run this command when you request a new pipeline:
+當您要求新管道時，我會自動執行此指令：
 
 ```bash
 databricks pipelines init
 ```
 
-**Interactive Prompts:**
-- **Project name**: e.g., `customer_orders_pipeline`
-- **Initial catalog**: Unity Catalog name (e.g., `main`, `prod_catalog`)
-- **Personal schema per user?**: `yes` for dev (each user gets their own schema), `no` for prod
-- **Language**: SQL or Python (auto-detected from your request - see language detection below)
+**互動式提示：**
+- **Project name**：例如 `customer_orders_pipeline`
+- **Initial catalog**：Unity Catalog 名稱（例如 `main`、`prod_catalog`）
+- **Personal schema per user?**：開發環境選 `yes`（每位使用者有獨立 schema），生產環境選 `no`
+- **Language**：SQL 或 Python（根據您的需求自動偵測，詳見下方語言偵測說明）
 
-**Generated Structure:**
+**產生的目錄結構：**
 ```
 my_pipeline/
-├── databricks.yml              # Multi-environment config (dev/prod)
+├── databricks.yml              # 多環境設定（dev/prod）
 ├── resources/
-│   └── *_etl.pipeline.yml      # Pipeline resource definition
+│   └── *_etl.pipeline.yml      # Pipeline 資源定義
 └── src/
     └── *_etl/
-        ├── explorations/       # Exploratory code in .ipynb
-        └── transformations/    # Your .sql or .py files here
+        ├── explorations/       # .ipynb 探索性程式碼
+        └── transformations/    # 您的 .sql 或 .py 檔案
 ```
 
-### Step 2: Customize Transformations
+### 步驟二：自訂轉換邏輯
 
-Replace the example code created by the init process with custom transformation files in `src/transformations/` based on provided requirements, using best practice guidance from this skill.
+將 init 過程建立的範例程式碼替換為 `src/transformations/` 中的自訂轉換檔案，依據提供的需求並參照本 skill 的最佳實踐指引。
 
-**For Python pipelines using cloudFiles**: Ask the user where to store Auto Loader schema metadata. Recommend:
+**Python 管道使用 cloudFiles 時**：詢問使用者要將 Auto Loader schema 中繼資料存放在哪裡。建議：
 ```
 /Volumes/{catalog}/{schema}/{pipeline_name}_metadata/schemas
 ```
 
-### Step 3: Deploy and Run
+### 步驟三：部署與執行
 
 ```bash
-# Deploy to workspace (dev by default)
+# 部署至工作區（預設為 dev）
 databricks bundle deploy
 
-# Run pipeline
+# 執行管道
 databricks bundle run my_pipeline_etl
 
-# Deploy to production
+# 部署至生產環境
 databricks bundle deploy --target prod
 ```
 
 
-## Quick Reference
+## 快速參考
 
-| Concept | Details |
-|---------|---------|
-| **Names** | SDP = Spark Declarative Pipelines = LDP = Lakeflow Declarative Pipelines = Lakeflow Pipelines (all interchangeable) |
-| **Python Import** | `from pyspark import pipelines as dp` |
-| **Primary Decorators** | `@dp.table()`, `@dp.materialized_view()`, `@dp.temporary_view()` |
-| **Temporary Views** | `@dp.temporary_view()` creates in-pipeline temporary views (no catalog/schema, no cluster_by). Useful for intermediate logic before AUTO CDC or when a view needs multiple references without persistence. |
-| **Replaces** | Delta Live Tables (DLT) with `import dlt` |
-| **Based On** | Apache Spark 4.1+ (Databricks' modern data pipeline framework) |
-| **Docs** | https://docs.databricks.com/aws/en/ldp/developer/python-dev |
-
----
-
-## Detailed guides
-
-**Ingestion patterns**: Use [1-ingestion-patterns.md](1-ingestion-patterns.md) when planning how to get new data into your Lakeflow pipeline —- covers file formats, batch/streaming options, and tips for incremental and full loads. (Keywords: Auto Loader, Kafka, Event Hub, Kinesis, file formats)
-
-**Streaming pipeline patterns**: See [2-streaming-patterns.md](2-streaming-patterns.md) for designing pipelines with streaming data sources, change data detection, triggers, and windowing. (Keywords: deduplication, windowing, stateful operations, joins)
-
-**SCD query patterns**: See [3-scd-query-patterns.md](3-scd-query-patterns.md) for querying Slowly Changing Dimensions Type 2 history tables, including current state queries, point-in-time analysis, temporal joins, and change tracking. (Keywords: SCD Type 2 history tables, temporal joins, querying historical data)
-
-**Performance tuning**: Use [4-performance-tuning.md](4-performance-tuning.md) for optimizing pipelines with Liquid Clustering, state management, and best practices for high-performance streaming workloads. (Keywords: Liquid Clustering, optimization, state management)
-
-**Python API reference**: See [5-python-api.md](5-python-api.md) for the modern `pyspark.pipelines` (dp) API reference and migration from legacy `dlt` API patterns. (Keywords: dp API, dlt API comparison)
-
-**DLT migration**: Use [6-dlt-migration.md](6-dlt-migration.md) when migrating existing Delta Live Tables (DLT) pipelines to Spark Declarative Pipelines (SDP). (Keywords: migrating DLT pipelines to SDP)
-
-**Advanced configuration**: See [7-advanced-configuration.md](7-advanced-configuration.md) for advanced pipeline settings including development mode, continuous execution, notifications, Python dependencies, and custom cluster configurations. (Keywords: extra_settings parameter reference, examples)
-
-**Project initialization**: Use [8-project-initialization.md](8-project-initialization.md) for setting up new pipeline projects with `databricks pipelines init`, Asset Bundles, multi-environment deployments, and language detection logic. (Keywords: databricks pipelines init, Asset Bundles, language detection, migration guides)
-
-**AUTO CDC patterns**: Use [9-auto_cdc.md](9-auto_cdc.md) for implementing Change Data Capture with AUTO CDC, including Slow Changing Dimensions (SCD Type 1 and Type 2) for tracking changes and deduplication. (Keywords: AUTO CDC, Slow Changing Dimension, SCD, SCD Type 1, SCD Type 2, change data capture, deduplication)
+| 概念 | 說明 |
+|------|------|
+| **名稱** | SDP = Spark Declarative Pipelines = LDP = Lakeflow Declarative Pipelines = Lakeflow Pipelines（可互換使用） |
+| **Python 匯入** | `from pyspark import pipelines as dp` |
+| **主要裝飾器** | `@dp.table()`、`@dp.materialized_view()`、`@dp.temporary_view()` |
+| **暫時視圖** | `@dp.temporary_view()` 建立管道內暫時視圖（無 catalog/schema，不支援 cluster_by）。適用於 AUTO CDC 前的中間邏輯，或需要多次參照而不需持久化的視圖。 |
+| **取代** | Delta Live Tables（DLT）的 `import dlt` |
+| **基礎** | Apache Spark 4.1+（Databricks 現代資料管道框架） |
+| **文件** | https://docs.databricks.com/aws/en/ldp/developer/python-dev |
 
 ---
 
-## Workflow
+## 詳細指南
 
-1. Determine the task type:
+**攝取模式**：規劃如何將新資料匯入 Lakeflow 管道時，請使用 [1-ingestion-patterns.md](1-ingestion-patterns.md)——涵蓋檔案格式、批次/串流選項，以及增量與全量載入的技巧。（關鍵字：Auto Loader、Kafka、Event Hub、Kinesis、檔案格式）
 
-   **Setting up new project?** → Read [8-project-initialization.md](8-project-initialization.md) first
-   **Creating new pipeline?** → Read [1-ingestion-patterns.md](1-ingestion-patterns.md)
-   **Creating stream table?** → Read [2-streaming-patterns.md](2-streaming-patterns.md)
-   **Querying SCD history tables?** → Read [3-scd-query-patterns.md](3-scd-query-patterns.md)
-   **Implementing AUTO CDC or SCD?** → Read [9-auto_cdc.md](9-auto_cdc.md)
-   **Performance issues?** → Read [4-performance-tuning.md](4-performance-tuning.md)
-   **Using Python API?** → Read [5-python-api.md](5-python-api.md)
-   **Migrating from DLT?** → Read [6-dlt-migration.md](6-dlt-migration.md)
-   **Advanced configuration?** → Read [7-advanced-configuration.md](7-advanced-configuration.md)
-   **Validating?** → Read [7-advanced-configuration.md](7-advanced-configuration.md) (dry_run, development mode)
+**串流管道模式**：設計含串流資料來源、異動資料偵測、觸發器及視窗化的管道，請參閱 [2-streaming-patterns.md](2-streaming-patterns.md)。（關鍵字：去重、視窗化、有狀態操作、join）
 
-2. Follow the instructions in the relevant guide
+**SCD 查詢模式**：查詢 Slowly Changing Dimensions Type 2 歷程資料表，包含當前狀態查詢、時間點分析、時序 join 及異動追蹤，請參閱 [3-scd-query-patterns.md](3-scd-query-patterns.md)。（關鍵字：SCD Type 2 歷程資料表、時序 join、查詢歷史資料）
 
-3. Repeat for next task type
+**效能調校**：使用 Liquid Clustering、狀態管理，以及高效能串流工作負載最佳實踐來優化管道，請使用 [4-performance-tuning.md](4-performance-tuning.md)。（關鍵字：Liquid Clustering、優化、狀態管理）
+
+**Python API 參考**：現代 `pyspark.pipelines`（dp）API 參考及從舊版 `dlt` API 遷移，請參閱 [5-python-api.md](5-python-api.md)。（關鍵字：dp API、dlt API 比較）
+
+**DLT 遷移**：將現有 Delta Live Tables（DLT）管道遷移至 Spark Declarative Pipelines（SDP），請使用 [6-dlt-migration.md](6-dlt-migration.md)。（關鍵字：將 DLT 管道遷移至 SDP）
+
+**進階設定**：進階管道設定，包含開發模式、持續執行、通知、Python 相依套件及自訂叢集設定，請參閱 [7-advanced-configuration.md](7-advanced-configuration.md)。（關鍵字：extra_settings 參數參考、範例）
+
+**專案初始化**：使用 `databricks pipelines init`、Asset Bundles、多環境部署及語言偵測邏輯設定新管道專案，請使用 [8-project-initialization.md](8-project-initialization.md)。（關鍵字：databricks pipelines init、Asset Bundles、語言偵測、遷移指南）
+
+**AUTO CDC 模式**：使用 AUTO CDC 實作異動資料擷取，包含 Slow Changing Dimensions（SCD Type 1 與 Type 2）的異動追蹤與去重，請使用 [9-auto_cdc.md](9-auto_cdc.md)。（關鍵字：AUTO CDC、Slow Changing Dimension、SCD、SCD Type 1、SCD Type 2、異動資料擷取、去重）
+
 ---
 
-## Official Documentation
+## 工作流程
 
-- **[Lakeflow Spark Declarative Pipelines Overview](https://docs.databricks.com/aws/en/ldp/)** - Main documentation hub
-- **[SQL Language Reference](https://docs.databricks.com/aws/en/ldp/developer/sql-dev)** - SQL syntax for streaming tables and materialized views
-- **[Python Language Reference](https://docs.databricks.com/aws/en/ldp/developer/python-ref)** - `pyspark.pipelines` API
-- **[Loading Data](https://docs.databricks.com/aws/en/ldp/load)** - Auto Loader, Kafka, Kinesis ingestion
-- **[Change Data Capture (CDC)](https://docs.databricks.com/aws/en/ldp/cdc)** - AUTO CDC, SCD Type 1/2
+1. 判斷任務類型：
+
+   **設定新專案？** → 先閱讀 [8-project-initialization.md](8-project-initialization.md)
+   **建立新管道？** → 閱讀 [1-ingestion-patterns.md](1-ingestion-patterns.md)
+   **建立串流資料表？** → 閱讀 [2-streaming-patterns.md](2-streaming-patterns.md)
+   **查詢 SCD 歷程資料表？** → 閱讀 [3-scd-query-patterns.md](3-scd-query-patterns.md)
+   **實作 AUTO CDC 或 SCD？** → 閱讀 [9-auto_cdc.md](9-auto_cdc.md)
+   **效能問題？** → 閱讀 [4-performance-tuning.md](4-performance-tuning.md)
+   **使用 Python API？** → 閱讀 [5-python-api.md](5-python-api.md)
+   **從 DLT 遷移？** → 閱讀 [6-dlt-migration.md](6-dlt-migration.md)
+   **進階設定？** → 閱讀 [7-advanced-configuration.md](7-advanced-configuration.md)
+   **驗證？** → 閱讀 [7-advanced-configuration.md](7-advanced-configuration.md)（dry_run、開發模式）
+
+2. 遵循相關指南中的說明
+
+3. 對下一個任務類型重複上述步驟
+---
+
+## 官方文件
+
+- **[Lakeflow Spark Declarative Pipelines 概覽](https://docs.databricks.com/aws/en/ldp/)** - 主要文件中心
+- **[SQL 語言參考](https://docs.databricks.com/aws/en/ldp/developer/sql-dev)** - 串流資料表與物化視圖的 SQL 語法
+- **[Python 語言參考](https://docs.databricks.com/aws/en/ldp/developer/python-ref)** - `pyspark.pipelines` API
+- **[資料載入](https://docs.databricks.com/aws/en/ldp/load)** - Auto Loader、Kafka、Kinesis 攝取
+- **[異動資料擷取（CDC）](https://docs.databricks.com/aws/en/ldp/cdc)** - AUTO CDC、SCD Type 1/2
 
 
-### Medallion Architecture Pattern                                                                                                                                                            
-  **Bronze Layer (Raw)**                                                                                                                                                                                                             
-  - Raw data ingested from sources in original format                                                                                                                                                                                
-  - Minimal transformations (append-only, add metadata like `_ingested_at`, `_source_file`)                                                                                                                                          
-  - Single source of truth preserving data lineage                                                                                                                                                                                   
-                                                                                                                                                                                                                                     
-  **Silver Layer (Validated)**                                                                                                                                                                                                       
-  - Cleaned and validated data.
-  - Might deduplicate here with auto_cdc, but often wait until the final step for auto_cdc if possible.                                                                                                                                                                                        
-  - Business logic applied (type casting, quality checks, filtering invalid records)                                                                                                                                                 
-  - Enterprise view of key business entities                                                                                                                                                                                         
-  - Enables self-service analytics and ML                                                                                                                                                                                            
-                                                                                                                                                                                                                                     
-  **Gold Layer (Business-Ready)**                                                                                                                                                                                                    
-  - Aggregated, denormalized, project-specific tables                                                                                                                                                                                
-  - Optimized for consumption (reporting, dashboards, BI tools)                                                                                                                                                                      
-  - Fewer joins, read-optimized data models
-  - Kimball star schema tables - dim_<entity_name>, fact_<entity_name>
-  - Deduplication often happens here via Slow Changing Dimensions (SCD), using auto_cdc. Sometimes that will happen upstream in silver instead, such as when joining multiple tables or business users plan to query the table from silver.                                                                                                                                                                       
-                                                                                                                                                                                                                                     
-  **Typical Flow (Can vary)**                                                                                                                                                                                                                  
-  Bronze: read_files() or spark.readStream.format("cloudFiles") → streaming table                                                                                                                                                                                             
-  Silver: read bronze → filter/clean/validate → streaming table
-  Gold: read silver → aggregate/denormalize → auto_cdc or materialized view                                                                                                                                                                      
-                                                                                                                                                                                                                        
-  Sources:                                                                                                                                                                                                                           
-  - https://www.databricks.com/glossary/medallion-architecture                                                                                                                                                                       
-  - https://docs.databricks.com/aws/en/lakehouse/medallion                                                                                                                                                                           
+### 三層式架構模式（Medallion Architecture）
+  **Bronze 層（原始資料）**
+  - 以原始格式從來源攝取資料
+  - 最少轉換（僅附加、加入 `_ingested_at`、`_source_file` 等中繼資料）
+  - 保存資料血緣的唯一真實來源
+
+  **Silver 層（已驗證資料）**
+  - 清理並驗證後的資料
+  - 可在此以 auto_cdc 去重，但若可能，通常等到最後步驟再執行 auto_cdc。
+  - 套用業務邏輯（型別轉換、品質檢查、過濾無效記錄）
+  - 關鍵業務實體的企業視角
+  - 支援自助式分析與 ML
+
+  **Gold 層（業務就緒資料）**
+  - 聚合、反正規化、專案專用的資料表
+  - 針對消費優化（報表、儀表板、BI 工具）
+  - 較少 join，讀取最佳化的資料模型
+  - Kimball 星型結構資料表：dim_\<entity_name\>、fact_\<entity_name\>
+  - 去重通常透過 Slow Changing Dimensions（SCD）在此進行，使用 auto_cdc。有時會在 silver 上游進行，例如當需要 join 多張資料表，或業務使用者計畫直接從 silver 查詢時。
+
+  **典型流程（可依需求調整）**
+  Bronze：read_files() 或 spark.readStream.format("cloudFiles") → 串流資料表
+  Silver：讀取 bronze → 過濾/清理/驗證 → 串流資料表
+  Gold：讀取 silver → 聚合/反正規化 → auto_cdc 或物化視圖
+
+  資料來源：
+  - https://www.databricks.com/glossary/medallion-architecture
+  - https://docs.databricks.com/aws/en/lakehouse/medallion
   - https://www.databricks.com/blog/2022/06/24/data-warehousing-modeling-techniques-and-their-implementation-on-the-databricks-lakehouse-platform.html
-  
-**For medallion architecture** (bronze/silver/gold), two approaches work:
-- **Flat with naming** (template default): `bronze_*.sql`, `silver_*.sql`, `gold_*.sql`
-- **Subdirectories**: `bronze/orders.sql`, `silver/cleaned.sql`, `gold/summary.sql`
 
-Both work with the `transformations/**` glob pattern. Choose based on preference.
+**三層式架構**（bronze/silver/gold）有兩種方式：
+- **平面式命名**（範本預設）：`bronze_*.sql`、`silver_*.sql`、`gold_*.sql`
+- **子目錄式**：`bronze/orders.sql`、`silver/cleaned.sql`、`gold/summary.sql`
 
-See **[8-project-initialization.md](8-project-initialization.md)** for complete details on bundle initialization, migration, and troubleshooting.
+兩者皆可搭配 `transformations/**` glob 模式。依個人偏好選擇。
+
+完整的 bundle 初始化、遷移及疑難排解詳情，請參閱 **[8-project-initialization.md](8-project-initialization.md)**。
 
 ---
-## General SDP development guidance
-### Step 1: Write Pipeline Files Locally
+## 通用 SDP 開發指南
+### 步驟一：在本地撰寫管道檔案
 
-Create `.sql` or `.py` files in a local folder:
+在本地資料夾中建立 `.sql` 或 `.py` 檔案：
 
 ```
 my_pipeline/
 ├── bronze/
-│   ├── ingest_orders.sql       # SQL (default for most cases)
-│   └── ingest_events.py        # Python (for complex logic)
+│   ├── ingest_orders.sql       # SQL（大多數情況的預設選擇）
+│   └── ingest_events.py        # Python（複雜邏輯時使用）
 ├── silver/
 │   └── clean_orders.sql
 └── gold/
     └── daily_summary.sql
 ```
 
-**SQL Example** (`bronze/ingest_orders.sql`):
+**SQL 範例**（`bronze/ingest_orders.sql`）：
 ```sql
 CREATE OR REFRESH STREAMING TABLE bronze_orders
 CLUSTER BY (order_date)
@@ -225,12 +225,12 @@ FROM read_files(
 );
 ```
 
-**Python Example** (`bronze/ingest_events.py`):
+**Python 範例**（`bronze/ingest_events.py`）：
 ```python
 from pyspark import pipelines as dp
 from pyspark.sql.functions import col, current_timestamp
 
-# Get schema location from pipeline configuration
+# 從管道設定取得 schema 位置
 schema_location_base = spark.conf.get("schema_location_base")
 
 @dp.table(name="bronze_events", cluster_by=["event_date"])
@@ -245,201 +245,201 @@ def bronze_events():
     )
 ```
 
-**IMPORTANT for Python Pipelines**: When using `spark.readStream.format("cloudFiles")` for cloud storage ingestion, with schema inference (no schema specified), you **must specify a schema location**.
+**Python 管道重要說明**：使用 `spark.readStream.format("cloudFiles")` 進行雲端儲存攝取，且使用 schema 推論（未指定 schema）時，**必須指定 schema 位置**。
 
-**Always ask the user** where to store Auto Loader schema metadata. Recommend:
+**務必詢問使用者**要將 Auto Loader schema 中繼資料存放在哪裡。建議：
 ```
 /Volumes/{catalog}/{schema}/{pipeline_name}_metadata/schemas
 ```
 
-Example: `/Volumes/my_catalog/pipeline_metadata/orders_pipeline_metadata/schemas`
+範例：`/Volumes/my_catalog/pipeline_metadata/orders_pipeline_metadata/schemas`
 
-**Never use the source data volume** - this causes permission conflicts. The schema location should be configured in the pipeline settings and accessed via `spark.conf.get("schema_location_base")`.
+**切勿使用來源資料 Volume** — 這會造成權限衝突。schema 位置應在管道設定中設定，並透過 `spark.conf.get("schema_location_base")` 存取。
 
-**Language Selection:**
+**語言選擇：**
 
-**CRITICAL RULE**: If the user explicitly mentions "Python" in their request (e.g., "Python Spark Declarative Pipeline", "Python SDP", "use Python"), **ALWAYS use Python without asking**. The same applies to SQL - if they say "SQL pipeline", use SQL.
+**關鍵規則**：若使用者明確在需求中提及「Python」（例如「Python Spark Declarative Pipeline」、「Python SDP」、「use Python」），**務必直接使用 Python，無需詢問**。SQL 亦同——若使用者說「SQL pipeline」，則使用 SQL。
 
-- **Explicit language request**: User says "Python" → Use Python. User says "SQL" → Use SQL. **Do not ask for clarification.**
-- **Auto-detection** (only when no explicit language mentioned):
-  - **SQL indicators**: "sql files", "simple transformations", "aggregations", "materialized view", "CREATE OR REFRESH"
-  - **Python indicators**: ".py files", "UDF", "complex logic", "ML inference", "external API", "@dp.table", "pandas", "decorator"
-- **Prompt for clarification** only when language intent is truly ambiguous (no explicit mention, mixed signals)
-- **Default to SQL** only when ambiguous AND no Python indicators present
+- **明確語言需求**：使用者說「Python」→ 使用 Python。使用者說「SQL」→ 使用 SQL。**不需要詢問確認。**
+- **自動偵測**（僅在未明確提及語言時）：
+  - **SQL 指標**：「sql files」、「簡單轉換」、「聚合」、「materialized view」、「CREATE OR REFRESH」
+  - **Python 指標**：「.py files」、「UDF」、「複雜邏輯」、「ML 推論」、「外部 API」、「@dp.table」、「pandas」、「decorator」
+- **僅在語言意圖真正模糊時**（未明確提及，且有混合訊號）才請求澄清
+- **僅在模糊且無 Python 指標時**預設使用 SQL
 
-See **[8-project-initialization.md](8-project-initialization.md)** for detailed language detection logic.
-
-
-## Option 1: Pipelines with DABs: 
-Use asset bundles and pipeline CLI.
-See [Quick Start](#quick-start) and **[8-project-initialization.md](8-project-initialization.md)** for complete details.
-
-## Option 2: Manual Workflow (Advanced)
-
-For rapid prototyping, experimentation, or when you prefer direct control without Asset Bundles, use the manual workflow with MCP tools.
-
-Use MCP tools to create, run, and iterate on **serverless SDP pipelines**. The **primary tool is `create_or_update_pipeline`** which handles the entire lifecycle.
-
-**IMPORTANT: Always create serverless pipelines (default).** Only use classic clusters if user explicitly ask for classic, pro, advances compute or requires R language, Spark RDD APIs, or JAR libraries.
-
-See **[10-mcp-approach.md](10-mcp-approach.md)** for detailed guide.
+詳細語言偵測邏輯請參閱 **[8-project-initialization.md](8-project-initialization.md)**。
 
 
-## Best Practices (2026)
+## 選項一：搭配 DABs 的管道
+使用 asset bundles 與 pipeline CLI。
+完整詳情請參閱[快速入門](#快速入門)與 **[8-project-initialization.md](8-project-initialization.md)**。
 
-### Project Structure
-- **Default to `databricks pipelines init`** for new projects (creates Asset Bundle)
-- **Use Asset Bundles** for multi-environment deployments (dev/staging/prod)
-- **Manual structure only** for quick prototypes or legacy migration
-- **Medallion architecture**: Two approaches work with Asset Bundles:
-  - **Flat structure** (template default): `bronze_*.sql`, `silver_*.sql`, `gold_*.sql` in `transformations/`
-  - **Subdirectories**: `transformations/bronze/`, `transformations/silver/`, `transformations/gold/`
-  - Both work with the `transformations/**` glob pattern - choose based on team preference
-- See **[8-project-initialization.md](8-project-initialization.md)** for project setup details
+## 選項二：手動工作流程（進階）
 
-### Minimal pipeline config pointers
-- Define parameters in your pipeline’s configuration and access them in code with spark.conf.get("key").
-- In Databricks Asset Bundles, set these under resources.pipelines.<pipeline>.configuration; validate with databricks bundle validate.
+適用於快速原型、實驗，或偏好不使用 Asset Bundles 直接控制的情境，使用手動工作流程搭配 MCP 工具。
 
-### Modern Defaults
-- **CLUSTER BY** (Liquid Clustering), not PARTITION BY - see [4-performance-tuning.md](4-performance-tuning.md)
-- **Raw `.sql`/`.py` files**, not notebooks
-- **Serverless compute ONLY** - Do not use classic clusters unless explicitly required
-- **Unity Catalog** (required for serverless)
-- **read_files()** when using SQL for cloud storage ingestion - see [1-ingestion-patterns.md](1-ingestion-patterns.md)
+使用 MCP 工具建立、執行及迭代**無伺服器 SDP 管道**。**主要工具為 `create_or_update_pipeline`**，可處理完整生命週期。
 
-### Multi-Schema Patterns
+**重要：預設建立無伺服器管道。** 只有在使用者明確要求傳統、pro、advanced 計算，或需要 R 語言、Spark RDD API 或 JAR 函式庫時，才使用傳統叢集。
 
-**Default: Single target schema per pipeline.** Each pipeline has one target `catalog` and `schema` where all tables are written.
+詳細指南請參閱 **[10-mcp-approach.md](10-mcp-approach.md)**。
 
 
-#### Option 1: Single Pipeline, Single Schema with Prefixes (Recommended)
+## 最佳實踐（2026）
 
-Use one schema with table name prefixes to distinguish layers:
+### 專案結構
+- **新專案預設使用 `databricks pipelines init`**（建立 Asset Bundle）
+- **使用 Asset Bundles** 進行多環境部署（dev/staging/prod）
+- **手動結構**僅用於快速原型或舊版遷移
+- **三層式架構**：兩種方式皆可搭配 Asset Bundles：
+  - **平面結構**（範本預設）：`transformations/` 中的 `bronze_*.sql`、`silver_*.sql`、`gold_*.sql`
+  - **子目錄結構**：`transformations/bronze/`、`transformations/silver/`、`transformations/gold/`
+  - 兩者皆可搭配 `transformations/**` glob 模式——依團隊偏好選擇
+- 專案設定詳情請參閱 **[8-project-initialization.md](8-project-initialization.md)**
+
+### 管道設定最小化指引
+- 在管道設定中定義參數，並在程式碼中透過 spark.conf.get("key") 存取。
+- 在 Databricks Asset Bundles 中，於 resources.pipelines.\<pipeline\>.configuration 下設定；使用 databricks bundle validate 驗證。
+
+### 現代預設值
+- **CLUSTER BY**（Liquid Clustering），而非 PARTITION BY——參閱 [4-performance-tuning.md](4-performance-tuning.md)
+- **原始 `.sql`/`.py` 檔案**，而非 Notebook
+- **僅使用無伺服器計算**——除非明確需要，否則不使用傳統叢集
+- **Unity Catalog**（無伺服器必須）
+- SQL 進行雲端儲存攝取時**使用 read_files()**——參閱 [1-ingestion-patterns.md](1-ingestion-patterns.md)
+
+### 多 Schema 模式
+
+**預設：每個管道使用單一目標 schema。** 每個管道有一個目標 `catalog` 和 `schema`，所有資料表都寫入其中。
+
+
+#### 選項一：單一管道，單一 Schema 加前綴命名（建議）
+
+使用一個 schema，透過資料表名稱前綴區分不同層次：
 
 ```python
-# All tables write to: catalog.schema.bronze_*, silver_*, gold_*
+# 所有資料表寫入：catalog.schema.bronze_*、silver_*、gold_*
 @dp.table(name="bronze_orders")  # → catalog.schema.bronze_orders
 @dp.table(name="silver_orders")  # → catalog.schema.silver_orders
 @dp.table(name="gold_summary")   # → catalog.schema.gold_summary
 ```
 
-**Advantages:**
-- Simpler configuration (one pipeline)
-- All tables in one schema for easy discovery
+**優點：**
+- 設定更簡單（單一管道）
+- 所有資料表在同一 schema，易於探索
 
-#### Option 2:
-Use varaiables to specific separate catalog and/or schema for different steps.
+#### 選項二：
+使用變數為不同步驟指定獨立的 catalog 和/或 schema。
 
-Below are Python SDP examples that source variables from pipeline configs via spark.conf.get, and use the default catalog/schema for bronze.
+以下是 Python SDP 範例，透過 spark.conf.get 從管道設定取得變數，bronze 使用預設 catalog/schema。
 
-##### Same catalog, separate schemas; bronze uses pipeline defaults
-- Set your pipeline’s default catalog and default schema to the bronze layer (for example, catalog=my_catalog, schema=bronze). When you omit catalog/schema in code, reads/writes go to these defaults.
-- Use pipeline parameters for the other schemas and any source schema/path, retrieved in code with spark.conf.get(...).
+##### 相同 catalog，分開的 schema；bronze 使用管道預設值
+- 將管道的預設 catalog 和 schema 設為 bronze 層（例如 catalog=my_catalog、schema=bronze）。在程式碼中省略 catalog/schema 時，讀寫會使用這些預設值。
+- 其他 schema 及任何來源 schema/路徑使用管道參數，在程式碼中透過 spark.conf.get(...) 取得。
 
 ```python
 from pyspark import pipelines as dp
 from pyspark.sql.functions import col
 
-# Pull variables from pipeline configuration parameters
-silver_schema = spark.conf.get("silver_schema")  # e.g., "silver"
-gold_schema   = spark.conf.get("gold_schema")    # e.g., "gold"
-landing_schema = spark.conf.get("landing_schema")  # e.g., "landing"
+# 從管道設定參數取得變數
+silver_schema = spark.conf.get("silver_schema")  # 例如 "silver"
+gold_schema   = spark.conf.get("gold_schema")    # 例如 "gold"
+landing_schema = spark.conf.get("landing_schema")  # 例如 "landing"
 
-# Bronze → uses default catalog/schema (set to bronze in pipeline settings)
+# Bronze → 使用預設 catalog/schema（管道設定中設為 bronze）
 @dp.table(name="orders_bronze")
 def orders_bronze():
-    # Read from another schema in the same default catalog
+    # 從相同預設 catalog 的另一個 schema 讀取
     return spark.readStream.table(f"{landing_schema}.orders_raw")
 
-# Silver → same catalog, schema from parameter
+# Silver → 相同 catalog，schema 來自參數
 @dp.table(name=f"{silver_schema}.orders_clean")
 def orders_clean():
-    return (spark.read.table("orders_bronze")  # unqualified = default catalog/schema
+    return (spark.read.table("orders_bronze")  # 未限定名稱 = 預設 catalog/schema
             .filter(col("order_id").isNotNull()))
 
-# Gold → same catalog, schema from parameter
+# Gold → 相同 catalog，schema 來自參數
 @dp.materialized_view(name=f"{gold_schema}.orders_by_date")
 def orders_by_date():
     return (spark.read.table(f"{silver_schema}.orders_clean")
             .groupBy("order_date")
             .count().withColumnRenamed("count", "order_count"))
 ```
-- Using unqualified names for bronze ensures it lands in the pipeline’s default catalog/schema; silver/gold are explicitly schema-qualified within the same catalog.
+- bronze 使用未限定名稱可確保其寫入管道預設 catalog/schema；silver/gold 在相同 catalog 內以明確 schema 限定。
 
 ---
 
-##### Custom catalog/schema per layer; bronze still uses pipeline defaults
-- Keep bronze in the pipeline defaults (default catalog/schema set to your bronze layer). For silver/gold, use fully-qualified names with catalog and schema variables from pipeline configuration.
+##### 每層使用自訂 catalog/schema；bronze 仍使用管道預設值
+- Bronze 保留在管道預設值中（預設 catalog/schema 設為 bronze 層）。silver/gold 使用完整限定名稱，catalog 和 schema 變數來自管道設定。
 
 ```python
 from pyspark import pipelines as dp
 from pyspark.sql.functions import col
 
-# Pull variables from pipeline configuration parameters
-silver_catalog = spark.conf.get("silver_catalog")  # e.g., "my_catalog"
-silver_schema  = spark.conf.get("silver_schema")   # e.g., "silver"
-gold_catalog   = spark.conf.get("gold_catalog")    # e.g., "my_catalog"
-gold_schema    = spark.conf.get("gold_schema")     # e.g., "gold"
-landing_catalog = spark.conf.get("landing_catalog")  # optional, if source is in another catalog
+# 從管道設定參數取得變數
+silver_catalog = spark.conf.get("silver_catalog")  # 例如 "my_catalog"
+silver_schema  = spark.conf.get("silver_schema")   # 例如 "silver"
+gold_catalog   = spark.conf.get("gold_catalog")    # 例如 "my_catalog"
+gold_schema    = spark.conf.get("gold_schema")     # 例如 "gold"
+landing_catalog = spark.conf.get("landing_catalog")  # 可選，若來源在另一個 catalog
 landing_schema  = spark.conf.get("landing_schema")
 
-# Bronze → uses default catalog/schema (set to bronze)
+# Bronze → 使用預設 catalog/schema（設為 bronze）
 @dp.table(name="orders_bronze")
 def orders_bronze():
-    # If source is in a specified catalog/schema:
+    # 若來源在指定的 catalog/schema：
     return spark.readStream.table(f"{landing_catalog}.{landing_schema}.orders_raw")
 
-# Silver → custom catalog + schema via parameters
+# Silver → 透過參數指定自訂 catalog + schema
 @dp.table(name=f"{silver_catalog}.{silver_schema}.orders_clean")
 def orders_clean():
-    # Read bronze by its unqualified name (defaults), or fully qualify if preferred
+    # 以未限定名稱讀取 bronze（使用預設值），或視需要加上完整限定
     return (spark.read.table("orders_bronze")
             .filter(col("order_id").isNotNull()))
 
-# Gold → custom catalog + schema via parameters
+# Gold → 透過參數指定自訂 catalog + schema
 @dp.materialized_view(name=f"{gold_catalog}.{gold_schema}.orders_by_date}")
 def orders_by_date():
     return (spark.read.table(f"{silver_catalog}.{silver_schema}.orders_clean")
             .groupBy("order_date")
             .count().withColumnRenamed("count", "order_count"))
 ```
-- Multipart names in the decorator’s name argument let you publish to explicit catalog.schema targets within one pipeline.
-- Unqualified reads/writes use the pipeline defaults; use fully-qualified names when crossing catalogs or when you need explicit namespace control.
+- 裝飾器 name 引數中的多部分名稱，可讓您在單一管道內發布至明確的 catalog.schema 目標。
+- 未限定的讀寫使用管道預設值；跨 catalog 或需要明確命名空間控制時，使用完整限定名稱。
 
 ---
 
 
-**Note:** The `@dp.table()` decorator does not currently support separate for `schema=` or `catalog=` parameters. The table parameter is a string that contains the catalog.schema.table_name, or it can leave off catalog and or schema to use the pipeilnes configured default target schema.
+**注意：** `@dp.table()` 裝飾器目前不支援獨立的 `schema=` 或 `catalog=` 參數。table 參數為包含 catalog.schema.table_name 的字串，或省略 catalog 和/或 schema 以使用管道設定的預設目標 schema。
 
-### Reading Tables in Python
+### 在 Python 中讀取資料表
 
-**Modern SDP Best Practice:**
-- Use `spark.read.table()` for batch reads
-- Use `spark.readStream.table()` for streaming reads
-- Don't use `dp.read()` or `dp.read_stream()` (old syntax, no longer documented)
-- Don't use `dlt.read()` or `dlt.read_stream()` (legacy DLT API)
+**現代 SDP 最佳實踐：**
+- 批次讀取使用 `spark.read.table()`
+- 串流讀取使用 `spark.readStream.table()`
+- 不使用 `dp.read()` 或 `dp.read_stream()`（舊語法，已不在文件中）
+- 不使用 `dlt.read()` 或 `dlt.read_stream()`（舊版 DLT API）
 
-**Key Point:** SDP automatically tracks table dependencies from standard Spark DataFrame operations. No special read APIs are needed.
+**重點：** SDP 可從標準 Spark DataFrame 操作自動追蹤資料表依賴關係，無需特殊的讀取 API。
 
-#### Three-Tier Identifier Resolution
+#### 三層識別符解析
 
-SDP supports three levels of table name qualification:
+SDP 支援三種資料表名稱限定層級：
 
-| Level | Syntax | When to Use |
-|-------|--------|-------------|
-| **Unqualified** | `spark.read.table("my_table")` | Reading tables within the same pipeline's target catalog/schema (recommended) |
-| **Partially-qualified** | `spark.read.table("other_schema.my_table")` | Reading from different schema in same catalog |
-| **Fully-qualified** | `spark.read.table("other_catalog.other_schema.my_table")` | Reading from external catalogs/schemas |
+| 層級 | 語法 | 使用時機 |
+|------|------|---------|
+| **未限定** | `spark.read.table("my_table")` | 讀取同一管道目標 catalog/schema 中的資料表（建議） |
+| **部分限定** | `spark.read.table("other_schema.my_table")` | 從相同 catalog 的不同 schema 讀取 |
+| **完整限定** | `spark.read.table("other_catalog.other_schema.my_table")` | 從外部 catalog/schema 讀取 |
 
-#### Option 1: Unqualified Names (Recommended for Pipeline Tables)
+#### 選項一：未限定名稱（管道內資料表的建議方式）
 
-**Best practice for tables within the same pipeline.** SDP resolves unqualified names to the pipeline's configured target catalog and schema. This makes code portable across environments (dev/prod).
+**管道內資料表的最佳實踐。** SDP 將未限定名稱解析為管道設定的目標 catalog 和 schema，使程式碼可在不同環境（dev/prod）間移植。
 
 ```python
 @dp.table(name="silver_clean")
 def silver_clean():
-    # Reads from pipeline's target catalog/schema (e.g., dev_catalog.dev_schema.bronze_raw)
+    # 從管道目標 catalog/schema 讀取（例如 dev_catalog.dev_schema.bronze_raw）
     return (
         spark.read.table("bronze_raw")
         .filter(F.col("valid") == True)
@@ -447,24 +447,24 @@ def silver_clean():
 
 @dp.table(name="silver_events")
 def silver_events():
-    # Streaming read from same pipeline's bronze_events table
+    # 從相同管道的 bronze_events 資料表串流讀取
     return (
         spark.readStream.table("bronze_events")
         .withColumn("processed_at", F.current_timestamp())
     )
 ```
 
-#### Option 2: Pipeline Parameters (For External Sources)
+#### 選項二：管道參數（用於外部來源）
 
-**Use `spark.conf.get()` to parameterize external catalog/schema references.** Define parameters in pipeline configuration, then reference them at the module level.
+**使用 `spark.conf.get()` 將外部 catalog/schema 參數化。** 在管道設定中定義參數，然後在模組層級引用。
 
 ```python
 from pyspark import pipelines as dp
 from pyspark.sql import functions as F
 
-# Get parameterized values at module level (evaluated once at pipeline start)
+# 在模組層級取得參數化值（在管道啟動時計算一次）
 source_catalog = spark.conf.get("source_catalog")
-source_schema = spark.conf.get("source_schema", "sales")  # with default
+source_schema = spark.conf.get("source_schema", "sales")  # 含預設值
 
 @dp.table(name="transaction_summary")
 def transaction_summary():
@@ -478,100 +478,100 @@ def transaction_summary():
     )
 ```
 
-**Configure parameters in pipeline settings:**
-- **Asset Bundles**: Add to `pipeline.yml` under `configuration:`
-- **Manual/MCP**: Pass via `extra_settings.configuration` dict
+**在管道設定中設定參數：**
+- **Asset Bundles**：在 `pipeline.yml` 的 `configuration:` 下新增
+- **手動/MCP**：透過 `extra_settings.configuration` dict 傳入
 
 ```yaml
-# In resources/my_pipeline.pipeline.yml
+# 在 resources/my_pipeline.pipeline.yml 中
 configuration:
   source_catalog: "shared_catalog"
   source_schema: "sales"
 ```
 
-#### Option 3: Fully-Qualified Names (For Fixed External References)
+#### 選項三：完整限定名稱（固定外部參考）
 
-Use when referencing specific external tables that don't change across environments:
+用於參考跨環境不會變動的特定外部資料表：
 
 ```python
 @dp.table(name="enriched_orders")
 def enriched_orders():
-    # Pipeline-internal table (unqualified)
+    # 管道內部資料表（未限定）
     orders = spark.read.table("bronze_orders")
 
-    # External reference table (fully-qualified)
+    # 外部參考資料表（完整限定）
     products = spark.read.table("shared_catalog.reference.products")
 
     return orders.join(products, "product_id")
 ```
 
-#### Choosing the Right Approach
+#### 選擇正確的方式
 
-| Scenario | Recommended Approach |
-|----------|---------------------|
-| Reading tables created in same pipeline | **Unqualified names** - portable, uses target catalog/schema |
-| Reading from external source that varies by environment | **Pipeline parameters** - configurable per deployment |
-| Reading from shared/reference tables with fixed location | **Fully-qualified names** - explicit and clear |
-| Mixed pipeline (some internal, some external) | **Combine approaches** - unqualified for internal, parameters for external |
-
----
-
-## Common Issues
-
-| Issue | Solution |
-|-------|----------|
-| **Empty output tables** | Use `get_table_details` to verify, check upstream sources |
-| **Pipeline stuck INITIALIZING** | Normal for serverless, wait a few minutes |
-| **"Column not found"** | Check `schemaHints` match actual data |
-| **Streaming reads fail** | For file ingestion in a streaming table, you must use the `STREAM` keyword with `read_files`: `FROM STREAM read_files(...)`. For table streams use `FROM stream(table)`. See [read_files — Usage in streaming tables](https://docs.databricks.com/aws/en/sql/language-manual/functions/read_files#usage-in-streaming-tables). |
-| **Timeout during run** | Increase `timeout`, or use `wait_for_completion=False` and check status with `get_pipeline` |
-| **MV doesn't refresh** | Enable row tracking on source tables |
-| **SCD2: query column not found** | Lakeflow uses `__START_AT` and `__END_AT` (double underscore), not `START_AT`/`END_AT`. Use `WHERE __END_AT IS NULL` for current rows. See [3-scd-query-patterns.md](3-scd-query-patterns.md). |
-| **AUTO CDC parse error at APPLY/SEQUENCE** | Put `APPLY AS DELETE WHEN` **before** `SEQUENCE BY`. Only list columns in `COLUMNS * EXCEPT (...)` that exist in the source (omit `_rescued_data` unless bronze uses rescue data). Omit `TRACK HISTORY ON *` if it causes "end of input" errors; default is equivalent. See [2-streaming-patterns.md](2-streaming-patterns.md). |
-| **"Cannot create streaming table from batch query"** | In a streaming table query, use `FROM STREAM read_files(...)` so `read_files` leverages Auto Loader; `FROM read_files(...)` alone is batch. See [1-ingestion-patterns.md](1-ingestion-patterns.md) and [read_files — Usage in streaming tables](https://docs.databricks.com/aws/en/sql/language-manual/functions/read_files#usage-in-streaming-tables). |
-
-**For detailed errors**, the `result["message"]` from `create_or_update_pipeline` includes suggested next steps. Use `get_pipeline(pipeline_id=...)` which includes recent events and error details.
+| 情境 | 建議方式 |
+|------|---------|
+| 讀取同一管道建立的資料表 | **未限定名稱** — 可移植，使用目標 catalog/schema |
+| 讀取因環境而異的外部來源 | **管道參數** — 每次部署可設定 |
+| 讀取位置固定的共用/參考資料表 | **完整限定名稱** — 明確清晰 |
+| 混合管道（部分內部、部分外部） | **結合多種方式** — 內部用未限定，外部用參數 |
 
 ---
 
-## Advanced Pipeline Configuration
+## 常見問題
 
-For advanced configuration options (development mode, continuous pipelines, custom clusters, notifications, Python dependencies, etc.), see **[7-advanced-configuration.md](7-advanced-configuration.md)**.
+| 問題 | 解決方式 |
+|------|---------|
+| **輸出資料表為空** | 使用 `get_table_details` 驗證，檢查上游來源 |
+| **管道卡在 INITIALIZING** | 無伺服器管道正常現象，等待幾分鐘 |
+| **「Column not found」** | 確認 `schemaHints` 與實際資料相符 |
+| **串流讀取失敗** | 串流資料表的檔案攝取必須使用 `STREAM` 關鍵字搭配 `read_files`：`FROM STREAM read_files(...)`。資料表串流使用 `FROM stream(table)`。參閱 [read_files — 串流資料表中的用法](https://docs.databricks.com/aws/en/sql/language-manual/functions/read_files#usage-in-streaming-tables)。 |
+| **執行逾時** | 增加 `timeout`，或使用 `wait_for_completion=False` 並以 `get_pipeline` 確認狀態 |
+| **物化視圖未重新整理** | 在來源資料表上啟用 row tracking |
+| **SCD2：找不到查詢欄位** | Lakeflow 使用 `__START_AT` 與 `__END_AT`（雙底線），而非 `START_AT`/`END_AT`。使用 `WHERE __END_AT IS NULL` 取得當前資料列。參閱 [3-scd-query-patterns.md](3-scd-query-patterns.md)。 |
+| **AUTO CDC 在 APPLY/SEQUENCE 出現解析錯誤** | 將 `APPLY AS DELETE WHEN` 放在 `SEQUENCE BY` **之前**。`COLUMNS * EXCEPT (...)` 中只列出來源中存在的欄位（除非 bronze 使用 rescue data，否則省略 `_rescued_data`）。如果 `TRACK HISTORY ON *` 導致「end of input」錯誤，可省略；預設行為相同。參閱 [2-streaming-patterns.md](2-streaming-patterns.md)。 |
+| **「Cannot create streaming table from batch query」** | 串流資料表查詢中，使用 `FROM STREAM read_files(...)` 讓 `read_files` 利用 Auto Loader；單獨使用 `FROM read_files(...)` 是批次模式。參閱 [1-ingestion-patterns.md](1-ingestion-patterns.md) 與 [read_files — 串流資料表中的用法](https://docs.databricks.com/aws/en/sql/language-manual/functions/read_files#usage-in-streaming-tables)。 |
+
+**若需詳細錯誤資訊**，`create_or_update_pipeline` 的 `result["message"]` 包含建議的後續步驟。使用 `get_pipeline(pipeline_id=...)` 可取得近期事件與錯誤詳情。
 
 ---
 
-## Platform Constraints
+## 進階管道設定
 
-### Serverless Pipeline Requirements (Default)
-| Requirement | Details |
-|-------------|---------|
-| **Unity Catalog** | Required - serverless pipelines always use UC |
-| **Workspace Region** | Must be in serverless-enabled region |
-| **Serverless Terms** | Must accept serverless terms of use |
-| **CDC Features** | Requires serverless (or Pro/Advanced with classic clusters) |
+進階設定選項（開發模式、持續管道、自訂叢集、通知、Python 相依套件等），請參閱 **[7-advanced-configuration.md](7-advanced-configuration.md)**。
 
-### Serverless Limitations (When Classic Clusters Required)
-| Limitation | Workaround |
-|------------|-----------|
-| **R language** | Not supported - use classic clusters if required |
-| **Spark RDD APIs** | Not supported - use classic clusters if required |
-| **JAR libraries** | Not supported - use classic clusters if required |
-| **Maven coordinates** | Not supported - use classic clusters if required |
-| **DBFS root access** | Limited - must use Unity Catalog external locations |
-| **Global temp views** | Not supported |
+---
 
-### General Constraints
-| Constraint | Details |
-|------------|---------|
-| **Schema Evolution** | Streaming tables require full refresh for incompatible changes |
-| **SQL Limitations** | PIVOT clause unsupported |
-| **Sinks** | Python only, streaming only, append flows only |
+## 平台限制
 
-**Default to serverless** unless user explicitly requires R, RDD APIs, or JAR libraries.
+### 無伺服器管道需求（預設）
+| 需求 | 說明 |
+|------|------|
+| **Unity Catalog** | 必須 — 無伺服器管道一律使用 UC |
+| **工作區區域** | 必須位於支援無伺服器的區域 |
+| **無伺服器條款** | 必須接受無伺服器使用條款 |
+| **CDC 功能** | 需要無伺服器（或傳統叢集的 Pro/Advanced） |
 
-## Related Skills
+### 無伺服器限制（需使用傳統叢集時）
+| 限制 | 替代方案 |
+|------|---------|
+| **R 語言** | 不支援——若有需要請使用傳統叢集 |
+| **Spark RDD API** | 不支援——若有需要請使用傳統叢集 |
+| **JAR 函式庫** | 不支援——若有需要請使用傳統叢集 |
+| **Maven 座標** | 不支援——若有需要請使用傳統叢集 |
+| **DBFS root 存取** | 受限——必須使用 Unity Catalog 外部位置 |
+| **Global temp views** | 不支援 |
 
-- **[databricks-jobs](../databricks-jobs/SKILL.md)** - for orchestrating and scheduling pipeline runs
-- **[databricks-bundles](../databricks-bundles/SKILL.md)** - for multi-environment deployment of pipeline projects
-- **[databricks-synthetic-data-gen](../databricks-synthetic-data-gen/SKILL.md)** - for generating test data to feed into pipelines
-- **[databricks-unity-catalog](../databricks-unity-catalog/SKILL.md)** - for catalog/schema/volume management and governance
+### 一般限制
+| 限制 | 說明 |
+|------|------|
+| **Schema 演進** | 串流資料表不相容的異動需要完整重新整理 |
+| **SQL 限制** | 不支援 PIVOT 子句 |
+| **Sink** | 僅支援 Python、僅串流、僅附加 flow |
+
+**預設使用無伺服器**，除非使用者明確需要 R、RDD API 或 JAR 函式庫。
+
+## 相關 Skills
+
+- **[databricks-jobs](../databricks-jobs/SKILL.md)** — 管道執行的編排與排程
+- **[databricks-bundles](../databricks-bundles/SKILL.md)** — 管道專案的多環境部署
+- **[databricks-synthetic-data-gen](../databricks-synthetic-data-gen/SKILL.md)** — 生成測試資料供管道使用
+- **[databricks-unity-catalog](../databricks-unity-catalog/SKILL.md)** — catalog/schema/volume 管理與治理

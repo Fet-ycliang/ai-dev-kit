@@ -116,7 +116,7 @@ function TreeNode({
   );
 }
 
-// Toggle switch component
+// 切換開關元件
 function Toggle({
   checked,
   onChange,
@@ -173,11 +173,11 @@ export function SkillsExplorer({
   const [showRawCode, setShowRawCode] = useState(false);
   const [isReloading, setIsReloading] = useState(false);
 
-  // Skill management state
+  // Skill 管理狀態
   const [availableSkills, setAvailableSkills] = useState<AvailableSkill[]>([]);
   const [isUpdatingSkills, setIsUpdatingSkills] = useState(false);
 
-  // Load skills tree and available skills
+  // 載入 Skills 樹狀結構與可用 Skills
   useEffect(() => {
     const loadData = async () => {
       try {
@@ -189,7 +189,7 @@ export function SkillsExplorer({
         setTree(treeData);
         setAvailableSkills(skillsData.skills);
 
-        // Auto-expand first level directories
+        // 自動展開第一層目錄
         const initialExpanded = new Set<string>();
         treeData.forEach((node) => {
           if (node.type === 'directory') {
@@ -198,7 +198,7 @@ export function SkillsExplorer({
         });
         setExpandedPaths(initialExpanded);
       } catch (error) {
-        console.error('Failed to load skills data:', error);
+        console.error('載入 Skills 資料失敗:', error);
       } finally {
         setIsLoadingTree(false);
       }
@@ -207,7 +207,7 @@ export function SkillsExplorer({
     loadData();
   }, [projectId]);
 
-  // Load system prompt by default
+  // 預設載入 System Prompt
   useEffect(() => {
     const loadSystemPrompt = async () => {
       try {
@@ -216,8 +216,8 @@ export function SkillsExplorer({
         setContent(prompt);
         setSelectedType('system_prompt');
       } catch (error) {
-        console.error('Failed to load system prompt:', error);
-        setContent('Error loading system prompt');
+        console.error('載入 System Prompt 失敗:', error);
+        setContent('載入 System Prompt 時發生錯誤');
       } finally {
         setIsLoadingContent(false);
       }
@@ -234,8 +234,8 @@ export function SkillsExplorer({
       const prompt = await fetchSystemPrompt(systemPromptParams);
       setContent(prompt);
     } catch (error) {
-      console.error('Failed to load system prompt:', error);
-      setContent('Error loading system prompt');
+      console.error('載入 System Prompt 失敗:', error);
+      setContent('載入 System Prompt 時發生錯誤');
     } finally {
       setIsLoadingContent(false);
     }
@@ -250,8 +250,8 @@ export function SkillsExplorer({
         const file = await fetchSkillFile(projectId, path);
         setContent(file.content);
       } catch (error) {
-        console.error('Failed to load skill file:', error);
-        setContent('Error loading file');
+        console.error('載入 Skill 檔案失敗:', error);
+        setContent('載入檔案時發生錯誤');
       } finally {
         setIsLoadingContent(false);
       }
@@ -275,14 +275,14 @@ export function SkillsExplorer({
     setIsReloading(true);
     try {
       await reloadProjectSkills(projectId);
-      // Reload the tree and available skills after refresh
+      // 重新整理後重新載入樹狀結構與可用 Skills
       const [treeData, skillsData] = await Promise.all([
         fetchSkillsTree(projectId),
         fetchAvailableSkills(projectId),
       ]);
       setTree(treeData);
       setAvailableSkills(skillsData.skills);
-      // Auto-expand first level directories
+      // 自動展開第一層目錄
       const initialExpanded = new Set<string>();
       treeData.forEach((node) => {
         if (node.type === 'directory') {
@@ -290,43 +290,43 @@ export function SkillsExplorer({
         }
       });
       setExpandedPaths(initialExpanded);
-      // Reset selection to system prompt
+      // 將選取重設為 System Prompt
       setSelectedPath(null);
       setSelectedType('system_prompt');
-      toast.success('Skills reloaded');
+      toast.success('已重新載入 Skills');
     } catch (error) {
-      console.error('Failed to reload skills:', error);
-      toast.error('Failed to reload skills');
+      console.error('重新載入 Skills 失敗:', error);
+      toast.error('重新載入 Skills 失敗');
     } finally {
       setIsReloading(false);
     }
   }, [projectId]);
 
-  // Toggle a single skill
+  // 切換單一 Skill
   const handleToggleSkill = useCallback(
     async (skillName: string, enabled: boolean) => {
       setIsUpdatingSkills(true);
       try {
-        // Calculate new enabled list
+        // 計算新的啟用清單
         const allEnabled = availableSkills.every((s) => s.enabled) && availableSkills.some((s) => s.name !== skillName);
         let newEnabledList: string[] | null;
 
         if (enabled) {
-          // Enabling a skill
+          // 啟用 Skill
           const currentEnabled = availableSkills.filter((s) => s.enabled).map((s) => s.name);
           const newEnabled = [...currentEnabled, skillName];
-          // If all skills would be enabled, set to null (all)
+          // 若所有 Skills 都將被啟用，則設為 null（全部）
           if (newEnabled.length >= availableSkills.length) {
             newEnabledList = null;
           } else {
             newEnabledList = newEnabled;
           }
         } else {
-          // Disabling a skill
+          // 停用 Skill
           const currentEnabled = availableSkills.filter((s) => s.enabled).map((s) => s.name);
           newEnabledList = currentEnabled.filter((n) => n !== skillName);
           if (newEnabledList.length === 0) {
-            toast.error('At least one skill must be enabled');
+            toast.error('至少必須啟用一個 Skill');
             setIsUpdatingSkills(false);
             return;
           }
@@ -334,23 +334,23 @@ export function SkillsExplorer({
 
         await updateEnabledSkills(projectId, newEnabledList);
 
-        // Update local state
+        // 更新本機狀態
         setAvailableSkills((prev) =>
           prev.map((s) => (s.name === skillName ? { ...s, enabled } : s))
         );
 
-        // Refresh the tree to reflect filesystem changes
+        // 重新整理樹狀結構以反映檔案系統變更
         const treeData = await fetchSkillsTree(projectId);
         setTree(treeData);
 
-        // Refresh system prompt if currently viewing it (so disabled skills disappear)
+        // 若目前正在檢視 System Prompt，則重新整理內容（讓停用的 Skills 消失）
         if (selectedType === 'system_prompt') {
           const prompt = await fetchSystemPrompt(systemPromptParams);
           setContent(prompt);
         }
       } catch (error) {
-        console.error('Failed to toggle skill:', error);
-        toast.error('Failed to update skill');
+        console.error('更新 Skill 狀態失敗:', error);
+        toast.error('更新 Skill 失敗');
       } finally {
         setIsUpdatingSkills(false);
       }
@@ -358,7 +358,7 @@ export function SkillsExplorer({
     [projectId, availableSkills, selectedType, systemPromptParams]
   );
 
-  // Enable or disable all skills
+  // 啟用或停用所有 Skills
   const handleToggleAll = useCallback(
     async (enableAll: boolean) => {
       setIsUpdatingSkills(true);
@@ -367,7 +367,7 @@ export function SkillsExplorer({
           await updateEnabledSkills(projectId, null);
           setAvailableSkills((prev) => prev.map((s) => ({ ...s, enabled: true })));
         } else {
-          // Disable all except first skill (must have at least one)
+          // 停用除第一個以外的所有 Skills（至少必須保留一個）
           const firstSkill = availableSkills[0]?.name;
           if (!firstSkill) return;
           await updateEnabledSkills(projectId, [firstSkill]);
@@ -376,20 +376,20 @@ export function SkillsExplorer({
           );
         }
 
-        // Refresh tree
+        // 重新整理樹狀結構
         const treeData = await fetchSkillsTree(projectId);
         setTree(treeData);
 
-        // Refresh system prompt if currently viewing it
+        // 若目前正在檢視 System Prompt，則重新整理內容
         if (selectedType === 'system_prompt') {
           const prompt = await fetchSystemPrompt(systemPromptParams);
           setContent(prompt);
         }
 
-        toast.success(enableAll ? 'All skills enabled' : 'Skills minimized');
+        toast.success(enableAll ? '已啟用所有 Skills' : '已將 Skills 精簡為最小集合');
       } catch (error) {
-        console.error('Failed to toggle all skills:', error);
-        toast.error('Failed to update skills');
+        console.error('更新所有 Skills 狀態失敗:', error);
+        toast.error('更新 Skills 失敗');
       } finally {
         setIsUpdatingSkills(false);
       }
@@ -403,27 +403,27 @@ export function SkillsExplorer({
 
   return (
     <div className="fixed inset-0 z-50 flex">
-      {/* Backdrop */}
+      {/* 背景遮罩 */}
       <div
         className="absolute inset-0 bg-black/50 backdrop-blur-sm"
         onClick={onClose}
       />
 
-      {/* Content */}
+      {/* 內容 */}
       <div className="relative z-10 flex w-full h-full m-4 rounded-xl border border-[var(--color-border)] bg-[var(--color-background)] shadow-2xl overflow-hidden">
-        {/* Left sidebar - Navigation */}
+        {/* 左側邊欄 - 導覽 */}
         <div className="w-72 flex-shrink-0 border-r border-[var(--color-border)] bg-[var(--color-bg-secondary)]/30 flex flex-col">
-          {/* Header */}
+          {/* 標頭 */}
           <div className="flex items-center justify-between px-4 py-3 border-b border-[var(--color-border)]">
             <h2 className="text-sm font-semibold text-[var(--color-text-heading)]">
-              Skills & Docs
+              Skills 與 Docs
             </h2>
             <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-[var(--color-accent-primary)]/10 text-[var(--color-accent-primary)]">
               {enabledCount}/{totalCount}
             </span>
           </div>
 
-          {/* Navigation content */}
+          {/* 導覽內容 */}
           <div className="flex-1 overflow-y-auto p-2">
             {/* System Prompt */}
             <button
@@ -439,51 +439,51 @@ export function SkillsExplorer({
               <span className="font-medium">System Prompt</span>
             </button>
 
-            {/* Divider */}
+            {/* 分隔線 */}
             <div className="my-2 border-t border-[var(--color-border)]" />
 
-            {/* Action Buttons Row */}
+            {/* 操作按鈕列 */}
             <div className="flex gap-1.5 mb-3">
-              {/* Reload Skills Button */}
+              {/* 重新載入 Skills 按鈕 */}
               <button
                 onClick={handleReloadSkills}
                 disabled={isReloading}
                 className="flex flex-1 items-center justify-center gap-1.5 rounded-lg px-2 py-1.5 text-[10px] font-medium bg-[var(--color-accent-primary)] text-white hover:bg-[var(--color-accent-secondary)] transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-sm"
               >
                 <RefreshCw className={cn('h-3 w-3 flex-shrink-0', isReloading && 'animate-spin')} />
-                <span>{isReloading ? 'Reloading...' : 'Reload'}</span>
+                <span>{isReloading ? '重新載入中...' : '重新載入'}</span>
               </button>
 
-              {/* Enable All / Disable All */}
+              {/* 全部啟用 / 全部停用 */}
               <button
                 onClick={() => handleToggleAll(true)}
                 disabled={isUpdatingSkills || enabledCount === totalCount}
                 className="flex items-center justify-center gap-1 rounded-lg px-2 py-1.5 text-[10px] font-medium border border-[var(--color-border)] text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-secondary)] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
               >
-                All on
+                全部開啟
               </button>
               <button
                 onClick={() => handleToggleAll(false)}
                 disabled={isUpdatingSkills || enabledCount <= 1}
                 className="flex items-center justify-center gap-1 rounded-lg px-2 py-1.5 text-[10px] font-medium border border-[var(--color-border)] text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-secondary)] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
               >
-                Min
+                最小化
               </button>
             </div>
 
-            {/* Skills label */}
+            {/* Skills 標籤 */}
             <div className="px-2 py-1 text-[10px] font-semibold uppercase tracking-wider text-[var(--color-text-muted)]">
               Skills
             </div>
 
-            {/* Skills list with toggles */}
+            {/* Skills 清單與切換開關 */}
             {isLoadingTree ? (
               <div className="flex items-center justify-center py-8">
                 <Loader2 className="h-4 w-4 animate-spin text-[var(--color-text-muted)]" />
               </div>
             ) : availableSkills.length === 0 ? (
               <div className="px-2 py-4 text-xs text-[var(--color-text-muted)]">
-                No skills available
+                目前沒有可用的 Skills
               </div>
             ) : (
               <div className="space-y-0.5">
@@ -513,12 +513,12 @@ export function SkillsExplorer({
               </div>
             )}
 
-            {/* File tree (collapsed by default behind a divider) */}
+            {/* 檔案樹（預設收合並置於分隔線後方） */}
             {tree.length > 0 && (
               <>
                 <div className="my-3 border-t border-[var(--color-border)]" />
                 <div className="px-2 py-1 text-[10px] font-semibold uppercase tracking-wider text-[var(--color-text-muted)]">
-                  Skill Files
+                  Skill 檔案
                 </div>
                 <div className="space-y-0.5">
                   {tree.map((node) => (
@@ -538,9 +538,9 @@ export function SkillsExplorer({
           </div>
         </div>
 
-        {/* Right panel - Content */}
+        {/* 右側面板 - 內容 */}
         <div className="flex-1 flex flex-col min-w-0">
-          {/* Header */}
+          {/* 標頭 */}
           <div className="flex items-center justify-between px-5 py-3 border-b border-[var(--color-border)]">
             <div className="flex items-center gap-2 min-w-0">
               {selectedType === 'system_prompt' ? (
@@ -551,7 +551,7 @@ export function SkillsExplorer({
                       System Prompt
                     </h3>
                     <p className="text-xs text-[var(--color-text-muted)]">
-                      Instructions injected to Claude Code
+                      注入至 Claude Code 的指示
                     </p>
                   </div>
                 </>
@@ -560,10 +560,10 @@ export function SkillsExplorer({
                   <FileText className="h-4 w-4 flex-shrink-0 text-[var(--color-accent-secondary)]" />
                   <div className="min-w-0">
                     <h3 className="text-sm font-semibold text-[var(--color-text-heading)] truncate">
-                      {selectedPath?.split('/').pop() || 'Select a file'}
+                      {selectedPath?.split('/').pop() || '選擇檔案'}
                     </h3>
                     <p className="text-xs text-[var(--color-text-muted)] truncate">
-                      {selectedPath || 'Choose a skill file from the sidebar'}
+                      {selectedPath || '從側邊欄選擇一個 Skill 檔案'}
                     </p>
                   </div>
                 </>
@@ -571,7 +571,7 @@ export function SkillsExplorer({
             </div>
 
             <div className="flex items-center gap-2">
-              {/* Toggle raw/rendered for markdown */}
+              {/* 切換 Markdown 的原始碼／渲染檢視 */}
               {isMarkdownFile && (
                 <button
                   onClick={() => setShowRawCode(!showRawCode)}
@@ -585,18 +585,18 @@ export function SkillsExplorer({
                   {showRawCode ? (
                     <>
                       <Eye className="h-3 w-3" />
-                      Rendered
+                      渲染檢視
                     </>
                   ) : (
                     <>
                       <Code className="h-3 w-3" />
-                      Raw
+                      原始碼
                     </>
                   )}
                 </button>
               )}
 
-              {/* Close button */}
+              {/* 關閉按鈕 */}
               <button
                 onClick={onClose}
                 className="p-1 rounded-md text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)] hover:bg-[var(--color-bg-secondary)] transition-colors"
@@ -606,13 +606,13 @@ export function SkillsExplorer({
             </div>
           </div>
 
-          {/* Content area */}
+          {/* 內容區域 */}
           <div className="flex-1 overflow-y-auto p-5">
             {isLoadingContent ? (
               <div className="flex items-center justify-center py-20">
                 <div className="flex flex-col items-center gap-3">
                   <Loader2 className="h-6 w-6 animate-spin text-[var(--color-accent-primary)]" />
-                  <p className="text-xs text-[var(--color-text-muted)]">Loading...</p>
+                  <p className="text-xs text-[var(--color-text-muted)]">載入中...</p>
                 </div>
               </div>
             ) : showRawCode || !isMarkdownFile ? (

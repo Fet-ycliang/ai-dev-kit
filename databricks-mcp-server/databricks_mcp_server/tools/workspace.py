@@ -1,4 +1,4 @@
-"""Workspace management tool - switch between Databricks workspaces at runtime."""
+"""Workspace 管理工具 - 在執行階段切換 Databricks workspaces。"""
 
 import configparser
 import os
@@ -28,10 +28,10 @@ _TOKEN_EXPIRED_PATTERNS = (
 
 
 def _read_profiles() -> List[Dict[str, str]]:
-    """Parse ~/.databrickscfg and return a list of profile dicts.
+    """解析 ~/.databrickscfg 並回傳 profile 字典清單。
 
-    configparser treats [DEFAULT] as a special section that does not appear
-    in cfg.sections(), so we handle it explicitly via cfg.defaults().
+    configparser 會將 [DEFAULT] 視為不會出現在 cfg.sections() 中的特殊區段，
+    因此我們透過 cfg.defaults() 明確處理它。
     """
     cfg = configparser.ConfigParser()
     try:
@@ -39,7 +39,7 @@ def _read_profiles() -> List[Dict[str, str]]:
     except Exception:
         return []
     profiles = []
-    # Include DEFAULT section if it has any keys
+    # 若 DEFAULT 區段有任何 key，則一併納入
     if cfg.defaults():
         host = cfg.defaults().get("host", None)
         profiles.append({"profile": "DEFAULT", "host": host or "(no host configured)"})
@@ -50,25 +50,25 @@ def _read_profiles() -> List[Dict[str, str]]:
 
 
 def _derive_profile_name(host: str) -> str:
-    """Derive a profile name from a workspace URL.
+    """從 workspace URL 推導 profile 名稱。
 
-    E.g. https://adb-1234567890.7.azuredatabricks.net -> adb-1234567890
+    例如 https://adb-1234567890.7.azuredatabricks.net -> adb-1234567890
     """
-    # Strip scheme and trailing slash
+    # 去除 scheme 與結尾斜線
     name = host.rstrip("/")
     if "://" in name:
         name = name.split("://", 1)[1]
-    # Take the first hostname segment (before the first dot)
+    # 取第一個 hostname 片段（第一個點之前）
     name = name.split(".")[0]
     return name or "workspace"
 
 
 def _validate_and_switch(profile: Optional[str] = None, host: Optional[str] = None) -> Dict[str, Any]:
-    """Set active workspace state and validate by calling current_user.me().
+    """設定目前 workspace 狀態，並透過呼叫 current_user.me() 進行驗證。
 
-    Rolls back if validation fails.
+    若驗證失敗則回復先前狀態。
 
-    Returns a success dict on success, raises on failure.
+    成功時回傳成功 dict，失敗時會拋出例外。
     """
     previous = get_active_workspace()
     set_active_workspace(profile=profile, host=host)
@@ -81,7 +81,7 @@ def _validate_and_switch(profile: Optional[str] = None, host: Optional[str] = No
             "username": me.user_name,
         }
     except Exception as exc:
-        # Roll back to previous state
+        # 回復先前狀態
         set_active_workspace(
             profile=previous["profile"],
             host=previous["host"],
@@ -94,14 +94,14 @@ def _manage_workspace_impl(
     profile: Optional[str] = None,
     host: Optional[str] = None,
 ) -> Dict[str, Any]:
-    """Business logic for manage_workspace. Separated from the MCP decorator
-    so it can be imported and tested directly without FastMCP wrapping."""
+    """manage_workspace 的業務邏輯。與 MCP decorator 分離，
+    以便可直接匯入並測試，而不需經過 FastMCP 包裝。"""
 
     if action not in _VALID_ACTIONS:
         return {"error": f"Invalid action '{action}'. Valid actions: {', '.join(_VALID_ACTIONS)}"}
 
     # -------------------------------------------------------------------------
-    # status: return info about the currently connected workspace
+    # status: 回傳目前連線中的 workspace 資訊
     # -------------------------------------------------------------------------
     if action == "status":
         try:
@@ -118,7 +118,7 @@ def _manage_workspace_impl(
             return {"error": f"Failed to get workspace status: {exc}"}
 
     # -------------------------------------------------------------------------
-    # list: show all profiles from ~/.databrickscfg
+    # list: 顯示 ~/.databrickscfg 中的所有 profile
     # -------------------------------------------------------------------------
     if action == "list":
         profiles = _read_profiles()
@@ -138,14 +138,14 @@ def _manage_workspace_impl(
         return {"profiles": profiles}
 
     # -------------------------------------------------------------------------
-    # switch: change to an existing profile or host
+    # switch: 切換到現有的 profile 或 host
     # -------------------------------------------------------------------------
     if action == "switch":
         if not profile and not host:
             return {"error": "Provide either 'profile' (name from ~/.databrickscfg) or 'host' (workspace URL)."}
 
         if profile:
-            # Verify profile exists in config
+            # 驗證 profile 是否存在於設定中
             known = {p["profile"] for p in _read_profiles()}
             if profile not in known:
                 suggestions = ", ".join(sorted(known)) if known else "none configured"
@@ -163,7 +163,7 @@ def _manage_workspace_impl(
             err_str = str(exc).lower()
             is_expired = any(p in err_str for p in _TOKEN_EXPIRED_PATTERNS)
             if is_expired:
-                # Look up the host for this profile so the LLM can call login directly
+                # 查出此 profile 對應的 host，讓 LLM 能直接呼叫 login
                 profile_host = host
                 if not profile_host and profile:
                     for p in _read_profiles():
@@ -184,7 +184,7 @@ def _manage_workspace_impl(
             }
 
     # -------------------------------------------------------------------------
-    # login: run OAuth via the Databricks CLI then switch
+    # login: 透過 Databricks CLI 執行 OAuth 後再切換
     # -------------------------------------------------------------------------
     if action == "login":
         if not host:
@@ -233,29 +233,29 @@ def manage_workspace(
     profile: Optional[str] = None,
     host: Optional[str] = None,
 ) -> Dict[str, Any]:
-    """Manage the active Databricks workspace connection.
+    """管理目前使用中的 Databricks workspace 連線。
 
-    Allows switching between workspaces at runtime without restarting the
-    MCP server. The switch is session-scoped and resets on server restart.
+    允許在執行階段切換 workspaces，而無需重新啟動
+    MCP server。切換僅限於目前 session，server 重新啟動後會重設。
 
-    Actions:
-    - status: Return current workspace info (host, profile, username).
-    - list: List all configured profiles from ~/.databrickscfg.
-    - switch: Switch to an existing profile or workspace URL.
-    - login: Run OAuth login for a new workspace via the Databricks CLI,
-             then switch to it.
+    動作:
+    - status: 回傳目前 workspace 資訊（host、profile、username）。
+    - list: 列出 ~/.databrickscfg 中所有已設定的 profiles。
+    - switch: 切換到現有的 profile 或 workspace URL。
+    - login: 透過 Databricks CLI 為新的 workspace 執行 OAuth login，
+             然後切換到該 workspace。
 
-    Args:
-        action: One of "status", "list", "switch", or "login".
-        profile: Profile name from ~/.databrickscfg (for switch).
-        host: Workspace URL, e.g. https://adb-123.azuredatabricks.net
-              (for switch or login).
+    參數:
+        action: "status"、"list"、"switch" 或 "login" 其中之一。
+        profile: ~/.databrickscfg 中的 profile 名稱（用於 switch）。
+        host: Workspace URL，例如 https://adb-123.azuredatabricks.net
+              （用於 switch 或 login）。
 
-    Returns:
-        Dictionary with operation result. For status/switch/login: host,
-        profile, and username. For list: list of profiles with host URLs.
+    回傳:
+        包含操作結果的字典。對 status/switch/login 而言，包含 host、
+        profile 與 username。對 list 而言，則為包含 host URLs 的 profile 清單。
 
-    Example:
+    範例:
         >>> manage_workspace(action="status")
         {"host": "https://adb-123.net", "profile": "DEFAULT", "username": "user@company.com"}
         >>> manage_workspace(action="list")

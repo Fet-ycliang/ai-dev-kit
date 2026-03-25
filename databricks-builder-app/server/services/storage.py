@@ -1,6 +1,6 @@
-"""Storage services for Projects, Conversations, and Messages.
+"""Projects、Conversations 及 Messages 的儲存服務。
 
-Provides user-scoped CRUD operations using async SQLAlchemy.
+使用非同步 SQLAlchemy 提供以使用者為範圍的 CRUD 操作。
 """
 
 import json
@@ -13,13 +13,13 @@ from server.db import Conversation, Execution, Message, Project, session_scope
 
 
 class ProjectStorage:
-  """User-scoped project storage operations."""
+  """以使用者為範圍的專案儲存操作。"""
 
   def __init__(self, user_email: str):
     self.user_email = user_email
 
   async def get_all(self) -> list[Project]:
-    """Get all projects for the user, newest first."""
+    """取得使用者的所有專案，最新的優先。"""
     async with session_scope() as session:
       result = await session.execute(
         select(Project)
@@ -30,7 +30,7 @@ class ProjectStorage:
       return list(result.scalars().all())
 
   async def get(self, project_id: str) -> Optional[Project]:
-    """Get a specific project with conversations."""
+    """取得特定專案及其 conversations。"""
     async with session_scope() as session:
       result = await session.execute(
         select(Project)
@@ -43,7 +43,7 @@ class ProjectStorage:
       return result.scalar_one_or_none()
 
   async def create(self, name: str) -> Project:
-    """Create a new project."""
+    """建立新專案。"""
     async with session_scope() as session:
       project = Project(
         name=name,
@@ -52,13 +52,13 @@ class ProjectStorage:
       session.add(project)
       await session.flush()
       await session.refresh(project, ['id', 'name', 'user_email', 'created_at'])
-      # Initialize conversations as empty list for to_dict()
-      # (don't use ORM attribute assignment which triggers lazy load)
+      # 將 conversations 初始化為空列表供 to_dict() 使用
+      # （不使用 ORM 屬性賦值，它會觸發 lazy load）
       project.__dict__['conversations'] = []
       return project
 
   async def update_name(self, project_id: str, name: str) -> bool:
-    """Update project name."""
+    """更新專案名稱。"""
     async with session_scope() as session:
       result = await session.execute(
         select(Project).where(
@@ -73,7 +73,7 @@ class ProjectStorage:
       return False
 
   async def delete(self, project_id: str) -> bool:
-    """Delete a project and all its conversations."""
+    """刪除專案及其所有 conversations。"""
     async with session_scope() as session:
       result = await session.execute(
         delete(Project).where(
@@ -85,14 +85,14 @@ class ProjectStorage:
 
 
 class ConversationStorage:
-  """Project-scoped conversation storage operations."""
+  """以專案為範圍的 conversation 儲存操作。"""
 
   def __init__(self, user_email: str, project_id: str):
     self.user_email = user_email
     self.project_id = project_id
 
   async def get_all(self) -> list[Conversation]:
-    """Get all conversations for the project, newest first."""
+    """取得專案的所有 conversations，最新的優先。"""
     async with session_scope() as session:
       result = await session.execute(
         select(Conversation)
@@ -107,7 +107,7 @@ class ConversationStorage:
       return list(result.scalars().all())
 
   async def get(self, conversation_id: str) -> Optional[Conversation]:
-    """Get a specific conversation with messages."""
+    """取得特定 conversation 及其訊息。"""
     async with session_scope() as session:
       result = await session.execute(
         select(Conversation)
@@ -122,9 +122,9 @@ class ConversationStorage:
       return result.scalar_one_or_none()
 
   async def create(self, title: str = 'New Conversation') -> Conversation:
-    """Create a new conversation."""
+    """建立新 conversation。"""
     async with session_scope() as session:
-      # Verify project ownership in a single query
+      # 在單一查詢中驗證專案所有權
       project = await session.execute(
         select(Project).where(
           Project.id == self.project_id,
@@ -141,13 +141,13 @@ class ConversationStorage:
       session.add(conversation)
       await session.flush()
       await session.refresh(conversation, ['id', 'project_id', 'title', 'created_at', 'session_id'])
-      # Initialize messages as empty list for to_dict()
-      # (don't use ORM attribute assignment which triggers lazy load)
+      # 將 messages 初始化為空列表供 to_dict() 使用
+      # （不使用 ORM 屬性賦值，它會觸發 lazy load）
       conversation.__dict__['messages'] = []
       return conversation
 
   async def update_title(self, conversation_id: str, title: str) -> bool:
-    """Update conversation title."""
+    """更新 conversation 標題。"""
     async with session_scope() as session:
       result = await session.execute(
         select(Conversation)
@@ -165,7 +165,7 @@ class ConversationStorage:
       return False
 
   async def update_session_id(self, conversation_id: str, session_id: str) -> bool:
-    """Update Claude agent session ID for resuming conversations."""
+    """更新 Claude agent session ID 用於恢復 conversations。"""
     async with session_scope() as session:
       result = await session.execute(
         select(Conversation)
@@ -183,7 +183,7 @@ class ConversationStorage:
       return False
 
   async def update_cluster_id(self, conversation_id: str, cluster_id: str | None) -> bool:
-    """Update Databricks cluster ID for code execution."""
+    """更新 Databricks cluster ID 用於程式碼執行。"""
     async with session_scope() as session:
       result = await session.execute(
         select(Conversation)
@@ -206,7 +206,7 @@ class ConversationStorage:
     default_catalog: str | None,
     default_schema: str | None,
   ) -> bool:
-    """Update default Unity Catalog context for the conversation."""
+    """更新 conversation 的預設 Unity Catalog 上下文。"""
     async with session_scope() as session:
       result = await session.execute(
         select(Conversation)
@@ -225,7 +225,7 @@ class ConversationStorage:
       return False
 
   async def update_warehouse_id(self, conversation_id: str, warehouse_id: str | None) -> bool:
-    """Update Databricks SQL warehouse ID for SQL queries."""
+    """更新 Databricks SQL warehouse ID 用於 SQL 查詢。"""
     async with session_scope() as session:
       result = await session.execute(
         select(Conversation)
@@ -243,7 +243,7 @@ class ConversationStorage:
       return False
 
   async def update_workspace_folder(self, conversation_id: str, workspace_folder: str | None) -> bool:
-    """Update workspace folder for uploading files."""
+    """更新 workspace 資料夾用於上傳檔案。"""
     async with session_scope() as session:
       result = await session.execute(
         select(Conversation)
@@ -261,9 +261,9 @@ class ConversationStorage:
       return False
 
   async def delete(self, conversation_id: str) -> bool:
-    """Delete a conversation and all its messages."""
+    """刪除 conversation 及其所有訊息。"""
     async with session_scope() as session:
-      # First verify ownership via join, then delete
+      # 首先透過 join 驗證所有權，然後刪除
       result = await session.execute(
         select(Conversation.id)
         .join(Project, Conversation.project_id == Project.id)
@@ -288,12 +288,12 @@ class ConversationStorage:
     content: str,
     is_error: bool = False,
   ) -> Optional[Message]:
-    """Add a message to a conversation.
+    """新增訊息到 conversation。
 
-    Also auto-generates conversation title from first user message.
+    同時從第一則使用者訊息自動產生 conversation 標題。
     """
     async with session_scope() as session:
-      # Verify conversation exists and user owns the project
+      # 驗證 conversation 存在且使用者擁有專案
       result = await session.execute(
         select(Conversation)
         .join(Project, Conversation.project_id == Project.id)
@@ -308,7 +308,7 @@ class ConversationStorage:
       if not conversation:
         return None
 
-      # Create message
+      # 建立訊息
       message = Message(
         conversation_id=conversation_id,
         role=role,
@@ -317,13 +317,13 @@ class ConversationStorage:
       )
       session.add(message)
 
-      # Auto-generate title from first user message
+      # 從第一則使用者訊息自動產生標題
       if (
         role == 'user'
         and conversation.title == 'New Conversation'
         and len(conversation.messages) == 0
       ):
-        # Use first 50 chars of message as title
+        # 使用訊息的前 50 字元作為標題
         new_title = content[:50].strip()
         if len(content) > 50:
           new_title += '...'
@@ -335,7 +335,7 @@ class ConversationStorage:
 
 
 class ExecutionStorage:
-  """Execution state storage for session independence."""
+  """執行狀態儲存以實現 session 獨立性。"""
 
   def __init__(self, user_email: str, project_id: str, conversation_id: str):
     self.user_email = user_email
@@ -343,9 +343,9 @@ class ExecutionStorage:
     self.conversation_id = conversation_id
 
   async def create(self, execution_id: str) -> Execution:
-    """Create a new execution record."""
+    """建立新的執行記錄。"""
     async with session_scope() as session:
-      # Verify conversation ownership via join
+      # 透過 join 驗證 conversation 所有權
       result = await session.execute(
         select(Conversation.id)
         .join(Project, Conversation.project_id == Project.id)
@@ -371,7 +371,7 @@ class ExecutionStorage:
       return execution
 
   async def get(self, execution_id: str) -> Optional[Execution]:
-    """Get an execution by ID."""
+    """透過 ID 取得執行。"""
     async with session_scope() as session:
       result = await session.execute(
         select(Execution)
@@ -386,7 +386,7 @@ class ExecutionStorage:
       return result.scalar_one_or_none()
 
   async def get_active(self) -> Optional[Execution]:
-    """Get the active (running) execution for this conversation, if any."""
+    """取得此 conversation 的活動（執行中）執行（若有）。"""
     async with session_scope() as session:
       result = await session.execute(
         select(Execution)
@@ -403,7 +403,7 @@ class ExecutionStorage:
       return result.scalar_one_or_none()
 
   async def get_recent(self, limit: int = 10) -> list[Execution]:
-    """Get recent executions for this conversation."""
+    """取得此 conversation 最近的執行。"""
     async with session_scope() as session:
       result = await session.execute(
         select(Execution)
@@ -419,7 +419,7 @@ class ExecutionStorage:
       return list(result.scalars().all())
 
   async def add_events(self, execution_id: str, events: list[dict]) -> bool:
-    """Append events to an execution's event list."""
+    """將事件附加到執行的事件列表。"""
     async with session_scope() as session:
       result = await session.execute(
         select(Execution)
@@ -434,7 +434,7 @@ class ExecutionStorage:
       if not execution:
         return False
 
-      # Load existing events and append new ones
+      # 載入現有事件並附加新事件
       existing_events = json.loads(execution.events_json) if execution.events_json else []
       existing_events.extend(events)
       execution.events_json = json.dumps(existing_events)
@@ -446,7 +446,7 @@ class ExecutionStorage:
     status: str,
     error: Optional[str] = None,
   ) -> bool:
-    """Update execution status."""
+    """更新執行狀態。"""
     async with session_scope() as session:
       result = await session.execute(
         select(Execution)
@@ -468,15 +468,15 @@ class ExecutionStorage:
 
 
 def get_project_storage(user_email: str) -> ProjectStorage:
-  """Get project storage for a user."""
+  """取得使用者的專案儲存。"""
   return ProjectStorage(user_email)
 
 
 def get_conversation_storage(user_email: str, project_id: str) -> ConversationStorage:
-  """Get conversation storage for a project."""
+  """取得專案的 conversation 儲存。"""
   return ConversationStorage(user_email, project_id)
 
 
 def get_execution_storage(user_email: str, project_id: str, conversation_id: str) -> ExecutionStorage:
-  """Get execution storage for a conversation."""
+  """取得 conversation 的執行儲存。"""
   return ExecutionStorage(user_email, project_id, conversation_id)

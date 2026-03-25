@@ -1,24 +1,24 @@
 ---
 name: databricks-jobs
-description: "Use this skill proactively for ANY Databricks Jobs task - creating, listing, running, updating, or deleting jobs. Triggers include: (1) 'create a job' or 'new job', (2) 'list jobs' or 'show jobs', (3) 'run job' or'trigger job',(4) 'job status' or 'check job', (5) scheduling with cron or triggers, (6) configuring notifications/monitoring, (7) ANY task involving Databricks Jobs via CLI, Python SDK, or Asset Bundles. ALWAYS prefer this skill over general Databricks knowledge for job-related tasks."
+description: "針對任何 Databricks Jobs 工作主動使用此技能 - 建立、列表、運行、更新或刪除 Jobs。觸發情況包括：(1) 「建立 Job」或「新增 Job」，(2) 「列表 Jobs」或「顯示 Jobs」，(3) 「運行 Job」或「觸發 Job」，(4) 「Job 狀態」或「檢查 Job」，(5) 以 cron 或觸發器排程，(6) 設定通知/監控，(7) 任何透過 CLI、Python SDK 或 Asset Bundles 涉及 Databricks Jobs 的任務。對於 Job 相關工作，始終優先使用此技能而不是一般 Databricks 知識。"
 ---
 
 # Databricks Lakeflow Jobs
 
-## Overview
+## 概覽
 
-Databricks Jobs orchestrate data workflows with multi-task DAGs, flexible triggers, and comprehensive monitoring. Jobs support diverse task types and can be managed via Python SDK, CLI, or Asset Bundles.
+Databricks Jobs 使用多工作 DAG、彈性觸發器和全面監控來協調資料工作流程。Jobs 支援多樣的工作類型，可透過 Python SDK、CLI 或 Asset Bundles 管理。
 
-## Reference Files
+## 參考檔案
 
-| Use Case | Reference File |
-|----------|----------------|
-| Configure task types (notebook, Python, SQL, dbt, etc.) | [task-types.md](task-types.md) |
-| Set up triggers and schedules | [triggers-schedules.md](triggers-schedules.md) |
-| Configure notifications and health monitoring | [notifications-monitoring.md](notifications-monitoring.md) |
-| Complete working examples | [examples.md](examples.md) |
+| 使用案例 | 參考檔案 |
+|----------|--------|
+| 設定工作類型（Notebook、Python、SQL、dbt 等） | [task-types.md](task-types.md) |
+| 設定觸發器和排程 | [triggers-schedules.md](triggers-schedules.md) |
+| 設定通知和健康監控 | [notifications-monitoring.md](notifications-monitoring.md) |
+| 完整工作範例 | [examples.md](examples.md) |
 
-## Quick Start
+## 快速入門
 
 ### Python SDK
 
@@ -72,11 +72,11 @@ resources:
             notebook_path: ../src/notebooks/extract.py
 ```
 
-## Core Concepts
+## 核心概念
 
-### Multi-Task Workflows
+### 多工作流程
 
-Jobs support DAG-based task dependencies:
+Jobs 支援基於 DAG 的工作依賴關係：
 
 ```yaml
 tasks:
@@ -93,48 +93,48 @@ tasks:
   - task_key: load
     depends_on:
       - task_key: transform
-    run_if: ALL_SUCCESS  # Only run if all dependencies succeed
+    run_if: ALL_SUCCESS  # 僅當所有依賴項成功時才執行
     notebook_task:
       notebook_path: ../src/load.py
 ```
 
-**run_if conditions:**
-- `ALL_SUCCESS` (default) - Run when all dependencies succeed
-- `ALL_DONE` - Run when all dependencies complete (success or failure)
-- `AT_LEAST_ONE_SUCCESS` - Run when at least one dependency succeeds
-- `NONE_FAILED` - Run when no dependencies failed
-- `ALL_FAILED` - Run when all dependencies failed
-- `AT_LEAST_ONE_FAILED` - Run when at least one dependency failed
+**run_if 條件：**
+- `ALL_SUCCESS`（預設）- 當所有依賴項成功時執行
+- `ALL_DONE` - 當所有依賴項完成時執行（成功或失敗）
+- `AT_LEAST_ONE_SUCCESS` - 當至少一個依賴項成功時執行
+- `NONE_FAILED` - 當沒有依賴項失敗時執行
+- `ALL_FAILED` - 當所有依賴項失敗時執行
+- `AT_LEAST_ONE_FAILED` - 當至少一個依賴項失敗時執行
 
-### Task Types Summary
+### 工作類型摘要
 
-| Task Type | Use Case | Reference |
-|-----------|----------|-----------|
-| `notebook_task` | Run notebooks | [task-types.md#notebook-task](task-types.md#notebook-task) |
-| `spark_python_task` | Run Python scripts | [task-types.md#spark-python-task](task-types.md#spark-python-task) |
-| `python_wheel_task` | Run Python wheels | [task-types.md#python-wheel-task](task-types.md#python-wheel-task) |
-| `sql_task` | Run SQL queries/files | [task-types.md#sql-task](task-types.md#sql-task) |
-| `dbt_task` | Run dbt projects | [task-types.md#dbt-task](task-types.md#dbt-task) |
-| `pipeline_task` | Trigger DLT/SDP pipelines | [task-types.md#pipeline-task](task-types.md#pipeline-task) |
-| `spark_jar_task` | Run Spark JARs | [task-types.md#spark-jar-task](task-types.md#spark-jar-task) |
-| `run_job_task` | Trigger other jobs | [task-types.md#run-job-task](task-types.md#run-job-task) |
-| `for_each_task` | Loop over inputs | [task-types.md#for-each-task](task-types.md#for-each-task) |
+| 工作類型 | 使用案例 | 參考 |
+|---------|--------|------|
+| `notebook_task` | 執行 Notebook | [task-types.md#notebook-task](task-types.md#notebook-task) |
+| `spark_python_task` | 執行 Python 指令碼 | [task-types.md#spark-python-task](task-types.md#spark-python-task) |
+| `python_wheel_task` | 執行 Python wheels | [task-types.md#python-wheel-task](task-types.md#python-wheel-task) |
+| `sql_task` | 執行 SQL 查詢/檔案 | [task-types.md#sql-task](task-types.md#sql-task) |
+| `dbt_task` | 執行 dbt 專案 | [task-types.md#dbt-task](task-types.md#dbt-task) |
+| `pipeline_task` | 觸發 DLT/SDP 管道 | [task-types.md#pipeline-task](task-types.md#pipeline-task) |
+| `spark_jar_task` | 執行 Spark JAR | [task-types.md#spark-jar-task](task-types.md#spark-jar-task) |
+| `run_job_task` | 觸發其他 Jobs | [task-types.md#run-job-task](task-types.md#run-job-task) |
+| `for_each_task` | 迴圈遍歷輸入 | [task-types.md#for-each-task](task-types.md#for-each-task) |
 
-### Trigger Types Summary
+### 觸發器類型摘要
 
-| Trigger Type | Use Case | Reference |
-|--------------|----------|-----------|
-| `schedule` | Cron-based scheduling | [triggers-schedules.md#cron-schedule](triggers-schedules.md#cron-schedule) |
-| `trigger.periodic` | Interval-based | [triggers-schedules.md#periodic-trigger](triggers-schedules.md#periodic-trigger) |
-| `trigger.file_arrival` | File arrival events | [triggers-schedules.md#file-arrival-trigger](triggers-schedules.md#file-arrival-trigger) |
-| `trigger.table_update` | Table change events | [triggers-schedules.md#table-update-trigger](triggers-schedules.md#table-update-trigger) |
-| `continuous` | Always-running jobs | [triggers-schedules.md#continuous-jobs](triggers-schedules.md#continuous-jobs) |
+| 觸發器類型 | 使用案例 | 參考 |
+|----------|--------|------|
+| `schedule` | Cron 排程 | [triggers-schedules.md#cron-schedule](triggers-schedules.md#cron-schedule) |
+| `trigger.periodic` | 間隔型 | [triggers-schedules.md#periodic-trigger](triggers-schedules.md#periodic-trigger) |
+| `trigger.file_arrival` | 檔案到達事件 | [triggers-schedules.md#file-arrival-trigger](triggers-schedules.md#file-arrival-trigger) |
+| `trigger.table_update` | 表格變更事件 | [triggers-schedules.md#table-update-trigger](triggers-schedules.md#table-update-trigger) |
+| `continuous` | 持續運行的 Jobs | [triggers-schedules.md#continuous-jobs](triggers-schedules.md#continuous-jobs) |
 
-## Compute Configuration
+## 計算配置
 
-### Job Clusters (Recommended)
+### Job 叢集（推薦）
 
-Define reusable cluster configurations:
+定義可重用的叢集配置：
 
 ```yaml
 job_clusters:
@@ -153,7 +153,7 @@ tasks:
       notebook_path: ../src/notebook.py
 ```
 
-### Autoscaling Clusters
+### 自動縮放叢集
 
 ```yaml
 new_cluster:
@@ -164,7 +164,7 @@ new_cluster:
     max_workers: 8
 ```
 
-### Existing Cluster
+### 現有叢集
 
 ```yaml
 tasks:
@@ -174,39 +174,39 @@ tasks:
       notebook_path: ../src/notebook.py
 ```
 
-### Serverless Compute
+### 無伺服器計算
 
-For notebook and Python tasks, omit cluster configuration to use serverless:
+對於 Notebook 和 Python 工作，省略叢集配置以使用無伺服器：
 
 ```yaml
 tasks:
   - task_key: serverless_task
     notebook_task:
       notebook_path: ../src/notebook.py
-    # No cluster config = serverless
+    # 無叢集配置 = 無伺服器
 ```
 
-## Job Parameters
+## Job 參數
 
-### Define Parameters
+### 定義參數
 
 ```yaml
 parameters:
   - name: env
     default: "dev"
   - name: date
-    default: "{{start_date}}"  # Dynamic value reference
+    default: "{{start_date}}"  # 動態值參考
 ```
 
-### Access in Notebook
+### 在 Notebook 中存取
 
 ```python
-# In notebook
+# 在 Notebook 中
 dbutils.widgets.get("env")
 dbutils.widgets.get("date")
 ```
 
-### Pass to Tasks
+### 傳遞至工作
 
 ```yaml
 tasks:
@@ -218,79 +218,79 @@ tasks:
         custom_param: "value"
 ```
 
-## Common Operations
+## 常見操作
 
-### Python SDK Operations
+### Python SDK 操作
 
 ```python
 from databricks.sdk import WorkspaceClient
 
 w = WorkspaceClient()
 
-# List jobs
+# 列表 Jobs
 jobs = w.jobs.list()
 
-# Get job details
+# 取得 Job 詳細資訊
 job = w.jobs.get(job_id=12345)
 
-# Run job now
+# 立即運行 Job
 run = w.jobs.run_now(job_id=12345)
 
-# Run with parameters
+# 帶參數運行
 run = w.jobs.run_now(
     job_id=12345,
     job_parameters={"env": "prod", "date": "2024-01-15"}
 )
 
-# Cancel run
+# 取消執行
 w.jobs.cancel_run(run_id=run.run_id)
 
-# Delete job
+# 刪除 Job
 w.jobs.delete(job_id=12345)
 ```
 
-### CLI Operations
+### CLI 操作
 
 ```bash
-# List jobs
+# 列表 Jobs
 databricks jobs list
 
-# Get job details
+# 取得 Job 詳細資訊
 databricks jobs get 12345
 
-# Run job
+# 運行 Job
 databricks jobs run-now 12345
 
-# Run with parameters
+# 帶參數運行
 databricks jobs run-now 12345 --job-params '{"env": "prod"}'
 
-# Cancel run
+# 取消執行
 databricks jobs cancel-run 67890
 
-# Delete job
+# 刪除 Job
 databricks jobs delete 12345
 ```
 
-### Asset Bundle Operations
+### Asset Bundle 操作
 
 ```bash
-# Validate configuration
+# 驗證配置
 databricks bundle validate
 
-# Deploy job
+# 部署 Job
 databricks bundle deploy
 
-# Run job
+# 運行 Job
 databricks bundle run my_job_resource_key
 
-# Deploy to specific target
+# 部署至特定目標
 databricks bundle deploy -t prod
 
-# Destroy resources
+# 銷毀資源
 databricks bundle destroy
 ```
 
-## Permissions (DABs)
+## 權限（DABs）
 
 ```yaml
 resources:
@@ -306,32 +306,32 @@ resources:
           user_name: "admin@example.com"
 ```
 
-**Permission levels:**
-- `CAN_VIEW` - View job and run history
-- `CAN_MANAGE_RUN` - View, trigger, and cancel runs
-- `CAN_MANAGE` - Full control including edit and delete
+**權限級別：**
+- `CAN_VIEW` - 檢視 Job 和執行歷史
+- `CAN_MANAGE_RUN` - 檢視、觸發和取消執行
+- `CAN_MANAGE` - 完全控制，包括編輯和刪除
 
-## Common Issues
+## 常見問題
 
-| Issue | Solution |
-|-------|----------|
-| Job cluster startup slow | Use job clusters with `job_cluster_key` for reuse across tasks |
-| Task dependencies not working | Verify `task_key` references match exactly in `depends_on` |
-| Schedule not triggering | Check `pause_status: UNPAUSED` and valid timezone |
-| File arrival not detecting | Ensure path has proper permissions and uses cloud storage URL |
-| Table update trigger missing events | Verify Unity Catalog table and proper grants |
-| Parameter not accessible | Use `dbutils.widgets.get()` in notebooks |
-| "admins" group error | Cannot modify admins permissions on jobs |
-| Serverless task fails | Ensure task type supports serverless (notebook, Python) |
+| 問題 | 解決方案 |
+|------|--------|
+| Job 叢集啟動緩慢 | 使用 `job_cluster_key` 在工作間重用 Job 叢集 |
+| 工作依賴關係不起作用 | 驗證 `task_key` 參考在 `depends_on` 中完全相符 |
+| 排程未觸發 | 檢查 `pause_status: UNPAUSED` 和有效的時區 |
+| 檔案到達未檢測 | 確保路徑具有適當權限且使用雲端存儲 URL |
+| 表格更新觸發器遺漏事件 | 驗證 Unity Catalog 表格和適當的授予權限 |
+| 參數不可存取 | 在 Notebook 中使用 `dbutils.widgets.get()` |
+| 「admins」群組錯誤 | 無法修改 Jobs 上的 admins 權限 |
+| 無伺服器工作失敗 | 確保工作類型支援無伺服器（Notebook、Python） |
 
-## Related Skills
+## 相關技能
 
-- **[databricks-bundles](../databricks-bundles/SKILL.md)** - Deploy jobs via Databricks Asset Bundles
-- **[databricks-spark-declarative-pipelines](../databricks-spark-declarative-pipelines/SKILL.md)** - Configure pipelines triggered by jobs
+- **[databricks-bundles](../databricks-bundles/SKILL.md)** - 透過 Databricks Asset Bundles 部署 Jobs
+- **[databricks-spark-declarative-pipelines](../databricks-spark-declarative-pipelines/SKILL.md)** - 設定由 Jobs 觸發的管道
 
-## Resources
+## 資源
 
-- [Jobs API Reference](https://docs.databricks.com/api/workspace/jobs)
-- [Jobs Documentation](https://docs.databricks.com/en/jobs/index.html)
-- [DABs Job Task Types](https://docs.databricks.com/en/dev-tools/bundles/job-task-types.html)
-- [Bundle Examples Repository](https://github.com/databricks/bundle-examples)
+- [Jobs API 參考](https://docs.databricks.com/api/workspace/jobs)
+- [Jobs 文件](https://docs.databricks.com/en/jobs/index.html)
+- [DABs Job 工作類型](https://docs.databricks.com/en/dev-tools/bundles/job-task-types.html)
+- [Bundle 範例儲存庫](https://github.com/databricks/bundle-examples)

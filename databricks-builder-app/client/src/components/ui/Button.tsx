@@ -12,7 +12,7 @@ const Button = forwardRef<HTMLButtonElement, ButtonProps>(
       <button
         className={cn(
           'inline-flex items-center justify-center whitespace-nowrap rounded-lg font-medium transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent-primary)]/50 disabled:pointer-events-none disabled:opacity-50',
-          // Variants
+          // 變體
           variant === 'default' &&
             'bg-[var(--color-accent-primary)] text-white hover:bg-[var(--color-accent-primary)]/90 shadow-sm hover:shadow-md',
           variant === 'secondary' &&
@@ -23,7 +23,7 @@ const Button = forwardRef<HTMLButtonElement, ButtonProps>(
             'bg-[var(--color-error)] text-white hover:bg-[var(--color-error)]/90',
           variant === 'outline' &&
             'border border-[var(--color-border)] bg-[var(--color-background)] text-[var(--color-text-primary)] hover:bg-[var(--color-bg-secondary)]',
-          // Sizes
+          // 尺寸
           size === 'default' && 'h-10 px-4 py-2 text-sm',
           size === 'sm' && 'h-9 px-3 text-xs',
           size === 'lg' && 'h-11 px-8 text-base',

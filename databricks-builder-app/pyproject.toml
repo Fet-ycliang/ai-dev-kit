@@ -124,3 +124,8 @@ classmethod-decorators = ["classmethod", "pydantic.validator"]
 
 [tool.ruff.lint.pydocstyle]
 convention = "google"
+
+[[tool.uv.index]]
+name = "nexus"
+url = "https://nexus01p.fareastone.com.tw:8081/repository/pypi-proxy/simple"
+default = true

@@ -1,10 +1,9 @@
-"""AI-powered conversation title generation.
+"""AI 驅動的對話標題產生器。
 
-Uses Claude to generate concise, descriptive titles for conversations
-based on the first user message.
+使用 Claude 根據使用者的第一則訊息產生簡潔、描述性的對話標題。
 
-Supports both direct Anthropic API and Databricks FMAPI (Foundation Model API).
-When running in Databricks Apps, uses the user's OAuth token for authentication.
+支援直接使用 Anthropic API 和 Databricks FMAPI（Foundation Model API）。
+在 Databricks Apps 中執行時，使用使用者的 OAuth token 進行驗證。
 """
 
 import asyncio
@@ -18,10 +17,10 @@ logger = logging.getLogger(__name__)
 
 
 def _get_model() -> str:
-  """Get the model to use for title generation.
+  """取得用於標題產生的模型。
 
-  Uses ANTHROPIC_MODEL_MINI for efficiency (title generation is a simple task).
-  Falls back to ANTHROPIC_MODEL if mini not set.
+  為求效率使用 ANTHROPIC_MODEL_MINI（標題產生是簡單任務）。
+  若未設定 mini 則回退至 ANTHROPIC_MODEL。
   """
   return os.environ.get(
     'ANTHROPIC_MODEL_MINI',
@@ -33,22 +32,22 @@ def _create_client(
   databricks_host: Optional[str] = None,
   databricks_token: Optional[str] = None,
 ) -> anthropic.AsyncAnthropic:
-  """Create an Anthropic client configured for the current context.
+  """建立針對目前環境設定的 Anthropic client。
 
-  When databricks_host and databricks_token are provided, configures the client
-  to use Databricks FMAPI. Otherwise falls back to direct Anthropic API.
+  當提供 databricks_host 和 databricks_token 時，設定 client 使用 Databricks FMAPI。
+  否則回退至直接使用 Anthropic API。
 
   Args:
-      databricks_host: Databricks workspace URL (e.g., https://xxx.cloud.databricks.com)
-      databricks_token: User's Databricks OAuth or PAT token
+      databricks_host: Databricks workspace URL（例如：https://xxx.cloud.databricks.com）
+      databricks_token: 使用者的 Databricks OAuth 或 PAT token
 
   Returns:
-      Configured AsyncAnthropic client
+      已設定的 AsyncAnthropic client
   """
-  # Check if we should use Databricks FMAPI
+  # 檢查是否應使用 Databricks FMAPI
   if databricks_host and databricks_token:
-    # Build Databricks model serving endpoint URL
-    # Format: https://<workspace>/serving-endpoints/anthropic
+    # 建立 Databricks model serving endpoint URL
+    # 格式：https://<workspace>/serving-endpoints/anthropic
     host = databricks_host.replace('https://', '').replace('http://', '').rstrip('/')
     base_url = f'https://{host}/serving-endpoints/anthropic'
 
@@ -57,19 +56,19 @@ def _create_client(
       base_url=base_url,
     )
 
-  # Fall back to environment-based configuration
+  # 回退至基於環境變數的設定
   api_key = os.environ.get('ANTHROPIC_API_KEY')
   base_url = os.environ.get('ANTHROPIC_BASE_URL')
   auth_token = os.environ.get('ANTHROPIC_AUTH_TOKEN')
 
   if base_url:
-    # Databricks FMAPI mode via environment
+    # 透過環境變數使用 Databricks FMAPI 模式
     return anthropic.AsyncAnthropic(
       api_key=auth_token or api_key or 'unused',
       base_url=base_url,
     )
 
-  # Direct Anthropic API
+  # 直接使用 Anthropic API
   return anthropic.AsyncAnthropic(api_key=api_key)
 
 
@@ -79,18 +78,18 @@ async def generate_title(
   databricks_host: Optional[str] = None,
   databricks_token: Optional[str] = None,
 ) -> str:
-  """Generate a concise title for a conversation based on the first message.
+  """根據第一則訊息為對話產生簡潔標題。
 
   Args:
-      message: The user's first message in the conversation
-      max_length: Maximum length of the generated title
-      databricks_host: Optional Databricks workspace URL for FMAPI auth
-      databricks_token: Optional user's Databricks token for FMAPI auth
+      message: 使用者在對話中的第一則訊息
+      max_length: 產生標題的最大長度
+      databricks_host: FMAPI 驗證用的選擇性 Databricks workspace URL
+      databricks_token: FMAPI 驗證用的選擇性使用者 Databricks token
 
   Returns:
-      A short, descriptive title (or truncated message as fallback)
+      簡短、描述性的標題（或截斷訊息作為備用）
   """
-  # Fallback: truncate message
+  # 備用方案：截斷訊息
   fallback = message[:max_length].strip()
   if len(message) > max_length:
     fallback = fallback.rsplit(' ', 1)[0] + '...'
@@ -115,13 +114,13 @@ Title:''',
           }
         ],
       ),
-      timeout=5.0,  # 5 second timeout
+      timeout=5.0,  # 5 秒逾時
     )
 
-    # Extract title from response
+    # 從回應中提取標題
     title = response.content[0].text.strip()
 
-    # Clean up: remove quotes, limit length
+    # 清理：移除引號、限制長度
     title = title.strip('"\'')
     if len(title) > max_length:
       title = title[:max_length].rsplit(' ', 1)[0] + '...'
@@ -144,17 +143,17 @@ async def generate_title_async(
   databricks_host: Optional[str] = None,
   databricks_token: Optional[str] = None,
 ) -> None:
-  """Generate a title and update the conversation in the background.
+  """在背景產生標題並更新對話。
 
-  This runs in a fire-and-forget pattern so it doesn't block the main response.
+  以 fire-and-forget 模式執行，不會阻塞主回應。
 
   Args:
-      message: The user's first message
-      conversation_id: ID of the conversation to update
-      user_email: User's email for storage access
-      project_id: Project ID for storage access
-      databricks_host: Optional Databricks workspace URL for FMAPI auth
-      databricks_token: Optional user's Databricks token for FMAPI auth
+      message: 使用者的第一則訊息
+      conversation_id: 要更新的對話 ID
+      user_email: 用於 storage 存取的使用者電子郵件
+      project_id: 用於 storage 存取的專案 ID
+      databricks_host: FMAPI 驗證用的選擇性 Databricks workspace URL
+      databricks_token: FMAPI 驗證用的選擇性使用者 Databricks token
   """
   try:
     title = await generate_title(
@@ -163,7 +162,7 @@ async def generate_title_async(
       databricks_token=databricks_token,
     )
 
-    # Update the conversation title
+    # 更新對話標題
     from .storage import ConversationStorage
 
     storage = ConversationStorage(user_email, project_id)

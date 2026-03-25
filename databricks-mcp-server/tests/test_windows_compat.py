@@ -1,4 +1,4 @@
-"""Tests for the Windows compatibility wrapper (_wrap_sync_in_thread)."""
+"""Windows 相容性包裝器 (_wrap_sync_in_thread) 的測試。"""
 
 import asyncio
 import inspect
@@ -16,7 +16,7 @@ def sample_tool(query: str, limit: int = 10) -> str:
 
 
 class TestWrapSyncInThread:
-    """Tests for _wrap_sync_in_thread wrapper."""
+    """_wrap_sync_in_thread 包裝器的測試。"""
 
     def test_preserves_function_name(self):
         wrapped = _wrap_sync_in_thread(sample_tool)
@@ -54,7 +54,7 @@ class TestWrapSyncInThread:
 
     @pytest.mark.asyncio
     async def test_runs_in_thread_pool(self):
-        """Verify the sync function runs in a different thread than the event loop."""
+        """驗證同步函式會在與 event loop 不同的執行緒中執行。"""
         main_thread = threading.current_thread().ident
 
         def capture_thread(query: str) -> int:
@@ -66,7 +66,7 @@ class TestWrapSyncInThread:
 
     @pytest.mark.asyncio
     async def test_does_not_block_event_loop(self):
-        """Verify concurrent tasks can run while the wrapped function executes."""
+        """驗證包裝後的函式執行期間，並行任務仍可執行。"""
         import time
 
         def slow_tool(query: str) -> str:
@@ -95,20 +95,20 @@ class TestWrapSyncInThread:
             await wrapped(query="test")
 
     def test_pydantic_type_adapter_returns_awaitable(self):
-        """Verify pydantic's TypeAdapter can call the wrapped function and get a coroutine.
+        """驗證 pydantic 的 TypeAdapter 可以呼叫包裝後的函式並取得 coroutine。
 
-        FastMCP uses TypeAdapter.validate_python() to invoke tool functions.
-        The wrapper must produce a result that pydantic recognizes as callable
-        with the original signature.
+        FastMCP 會使用 TypeAdapter.validate_python() 來呼叫工具函式。
+        包裝器必須產生 pydantic 可辨識為可呼叫的結果，
+        並保留原始 signature。
         """
         wrapped = _wrap_sync_in_thread(sample_tool)
         pydantic.TypeAdapter(wrapped.__annotations__.get("return", str))
-        # TypeAdapter should be able to read the function's annotations
+        # TypeAdapter 應能讀取函式的 annotations
         sig = inspect.signature(wrapped)
         assert "query" in sig.parameters
         assert "limit" in sig.parameters
-        # Calling the wrapper returns a coroutine
+        # 呼叫包裝器會回傳 coroutine
         coro = wrapped(query="test", limit=5)
         assert inspect.iscoroutine(coro)
-        # Clean up the unawaited coroutine
+        # 清理未 await 的 coroutine
         coro.close()

@@ -1,198 +1,198 @@
 ---
 name: "streaming-best-practices"
-description: "Production-proven best practices for Spark Streaming: trigger intervals, partitioning, checkpoint management, and cluster configuration for reliable pipelines."
+description: "Spark 流媒體生產驗證的最佳實踐：觸發間隔、分割區、檢查點管理和叢集組態，用於可靠的管道。"
 tags: ["spark-streaming", "best-practices", "production", "performance", "expert"]
 ---
 
-# Streaming Best Practices Expert Pack
+# 流媒體最佳實踐專家包
 
-## Overview
+## 概述
 
-A comprehensive checklist distilled from production experience. These practices should hold true in almost all scenarios.
+從生產經驗蒸餾的完整檢查清單。這些實踐在幾乎所有場景中都應該適用。
 
-**Source**: Canadian Data Guy — "Spark Streaming Best Practices"
+**來源**：Canadian Data Guy — "Spark 流媒體最佳實踐"
 
-## Beginner Checklist
+## 初學者檢查清單
 
-### 1. Always Set a Trigger Interval
+### 1. 始終設定觸發間隔
 
 ```python
-# ✅ Good: Controls API costs and listing operations
+# ✅ 良好：控制 API 成本和列表操作
 stream.writeStream \
     .trigger(processingTime='5 seconds') \
     .start()
 
-# ❌ Bad: No trigger means continuous microbatches
-# Can cause excessive S3/ADLS listing costs
+# ❌ 不佳：無觸發器表示持續微批次
+# 可能導致 S3/ADLS 列表成本過高
 ```
 
-**Why**: Fast processing (<1 sec) repeats listing operations, causing unintended costs.
+**為什麼**：快速處理（< 1 秒）重複列表操作，造成非預期成本。
 
-### 2. Use Auto Loader Notification Mode
+### 2. 使用 Auto Loader 通知模式
 
 ```python
-# Switch from file listing to event-based
+# 從檔案列表切換到事件驅動
 spark.readStream \
     .format("cloudFiles") \
     .option("cloudFiles.useNotifications", "true") \
     .load("/path/to/data")
 ```
 
-[Auto Loader File Notification Mode](https://docs.databricks.com/ingestion/auto-loader/file-notification-mode.html)
+[Auto Loader 檔案通知模式](https://docs.databricks.com/ingestion/auto-loader/file-notification-mode.html)
 
-### 3. Disable S3 Versioning
+### 3. 停用 S3 版本控制
 
 ```python
-# ❌ Don't enable versioning on S3 buckets with Delta
-# ✅ Delta has time travel — no need for S3 versioning
-# Versioning adds significant latency at scale
+# ❌ 不要在使用 Delta 的 S3 儲存桶上啟用版本控制
+# ✅ Delta 有時間旅遊 — 無需 S3 版本控制
+# 版本控制在規模上增加顯著延遲
 ```
 
-### 4. Co-Locate Compute and Storage
+### 4. 同地運算和儲存
 
 ```python
-# ✅ Keep compute and storage in the same region
-# Cross-region = latency + egress costs
+# ✅ 將運算和儲存保留在相同的區域
+# 跨區域 = 延遲 + 傳出成本
 ```
 
-### 5. Use ADLS Gen2 on Azure
+### 5. 在 Azure 上使用 ADLS Gen2
 
 ```python
-# ✅ ADLS Gen2 is optimized for big data analytics
-# ❌ Regular blob storage = slower performance
+# ✅ ADLS Gen2 針對大資料分析進行最佳化
+# ❌ 常規 blob 儲存 = 效能較慢
 ```
 
-### 6. Partition Strategy
+### 6. 分割區策略
 
 ```python
-# ✅ Partition on low-cardinality columns: date, region, country
-# ❌ Avoid high-cardinality: user_id, transaction_id
+# ✅ 按低基數欄分割：日期、區域、國家
+# ❌ 避免高基數：user_id、transaction_id
 
-# Rule of thumb: < 100,000 partitions
-# Example: 10 years × 365 days × 20 countries = 73,000 partitions ✅
+# 經驗法則：< 100,000 個分割區
+# 範例：10 年 × 365 天 × 20 個國家 = 73,000 個分割區 ✅
 ```
 
-### 7. Name Your Streaming Query
+### 7. 為流媒體查詢命名
 
 ```python
-# ✅ Easily identifiable in Spark UI
+# ✅ 在 Spark UI 中輕鬆識別
 stream.writeStream \
     .option("queryName", "IngestFromKafka") \
     .start()
 
-# Shows up as "IngestFromKafka" in Streaming tab
+# 在 Streaming 標籤中顯示為 "IngestFromKafka"
 ```
 
-### 8. One Checkpoint Per Stream
+### 8. 每個串流一個檢查點
 
 ```python
-# ✅ Each stream has its own checkpoint
-# ❌ Never share checkpoints between streams
+# ✅ 每個串流有自己的檢查點
+# ❌ 永不在串流間共用檢查點
 
-# Example: Two sources → one target
-# Source 1 → checkpoint_1 → target
-# Source 2 → checkpoint_2 → target
+# 範例：兩個來源 → 一個目標
+# 來源 1 → checkpoint_1 → 目標
+# 來源 2 → checkpoint_2 → 目標
 ```
 
-### 9. Don't Multiplex Streams
+### 9. 不要多工串流
 
 ```python
-# ❌ Don't run multiple streams on same driver
-# Can cause stability issues
+# ❌ 不要在相同的驅動程式上執行多個串流
+# 可能導致穩定性問題
 
-# ✅ Use separate jobs or benchmark thoroughly
+# ✅ 使用獨立的工作或詳細基準測試
 ```
 
-### 10. Optimal Partition Size
+### 10. 最佳分割區大小
 
 ```python
-# Target: 100-200MB per partition in memory
+# 目標：記憶體中每個分割區 100-200MB
 
-# Tune with:
+# 使用以下調整：
 .option("maxFilesPerTrigger", "100")
 .option("maxBytesPerTrigger", "100MB")
 
-# Monitor in Spark UI → Stages → Partition size
+# 在 Spark UI → Stages → 分割區大小中監控
 ```
 
-### 11. Prefer Broadcast Hash Join
+### 11. 偏好廣播雜湊連接
 
 ```python
-# ✅ BroadcastHashJoin is faster than SortMergeJoin
-# Spark auto-broadcasts tables < 100MB
+# ✅ BroadcastHashJoin 比 SortMergeJoin 快
+# Spark 自動廣播 < 100MB 的表格
 
-# Increase threshold if needed:
+# 必要時增加閾值：
 spark.conf.set("spark.sql.autoBroadcastJoinThreshold", "1g")
 ```
 
-## Advanced Checklist
+## 進階檢查清單
 
-### 12. Checkpoint Naming Convention
+### 12. 檢查點命名慣例
 
 ```python
-# Structure: {table_location}/_checkpoints/_{target_table_name}_starting_{identifier}
+# 結構：{table_location}/_checkpoints/_{target_table_name}_starting_{identifier}
 
-# Examples:
-# 1. By timestamp: /delta/events/_checkpoints/_events_starting_2024_01_15
-# 2. By version: /delta/events/_checkpoints/_events_startingVersion_12345
+# 範例：
+# 1. 按時間戳記：/delta/events/_checkpoints/_events_starting_2024_01_15
+# 2. 按版本：/delta/events/_checkpoints/_events_startingVersion_12345
 
-# Why: Multiple checkpoints over table lifetime (upgrades, logic changes)
+# 為什麼：表格生命週期上的多個檢查點（升級、邏輯變更）
 ```
 
-### 13. Minimize Shuffle Spill
+### 13. 最小化 Shuffle Spill
 
 ```python
-# ✅ Goal: Shuffle spill (disk) = 0
-# ✅ Only shuffle read should exist
+# ✅ 目標：Shuffle spill（磁碟）= 0
+# ✅ 只應存在 shuffle 讀取
 
-# Check: Spark UI → SQL → Exchange operators
-# If spill > 0: Increase memory or reduce partition size
+# 檢查：Spark UI → SQL → Exchange 操作者
+# 如果 spill > 0：增加記憶體或減少分割區大小
 ```
 
-### 14. Use RocksDB for Stateful Operations
+### 14. 對有狀態操作使用 RocksDB
 
 ```python
-# For large state stores, use RocksDB backend
+# 對於大型狀態儲存，使用 RocksDB 後端
 spark.conf.set(
     "spark.sql.streaming.stateStore.providerClass",
     "com.databricks.sql.streaming.state.RocksDBStateProvider"
 )
 ```
 
-### 15. Event Hubs via Kafka Connector
+### 15. 透過 Kafka Connector 使用事件中樞
 
 ```python
-# ✅ Use Kafka protocol for Azure Event Hubs
-# More flexible partition handling
+# ✅ 為 Azure 事件中樞使用 Kafka 通訊協定
+# 分割區處理更靈活
 
-# Note: With EventHubs Kafka connector
-# Number of cores can differ from partitions
-# (vs native EventHubs: cores == partitions)
+# 注意：使用事件中樞 Kafka 連接器
+# 核心數可能與分割區數不同
+# （與原生事件中樞比較：核心 == 分割區）
 ```
 
-### 16. Watermark for State Cleanup
+### 16. 狀態清潔的水位標記
 
 ```python
-# ✅ Always use watermark with stateful ops
-# Prevents infinite state growth
+# ✅ 始終將水位標記用於有狀態作業
+# 防止無限狀態增長
 
 stream.withWatermark("timestamp", "10 minutes") \
     .groupBy("user_id") \
     .agg(sum("amount"))
 
-# Exception: If infinite state needed, store in Delta + ZORDER
+# 例外：如果需要無限狀態，在 Delta + ZORDER 中儲存
 ```
 
-### 17. Deduplication at Scale
+### 17. 大規模去重
 
 ```python
-# At trillion-record scale:
-# ✅ Delta merge over dropDuplicates
+# 在十億記錄規模：
+# ✅ Delta merge 優於 dropDuplicates
 
-# dropDuplicates: State store grows very large
-# Delta merge: Use table for lookup
+# dropDuplicates：狀態儲存增長非常大
+# Delta merge：使用表格進行查詢
 
-# Example:
+# 範例：
 spark.sql("""
     MERGE INTO target t
     USING source s ON t.event_id = s.event_id
@@ -200,66 +200,66 @@ spark.sql("""
 """)
 ```
 
-### 18. Azure Instance Family Selection
+### 18. Azure 實例系列選擇
 
-| Workload | Instance Family |
+| 工作負載 | 實例系列 |
 |----------|----------------|
-| Map-heavy (parsing, JSON) | F-series |
-| Multiple streams from same source | Fsv2-series |
-| Joins/aggregations/optimize | DS_v2-series |
-| Delta caching | L-series (SSD) |
+| 對應繁重（解析、JSON） | F 系列 |
+| 來自相同來源的多個串流 | Fsv2 系列 |
+| 連接/彙總/最佳化 | DS_v2 系列 |
+| Delta 快取 | L 系列（SSD） |
 
-### 19. Shuffle Partitions
+### 19. Shuffle 分割區
 
 ```python
-# Set equal to total worker cores
+# 設定等於總工作程式核心數
 spark.conf.set("spark.sql.shuffle.partitions", "200")
 
-# ❌ Don't set too high
-# If changing: Clear checkpoint (stores the old value)
+# ❌ 不要設定過高
+# 如果變更：清除檢查點（儲存舊值）
 ```
 
-## Quick Reference
+## 快速參考
 
-### Trigger Selection
+### 觸發器選擇
 
-| Latency Requirement | Trigger |
+| 延遲要求 | 觸發器 |
 |---------------------|---------|
-| < 1 second | Real-Time Mode (RTM) |
-| 1-10 seconds | processingTime('5 seconds') |
-| 1-60 minutes | processingTime based on SLA/3 |
-| Batch-like | availableNow=True |
+| < 1 秒 | 實時模式（RTM） |
+| 1-10 秒 | processingTime('5 seconds') |
+| 1-60 分鐘 | 基於 SLA/3 的 processingTime |
+| 批次樣式 | availableNow=True |
 
-### Cluster Sizing
+### 叢集大小調整
 
 ```python
-# Fixed-size cluster recommended for streaming
-# ❌ Don't use auto-scaling for streaming workloads
+# 建議為流媒體使用固定大小的叢集
+# ❌ 不要為流媒體工作負載使用自動調整
 
-# Why: Pre-allocated resources = predictable latency
+# 為什麼：預先分配的資源 = 可預測的延遲
 ```
 
-## Monitoring Checklist
+## 監控檢查清單
 
-- [ ] Input rate vs processing rate (processing > input)
-- [ ] Max offsets behind latest (should decrease over time)
-- [ ] Batch duration vs trigger interval (headroom exists)
-- [ ] State store size (if using stateful ops)
+- [ ] 輸入速率與處理速率（處理 > 輸入）
+- [ ] 最大位移落後最新版本（應隨時間下降）
+- [ ] 批次持續時間與觸發間隔（存在迴旋空間）
+- [ ] 狀態儲存大小（如果使用有狀態作業）
 - [ ] Shuffle spill = 0
-- [ ] Null rate in left joins (data quality)
+- [ ] 左連接中的 Null 速率（資料品質）
 
-## Common Mistakes
+## 常見錯誤
 
-| Mistake | Impact | Fix |
+| 錯誤 | 影響 | 修正 |
 |---------|--------|-----|
-| Shared checkpoint | Data loss/corruption | Separate checkpoints |
-| No watermark | State explosion | Add watermark |
-| S3 versioning | Latency | Disable versioning |
-| Autoscaling clusters | Unpredictable latency | Fixed-size clusters |
-| High-cardinality partitions | Small files | Partition by date |
+| 共用檢查點 | 資料遺失/損毀 | 分隔檢查點 |
+| 無水位標記 | 狀態爆炸 | 加入水位標記 |
+| S3 版本控制 | 延遲 | 停用版本控制 |
+| 自動調整叢集 | 不可預測的延遲 | 固定大小的叢集 |
+| 高基數分割區 | 檔案小 | 按日期分割 |
 
-## Related Skills
+## 相關技能
 
-- `spark-streaming-master-class-kafka-to-delta` — End-to-end patterns
-- `mastering-checkpoints-in-spark-streaming` — Checkpoint deep dive
-- `scaling-spark-streaming-jobs` — Performance tuning
+- `spark-streaming-master-class-kafka-to-delta` — 端到端模式
+- `mastering-checkpoints-in-spark-streaming` — 檢查點深度潛水
+- `scaling-spark-streaming-jobs` — 效能調整

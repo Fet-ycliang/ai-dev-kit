@@ -1,9 +1,9 @@
-"""App tools - Manage Databricks Apps lifecycle.
+"""App 工具 - 管理 Databricks Apps 生命週期。
 
-Provides 3 workflow-oriented tools following the Lakebase pattern:
-- create_or_update_app: idempotent create + optional deploy
-- get_app: get details by name (with optional logs), or list all
-- delete_app: delete by name
+提供 3 個以工作流程為導向的工具，遵循 Lakebase 模式：
+- create_or_update_app：冪等建立 + 選擇性部署
+- get_app：依名稱取得詳細資訊（可選擇包含 logs），或列出全部
+- delete_app：依名稱刪除
 """
 
 import logging
@@ -33,12 +33,12 @@ register_deleter("app", _delete_app_resource)
 
 
 # ============================================================================
-# Helpers
+# 輔助函式
 # ============================================================================
 
 
 def _find_app_by_name(name: str) -> Optional[Dict[str, Any]]:
-    """Find an app by name, returns None if not found."""
+    """依名稱尋找 app，若找不到則回傳 None。"""
     try:
         result = _get_app(name=name)
         if result.get("error"):
@@ -49,7 +49,7 @@ def _find_app_by_name(name: str) -> Optional[Dict[str, Any]]:
 
 
 # ============================================================================
-# Tool 1: create_or_update_app
+# 工具 1: create_or_update_app
 # ============================================================================
 
 
@@ -61,29 +61,29 @@ def create_or_update_app(
     mode: Optional[str] = None,
 ) -> Dict[str, Any]:
     """
-    Create a Databricks App if it doesn't exist, and optionally deploy it.
+    若 Databricks App 不存在則建立，並可選擇部署它。
 
-    If the app already exists and source_code_path is provided, deploys
-    the latest code. This is the standard workflow: "make this app exist
-    and be running the latest code."
+    若 app 已存在且提供 source_code_path，則會部署最新程式碼。
+    這是標準工作流程：「讓這個 app 存在，
+    並執行最新程式碼。」
 
-    Args:
-        name: App name (must be unique within the workspace).
-        source_code_path: Workspace path to deploy from
-            (e.g., /Workspace/Users/user@example.com/my_app).
-            If provided, deploys after create/find.
-        description: Optional human-readable description (used on create only).
-        mode: Optional deployment mode (e.g., "snapshot").
+    參數:
+        name: App 名稱（在 workspace 內必須唯一）。
+        source_code_path: 要部署的 Workspace 路徑
+            （例如 /Workspace/Users/user@example.com/my_app）。
+            若有提供，則在建立或找到後進行部署。
+        description: 選用的人類可讀描述（僅在建立時使用）。
+        mode: 選用的部署模式（例如 "snapshot"）。
 
-    Returns:
-        Dictionary with:
-        - name: App name
-        - created: True if newly created, False if already existed
+    回傳:
+        包含以下內容的字典：
+        - name: App 名稱
+        - created: 若為新建立則為 True，若原本已存在則為 False
         - url: App URL
-        - status: App status
-        - deployment: Deployment details (if source_code_path provided)
+        - status: App 狀態
+        - deployment: 部署詳細資訊（若提供 source_code_path）
 
-    Example:
+    範例:
         >>> create_or_update_app("my-app", "/Workspace/Users/me/my_app")
         {"name": "my-app", "created": True, "url": "...", "deployment": {...}}
     """
@@ -95,7 +95,7 @@ def create_or_update_app(
         app_result = _create_app(name=name, description=with_description_footer(description))
         result = {**app_result, "created": True}
 
-        # Track resource on successful create
+        # 在成功建立時追蹤資源
         try:
             if result.get("name"):
                 from ..manifest import track_resource
@@ -106,9 +106,9 @@ def create_or_update_app(
                     resource_id=result["name"],
                 )
         except Exception:
-            pass  # best-effort tracking
+            pass  # 盡力追蹤
 
-    # Deploy if source_code_path provided
+    # 若提供 source_code_path 則部署
     if source_code_path:
         try:
             deployment = _deploy_app(
@@ -125,7 +125,7 @@ def create_or_update_app(
 
 
 # ============================================================================
-# Tool 2: get_app
+# 工具 2: get_app
 # ============================================================================
 
 
@@ -137,22 +137,22 @@ def get_app(
     deployment_id: Optional[str] = None,
 ) -> Dict[str, Any]:
     """
-    Get app details by name, or list all apps.
+    依名稱取得 app 詳細資訊，或列出所有 apps。
 
-    Pass a name to get one app's details (optionally with recent logs).
-    Omit name to list all apps (with optional name_contains filter).
+    傳入 name 可取得單一 app 的詳細資訊（可選擇包含最近 logs）。
+    省略 name 則列出所有 apps（可選擇使用 name_contains 篩選）。
 
-    Args:
-        name: App name. If provided, returns detailed app info.
-        name_contains: Filter apps by name substring (for listing).
-        include_logs: If True and name is provided, include deployment logs.
-        deployment_id: Specific deployment ID for logs. If omitted, uses
-            the active deployment.
+    參數:
+        name: App 名稱。若提供，則回傳詳細 app 資訊。
+        name_contains: 依名稱子字串篩選 apps（用於列出時）。
+        include_logs: 若為 True 且提供 name，則包含部署 logs。
+        deployment_id: logs 專用的特定 deployment ID。若省略，
+            則使用作用中的 deployment。
 
-    Returns:
-        Single app dict (if name provided) or {"apps": [...]}.
+    回傳:
+        若提供 name，則回傳單一 app dict；否則回傳 {"apps": [...]}。
 
-    Example:
+    範例:
         >>> get_app("my-app")
         {"name": "my-app", "url": "...", "status": "RUNNING", ...}
         >>> get_app("my-app", include_logs=True)
@@ -180,29 +180,29 @@ def get_app(
 
 
 # ============================================================================
-# Tool 3: delete_app
+# 工具 3: delete_app
 # ============================================================================
 
 
 @mcp.tool
 def delete_app(name: str) -> Dict[str, str]:
     """
-    Delete a Databricks App.
+    刪除 Databricks App。
 
-    Args:
-        name: App name to delete.
+    參數:
+        name: 要刪除的 App 名稱。
 
-    Returns:
-        Dictionary confirming deletion.
+    回傳:
+        確認刪除結果的字典。
     """
     result = _delete_app(name=name)
 
-    # Remove from tracked resources
+    # 從已追蹤資源中移除
     try:
         from ..manifest import remove_resource
 
         remove_resource(resource_type="app", resource_id=name)
     except Exception:
-        pass  # best-effort tracking
+        pass  # 盡力追蹤
 
     return result
