@@ -35,3 +35,8 @@ dev = [
 [tool.setuptools.packages.find]
 where = ["."]
 include = ["databricks_mcp_server*"]
+
+[[tool.uv.index]]
+name = "nexus"
+url = "https://nexus01p.fareastone.com.tw:8081/repository/pypi-proxy/simple"
+default = true
