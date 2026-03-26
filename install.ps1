@@ -1,41 +1,41 @@
 #
-# Databricks AI Dev Kit - Unified Installer (Windows)
+# Databricks AI Dev Kit - 統一安裝程式（Windows）
 #
-# Installs skills, MCP server, and configuration for Claude Code, Cursor, OpenAI Codex, GitHub Copilot, Gemini CLI, and Antigravity.
+# 安裝 skills、MCP 伺服器及設定，支援 Claude Code、Cursor、OpenAI Codex、GitHub Copilot、Gemini CLI 及 Antigravity。
 #
 # Usage: irm https://raw.githubusercontent.com/databricks-solutions/ai-dev-kit/main/install.ps1 -OutFile install.ps1
 #        .\install.ps1 [OPTIONS]
 #
-# Examples:
-#   # Basic installation (uses DEFAULT profile, project scope, latest release)
+# 範例：
+#   # 基本安裝（使用 DEFAULT profile、專案範圍、最新版本）
 #   irm https://raw.githubusercontent.com/databricks-solutions/ai-dev-kit/main/install.ps1 | iex
 #
-#   # Download and run with options
+#   # 下載並以選項執行
 #   irm https://raw.githubusercontent.com/databricks-solutions/ai-dev-kit/main/install.ps1 -OutFile install.ps1
 #
-#   # Global installation with force reinstall
+#   # 全域安裝並強制重新安裝
 #   .\install.ps1 -Global -Force
 #
-#   # Specify profile and force reinstall
+#   # 指定 profile 並強制重新安裝
 #   .\install.ps1 -Profile DEFAULT -Force
 #
-#   # Install for specific tools only
+#   # 僅安裝指定工具
 #   .\install.ps1 -Tools cursor
 #
-#   # Skills only (skip MCP server)
+#   # 僅安裝 Skills（略過 MCP 伺服器）
 #   .\install.ps1 -SkillsOnly
 #
-#   # Install specific branch or tag
+#   # 安裝指定分支或標籤
 #   $env:AIDEVKIT_BRANCH = '0.1.0'; .\install.ps1
 #
 
 $ErrorActionPreference = "Stop"
 
-# ─── Configuration ────────────────────────────────────────────
+# ─── 設定 ────────────────────────────────────────────────────
 $Owner = "databricks-solutions"
 $Repo  = "ai-dev-kit"
 
-# Determine branch/tag to use
+# 決定要使用的分支/標籤
 if ($env:AIDEVKIT_BRANCH) {
     $Branch = $env:AIDEVKIT_BRANCH
 } else {
@@ -56,11 +56,11 @@ $VenvDir   = Join-Path $InstallDir ".venv"
 $VenvPython = Join-Path $VenvDir "Scripts\python.exe"
 $McpEntry  = Join-Path $RepoDir "databricks-mcp-server\run_server.py"
 
-# Minimum required versions
+# 最低版本需求
 $MinCliVersion = "0.278.0"
 $MinSdkVersion = "0.85.0"
 
-# ─── Defaults ─────────────────────────────────────────────────
+# ─── 預設值 ─────────────────────────────────────────────────
 $script:Profile_     = "DEFAULT"
 $script:Scope        = "project"
 $script:ScopeExplicit = $false  # Track if --global was explicitly passed
@@ -77,7 +77,7 @@ $script:SkillsProfile = ""
 $script:UserSkills   = ""
 $script:ListSkills   = $false
 
-# Databricks skills (bundled in repo)
+# Databricks skills（打包於 repo 中）
 $script:Skills = @(
     "databricks-agent-bricks", "databricks-aibi-dashboards", "databricks-app-python",
     "databricks-bundles", "databricks-config", "databricks-dbsql", "databricks-docs", "databricks-genie",
@@ -88,7 +88,7 @@ $script:Skills = @(
     "databricks-vector-search", "databricks-zerobus-ingest", "spark-python-data-source"
 )
 
-# MLflow skills (fetched from mlflow/skills repo)
+# MLflow skills（從 mlflow/skills repo 下載）
 $script:MlflowSkills = @(
     "agent-evaluation", "analyze-mlflow-chat-session", "analyze-mlflow-trace",
     "instrumenting-with-mlflow-tracing", "mlflow-onboarding", "querying-mlflow-metrics",
@@ -96,11 +96,11 @@ $script:MlflowSkills = @(
 )
 $MlflowRawUrl = "https://raw.githubusercontent.com/mlflow/skills/main"
 
-# APX skills (fetched from databricks-solutions/apx repo)
+# APX skills（從 databricks-solutions/apx repo 下載）
 $script:ApxSkills = @("databricks-app-apx")
 $ApxRawUrl = "https://raw.githubusercontent.com/databricks-solutions/apx/main/skills/apx"
 
-# ─── Skill profiles ──────────────────────────────────────────
+# ─── Skill 設定檔 ──────────────────────────────────────────
 $script:CoreSkills = @("databricks-config", "databricks-docs", "databricks-python-sdk", "databricks-unity-catalog")
 
 $script:ProfileDataEngineer = @(
@@ -128,50 +128,50 @@ $script:ProfileAppDeveloper = @(
     "databricks-jobs", "databricks-bundles"
 )
 
-# Selected skills (populated during profile selection)
+# 已選取的 skills（在 profile 選取期間填入）
 $script:SelectedSkills = @()
 $script:SelectedMlflowSkills = @()
 $script:SelectedApxSkills = @()
 
-# ─── --list-skills handler ────────────────────────────────────
+# ─── --list-skills 處理器 ────────────────────────────────────
 if ($script:ListSkills) {
     Write-Host ""
-    Write-Host "Available Skill Profiles" -ForegroundColor White
+    Write-Host "可用的 Skill 設定檔" -ForegroundColor White
     Write-Host "--------------------------------"
     Write-Host ""
-    Write-Host "  all              " -ForegroundColor White -NoNewline; Write-Host "All 34 skills (default)"
-    Write-Host "  data-engineer    " -ForegroundColor White -NoNewline; Write-Host "Pipelines, Spark, Jobs, Streaming (14 skills)"
-    Write-Host "  analyst          " -ForegroundColor White -NoNewline; Write-Host "Dashboards, SQL, Genie, Metrics (8 skills)"
-    Write-Host "  ai-ml-engineer   " -ForegroundColor White -NoNewline; Write-Host "Agents, RAG, Vector Search, MLflow (17 skills)"
-    Write-Host "  app-developer    " -ForegroundColor White -NoNewline; Write-Host "Apps, Lakebase, Deployment (10 skills)"
+    Write-Host "  all              " -ForegroundColor White -NoNewline; Write-Host "全部 34 個 skills（預設）"
+    Write-Host "  data-engineer    " -ForegroundColor White -NoNewline; Write-Host "Pipelines、Spark、Jobs、Streaming（14 個 skills）"
+    Write-Host "  analyst          " -ForegroundColor White -NoNewline; Write-Host "儀表板、SQL、Genie、指標（8 個 skills）"
+    Write-Host "  ai-ml-engineer   " -ForegroundColor White -NoNewline; Write-Host "Agents、RAG、向量搜尋、MLflow（17 個 skills）"
+    Write-Host "  app-developer    " -ForegroundColor White -NoNewline; Write-Host "應用程式、Lakebase、部署（10 個 skills）"
     Write-Host ""
-    Write-Host "Core Skills (always installed)" -ForegroundColor White
+    Write-Host "核心 Skills（一定安裝）" -ForegroundColor White
     Write-Host "--------------------------------"
     foreach ($s in $script:CoreSkills) { Write-Host "  " -NoNewline; Write-Host "v" -ForegroundColor Green -NoNewline; Write-Host " $s" }
     Write-Host ""
-    Write-Host "Data Engineer" -ForegroundColor White
+    Write-Host "資料工程師" -ForegroundColor White
     Write-Host "--------------------------------"
     foreach ($s in $script:ProfileDataEngineer) { Write-Host "    $s" }
     Write-Host ""
-    Write-Host "Business Analyst" -ForegroundColor White
+    Write-Host "商業分析師" -ForegroundColor White
     Write-Host "--------------------------------"
     foreach ($s in $script:ProfileAnalyst) { Write-Host "    $s" }
     Write-Host ""
-    Write-Host "AI/ML Engineer" -ForegroundColor White
+    Write-Host "AI/ML 工程師" -ForegroundColor White
     Write-Host "--------------------------------"
     foreach ($s in $script:ProfileAiMlEngineer) { Write-Host "    $s" }
-    Write-Host "  + MLflow skills:" -ForegroundColor DarkGray
+    Write-Host "  + MLflow skills：" -ForegroundColor DarkGray
     foreach ($s in $script:ProfileAiMlMlflow) { Write-Host "    $s" }
     Write-Host ""
-    Write-Host "App Developer" -ForegroundColor White
+    Write-Host "應用程式開發者" -ForegroundColor White
     Write-Host "--------------------------------"
     foreach ($s in $script:ProfileAppDeveloper) { Write-Host "    $s" }
     Write-Host ""
-    Write-Host "MLflow Skills (from mlflow/skills repo)" -ForegroundColor White
+    Write-Host "MLflow Skills（來自 mlflow/skills repo）" -ForegroundColor White
     Write-Host "--------------------------------"
     foreach ($s in $script:MlflowSkills) { Write-Host "    $s" }
     Write-Host ""
-    Write-Host "APX Skills (from databricks-solutions/apx repo)" -ForegroundColor White
+    Write-Host "APX Skills（來自 databricks-solutions/apx repo）" -ForegroundColor White
     Write-Host "--------------------------------"
     foreach ($s in $script:ApxSkills) { Write-Host "    $s" }
     Write-Host ""
@@ -181,17 +181,17 @@ if ($script:ListSkills) {
     return
 }
 
-# ─── Ensure tools are in PATH ────────────────────────────────
-# Chocolatey-installed tools may not be in PATH for SSH sessions
+# ─── 確保工具在 PATH 中 ────────────────────────────────
+# Chocolatey 安裝的工具在 SSH session 中可能不在 PATH 裡
 $machinePath = [System.Environment]::GetEnvironmentVariable("Path", "Machine")
 $userPath    = [System.Environment]::GetEnvironmentVariable("Path", "User")
 if ($machinePath -or $userPath) {
     $env:Path = "$machinePath;$userPath;$env:Path"
-    # Deduplicate
+    # 去除重複
     $env:Path = (($env:Path -split ';' | Select-Object -Unique | Where-Object { $_ }) -join ';')
 }
 
-# ─── Output helpers ───────────────────────────────────────────
+# ─── 輸出輔助函式 ───────────────────────────────────────────
 function Write-Msg  { param([string]$Text) if (-not $script:Silent) { Write-Host "  $Text" } }
 function Write-Ok   { param([string]$Text) if (-not $script:Silent) { Write-Host "  " -NoNewline; Write-Host "v" -ForegroundColor Green -NoNewline; Write-Host " $Text" } }
 function Write-Warn { param([string]$Text) if (-not $script:Silent) { Write-Host "  " -NoNewline; Write-Host "!" -ForegroundColor Yellow -NoNewline; Write-Host " $Text" } }
@@ -199,13 +199,13 @@ function Write-Err  {
     param([string]$Text)
     Write-Host "  " -NoNewline; Write-Host "x" -ForegroundColor Red -NoNewline; Write-Host " $Text"
     Write-Host ""
-    Write-Host "  Press any key to exit..." -ForegroundColor DarkGray
+    Write-Host "  按任意鍵離開..." -ForegroundColor DarkGray
     try { $null = $host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown") } catch {}
     exit 1
 }
 function Write-Step { param([string]$Text) if (-not $script:Silent) { Write-Host ""; Write-Host "$Text" -ForegroundColor White } }
 
-# ─── Parse arguments ─────────────────────────────────────────
+# ─── 解析參數 ─────────────────────────────────────────
 $i = 0
 while ($i -lt $args.Count) {
     switch ($args[$i]) {
@@ -221,46 +221,46 @@ while ($i -lt $args.Count) {
         { $_ -in "--list-skills", "-ListSkills" } { $script:ListSkills = $true; $i++ }
         { $_ -in "-f", "--force", "-Force" }   { $script:Force = $true; $i++ }
         { $_ -in "-h", "--help", "-Help" } {
-            Write-Host "Databricks AI Dev Kit Installer (Windows)"
+            Write-Host "Databricks AI Dev Kit 安裝程式（Windows）"
             Write-Host ""
             Write-Host "Usage: irm https://raw.githubusercontent.com/databricks-solutions/ai-dev-kit/main/install.ps1 -OutFile install.ps1"
             Write-Host "       .\install.ps1 [OPTIONS]"
             Write-Host ""
-            Write-Host "Options:"
-            Write-Host "  -p, --profile NAME    Databricks profile (default: DEFAULT)"
-            Write-Host "  -g, --global          Install globally for all projects"
-            Write-Host "  --skills-only         Skip MCP server setup"
-            Write-Host "  --mcp-only            Skip skills installation"
-            Write-Host "  --mcp-path PATH       Path to MCP server installation"
-            Write-Host "  --silent              Silent mode (no output except errors)"
-            Write-Host "  --tools LIST          Comma-separated: claude,cursor,copilot,codex,gemini,antigravity"
-            Write-Host "  --skills-profile LIST Comma-separated profiles: all,data-engineer,analyst,ai-ml-engineer,app-developer"
-            Write-Host "  --skills LIST         Comma-separated skill names to install (overrides profile)"
-            Write-Host "  --list-skills         List available skills and profiles, then exit"
-            Write-Host "  -f, --force           Force reinstall"
-            Write-Host "  -h, --help            Show this help"
+            Write-Host "選項："
+            Write-Host "  -p, --profile NAME    Databricks profile（預設：DEFAULT）"
+            Write-Host "  -g, --global          全域安裝（適用所有專案）"
+            Write-Host "  --skills-only         略過 MCP 伺服器設定"
+            Write-Host "  --mcp-only            略過 Skills 安裝"
+            Write-Host "  --mcp-path PATH       MCP 伺服器安裝路徑"
+            Write-Host "  --silent              靜默模式（僅顯示錯誤）"
+            Write-Host "  --tools LIST          以逗號分隔：claude,cursor,copilot,codex,gemini,antigravity"
+            Write-Host "  --skills-profile LIST 以逗號分隔的設定檔：all,data-engineer,analyst,ai-ml-engineer,app-developer"
+            Write-Host "  --skills LIST         以逗號分隔的 skill 名稱（覆蓋設定檔）"
+            Write-Host "  --list-skills         列出可用的 skills 及設定檔後離開"
+            Write-Host "  -f, --force           強制重新安裝"
+            Write-Host "  -h, --help            顯示此說明"
             Write-Host ""
-            Write-Host "Environment Variables:"
-            Write-Host "  AIDEVKIT_BRANCH       Branch or tag to install (default: latest release)"
-            Write-Host "  AIDEVKIT_HOME         Installation directory (default: ~/.ai-dev-kit)"
+            Write-Host "環境變數："
+            Write-Host "  AIDEVKIT_BRANCH       要安裝的分支或標籤（預設：最新版本）"
+            Write-Host "  AIDEVKIT_HOME         安裝目錄（預設：~/.ai-dev-kit）"
             Write-Host ""
-            Write-Host "Examples:"
-            Write-Host "  # Basic installation"
+            Write-Host "範例："
+            Write-Host "  # 基本安裝"
             Write-Host "  irm https://raw.githubusercontent.com/databricks-solutions/ai-dev-kit/main/install.ps1 | iex"
             Write-Host ""
-            Write-Host "  # Download and run with options"
+            Write-Host "  # 下載並以選項執行"
             Write-Host "  irm https://raw.githubusercontent.com/databricks-solutions/ai-dev-kit/main/install.ps1 -OutFile install.ps1"
             Write-Host "  .\install.ps1 -Global -Force"
             Write-Host ""
-            Write-Host "  # Specify profile and force reinstall"
+            Write-Host "  # 指定 profile 並強制重新安裝"
             Write-Host "  .\install.ps1 -Profile DEFAULT -Force"
             return
         }
-        default { Write-Err "Unknown option: $($args[$i]) (use -h for help)"; $i++ }
+        default { Write-Err "未知選項：$($args[$i])（使用 -h 取得說明）"; $i++ }
     }
 }
 
-# ─── Interactive helpers ──────────────────────────────────────
+# ─── 互動輔助函式 ──────────────────────────────────────
 
 function Test-Interactive {
     if ($script:Silent) { return $false }
@@ -288,11 +288,11 @@ function Read-Prompt {
     }
 }
 
-# Interactive checkbox selector using arrow keys + space/enter
-# Returns space-separated selected values
+# 互動式核取方塊選擇器，使用方向鍵 + 空白鍵/Enter
+# 回傳以空白分隔的已選取值
 function Select-Checkbox {
     param(
-        [array]$Items  # Each: @{ Label; Value; State; Hint }
+        [array]$Items  # 每項：@{ Label; Value; State; Hint }
     )
 
     $count  = $Items.Count
@@ -305,7 +305,7 @@ function Select-Checkbox {
     $isInteractive = Test-Interactive
 
     if (-not $isInteractive) {
-        # Fallback: show numbered list, accept comma-separated numbers
+        # 備援模式：顯示編號清單，接受以逗號分隔的數字
         Write-Host ""
         for ($j = 0; $j -lt $count; $j++) {
             $mark = if ($states[$j]) { "[X]" } else { "[ ]" }
@@ -316,7 +316,7 @@ function Select-Checkbox {
         Write-Host "  輸入數字以切換（例如 1,3），或按 Enter 接受預設值： " -NoNewline
         $input_ = Read-Host
         if (-not [string]::IsNullOrWhiteSpace($input_)) {
-            # Reset all states
+            # 重設所有狀態
             for ($j = 0; $j -lt $count; $j++) { $states[$j] = $false }
             $nums = $input_ -split ',' | ForEach-Object { $_.Trim() }
             foreach ($n in $nums) {
@@ -331,17 +331,17 @@ function Select-Checkbox {
         return ($selected -join ' ')
     }
 
-    # Full interactive mode
+    # 完整互動模式
     Write-Host ""
     Write-Host "  ↑/↓ 導覽，空白鍵切換選取，在確認時按 Enter 完成" -ForegroundColor DarkGray
     Write-Host ""
 
     $totalRows = $count + 2  # items + blank + Confirm
 
-    # Hide cursor
+    # 隱藏游標
     try { [Console]::CursorVisible = $false } catch {}
 
-    # Draw function — uses relative cursor movement to handle terminal scroll
+    # 繪製函式 — 使用相對游標移動以處理終端捲動
     $drawCheckbox = {
         [Console]::SetCursorPosition(0, [Math]::Max(0, [Console]::CursorTop - $totalRows))
         for ($j = 0; $j -lt $count; $j++) {
@@ -367,15 +367,15 @@ function Select-Checkbox {
             } else {
                 Write-Host $Items[$j].Hint -ForegroundColor DarkGray -NoNewline
             }
-            # Clear rest of line
+            # 清除剩餘行內容
             $pos = [Console]::CursorLeft
             $remaining = [Console]::WindowWidth - $pos - 1
             if ($remaining -gt 0) { Write-Host (' ' * $remaining) -NoNewline }
             Write-Host ""
         }
-        # Blank line
+        # 空白行
         Write-Host (' ' * ([Console]::WindowWidth - 1))
-        # Confirm button
+        # 確認按鈕
         if ($cursor -eq $count) {
             Write-Host "  " -NoNewline
             Write-Host ">" -ForegroundColor Blue -NoNewline
@@ -391,22 +391,22 @@ function Select-Checkbox {
         Write-Host ""
     }
 
-    # Initial draw — reserve lines first
+    # 初始繪製 — 先預留行數
     for ($j = 0; $j -lt $totalRows; $j++) { Write-Host "" }
     & $drawCheckbox
 
-    # Input loop
+    # 輸入迴圈
     while ($true) {
         $key = $host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown")
 
         switch ($key.VirtualKeyCode) {
-            38 { # Up arrow
+            38 { # 上方向鍵
                 if ($cursor -gt 0) { $cursor-- }
             }
-            40 { # Down arrow
+            40 { # 下方向鍵
                 if ($cursor -lt $count) { $cursor++ }
             }
-            32 { # Space
+            32 { # 空白鍵
                 if ($cursor -lt $count) {
                     $states[$cursor] = -not $states[$cursor]
                 }
@@ -415,7 +415,7 @@ function Select-Checkbox {
                 if ($cursor -lt $count) {
                     $states[$cursor] = -not $states[$cursor]
                 } else {
-                    # On Confirm — done
+                    # 在確認按鈕上按 Enter — 完成
                     & $drawCheckbox
                     break
                 }
@@ -426,7 +426,7 @@ function Select-Checkbox {
         & $drawCheckbox
     }
 
-    # Show cursor
+    # 顯示游標
     try { [Console]::CursorVisible = $true } catch {}
 
     $selected = @()
@@ -436,11 +436,11 @@ function Select-Checkbox {
     return ($selected -join ' ')
 }
 
-# Interactive radio selector using arrow keys + enter
-# Returns the selected value
+# 互動式單選選擇器，使用方向鍵 + Enter
+# 回傳已選取的值
 function Select-Radio {
     param(
-        [array]$Items  # Each: @{ Label; Value; Selected; Hint }
+        [array]$Items  # 每項：@{ Label; Value; Selected; Hint }
     )
 
     $count    = $Items.Count
@@ -454,7 +454,7 @@ function Select-Radio {
     $isInteractive = Test-Interactive
 
     if (-not $isInteractive) {
-        # Fallback: numbered list
+        # 備援模式：編號清單
         Write-Host ""
         for ($j = 0; $j -lt $count; $j++) {
             $mark = if ($j -eq $selected) { "(*)" } else { "( )" }
@@ -462,7 +462,7 @@ function Select-Radio {
             Write-Host "  $($j + 1). $mark $($Items[$j].Label)  $hint"
         }
         Write-Host ""
-        Write-Host "  Enter number to select (or press Enter for default): " -NoNewline
+        Write-Host "  輸入數字選擇（或按 Enter 接受預設值）： " -NoNewline
         $input_ = Read-Host
         if (-not [string]::IsNullOrWhiteSpace($input_)) {
             $idx = [int]$input_ - 1
@@ -471,7 +471,7 @@ function Select-Radio {
         return $Items[$selected].Value
     }
 
-    # Full interactive mode
+    # 完整互動模式
     Write-Host ""
     Write-Host "  ↑/↓ 導覽，Enter 確認" -ForegroundColor DarkGray
     Write-Host ""
@@ -480,7 +480,7 @@ function Select-Radio {
 
     try { [Console]::CursorVisible = $false } catch {}
 
-    # Draw function — uses relative cursor movement to handle terminal scroll
+    # 繪製函式 — 使用相對游標移動以處理終端捲動
     $drawRadio = {
         [Console]::SetCursorPosition(0, [Math]::Max(0, [Console]::CursorTop - $totalRows))
         for ($j = 0; $j -lt $count; $j++) {
@@ -524,9 +524,7 @@ function Select-Radio {
         Write-Host ""
     }
 
-    # Reserve lines
-    for ($j = 0; $j -lt $totalRows; $j++) { Write-Host "" }
-    & $drawRadio
+    # 預留行數
 
     while ($true) {
         $key = $host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown")
@@ -534,10 +532,10 @@ function Select-Radio {
         switch ($key.VirtualKeyCode) {
             38 { if ($cursor -gt 0) { $cursor-- } }
             40 { if ($cursor -lt $count) { $cursor++ } }
-            32 { # Space — select but keep browsing
+            32 { # 空白鍵 — 選取但繼續瀏覽
                 if ($cursor -lt $count) { $selected = $cursor }
             }
-            13 { # Enter — select and confirm
+            13 { # Enter — 選取並確認
                 if ($cursor -lt $count) { $selected = $cursor }
                 & $drawRadio
                 break
@@ -553,7 +551,7 @@ function Select-Radio {
     return $Items[$selected].Value
 }
 
-# ─── Tool detection & selection ───────────────────────────────
+# ─── 工具偵測與選擇 ───────────────────────────────
 function Invoke-DetectTools {
     if (-not [string]::IsNullOrWhiteSpace($script:UserTools)) {
         $script:Tools = $script:UserTools -replace ',', ' '
@@ -570,22 +568,22 @@ function Invoke-DetectTools {
     $hasAntigravity = ($null -ne (Get-Command antigravity -ErrorAction SilentlyContinue)) -or
                       (Test-Path "$env:LOCALAPPDATA\Programs\Antigravity\Antigravity.exe")
 
-    $claudeState  = $hasClaude;  $claudeHint  = if ($hasClaude)  { "detected" } else { "not found" }
-    $cursorState  = $hasCursor;  $cursorHint  = if ($hasCursor)  { "detected" } else { "not found" }
-    $codexState   = $hasCodex;   $codexHint   = if ($hasCodex)   { "detected" } else { "not found" }
-    $copilotState = $hasCopilot; $copilotHint = if ($hasCopilot) { "detected" } else { "not found" }
-    $geminiState  = $hasGemini;  $geminiHint  = if ($hasGemini)  { "detected" } else { "not found" }
-    $antigravityState = $hasAntigravity; $antigravityHint = if ($hasAntigravity) { "detected" } else { "not found" }
+    $claudeState  = $hasClaude;  $claudeHint  = if ($hasClaude)  { "已偵測" } else { "未找到" }
+    $cursorState  = $hasCursor;  $cursorHint  = if ($hasCursor)  { "已偵測" } else { "未找到" }
+    $codexState   = $hasCodex;   $codexHint   = if ($hasCodex)   { "已偵測" } else { "未找到" }
+    $copilotState = $hasCopilot; $copilotHint = if ($hasCopilot) { "已偵測" } else { "未找到" }
+    $geminiState  = $hasGemini;  $geminiHint  = if ($hasGemini)  { "已偵測" } else { "未找到" }
+    $antigravityState = $hasAntigravity; $antigravityHint = if ($hasAntigravity) { "已偵測" } else { "未找到" }
 
-    # If nothing detected, default to claude
+    # 若未偵測到任何工具，預設使用 claude
     if (-not $hasClaude -and -not $hasCursor -and -not $hasCodex -and -not $hasCopilot -and -not $hasGemini -and -not $hasAntigravity) {
         $claudeState = $true
-        $claudeHint  = "default"
+        $claudeHint  = "預設"
     }
 
     if (-not $script:Silent) {
         Write-Host ""
-        Write-Host "  Select tools to install for:" -ForegroundColor White
+        Write-Host "  選擇要安裝的工具：" -ForegroundColor White
     }
 
     $items = @(
@@ -600,14 +598,14 @@ function Invoke-DetectTools {
     $result = Select-Checkbox -Items $items
 
     if ([string]::IsNullOrWhiteSpace($result)) {
-        Write-Warn "No tools selected, defaulting to Claude Code"
+        Write-Warn "未選擇任何工具，預設使用 Claude Code"
         $result = "claude"
     }
 
     $script:Tools = $result
 }
 
-# ─── Databricks profile selection ────────────────────────────
+# ─── Databricks Profile 選擇 ────────────────────────────
 function Invoke-PromptProfile {
     if ($script:ProfileProvided) { return }
     if ($script:Silent) { return }
@@ -625,7 +623,7 @@ function Invoke-PromptProfile {
     }
 
     Write-Host ""
-    Write-Host "  Select Databricks profile" -ForegroundColor White
+    Write-Host "  選擇 Databricks Profile" -ForegroundColor White
 
     if ($profiles.Count -gt 0) {
         $items = @()
@@ -637,8 +635,8 @@ function Invoke-PromptProfile {
             $items += @{ Label = $p; Value = $p; Selected = $sel; Hint = $hint }
         }
         
-        # Add custom profile option at the end
-        $items += @{ Label = "Custom profile name..."; Value = "__CUSTOM__"; Selected = $false; Hint = "Enter a custom profile name" }
+        # 在結尾新增自訂 Profile 選項
+        $items += @{ Label = "自訂 Profile 名稱…"; Value = "__CUSTOM__"; Selected = $false; Hint = "輸入自訂 Profile 名稱" }
         
         if (-not $hasDefault -and $items.Count -gt 1) {
             $items[0].Selected = $true
@@ -646,47 +644,47 @@ function Invoke-PromptProfile {
 
         $selectedProfile = Select-Radio -Items $items
         
-        # If custom was selected, prompt for name
+        # 若選取自訂，提示輸入名稱
         if ($selectedProfile -eq "__CUSTOM__") {
             Write-Host ""
-            $script:Profile_ = Read-Prompt -PromptText "Enter profile name" -Default "DEFAULT"
+            $script:Profile_ = Read-Prompt -PromptText "輸入 Profile 名稱" -Default "DEFAULT"
         } else {
             $script:Profile_ = $selectedProfile
         }
     } else {
-        Write-Host "  No ~/.databrickscfg found. You can authenticate after install." -ForegroundColor DarkGray
+        Write-Host "  找不到 ~/.databrickscfg，可在安裝後執行認證。" -ForegroundColor DarkGray
         Write-Host ""
-        $script:Profile_ = Read-Prompt -PromptText "Profile name" -Default "DEFAULT"
+        $script:Profile_ = Read-Prompt -PromptText "Profile 名稱" -Default "DEFAULT"
     }
 }
 
-# ─── MCP path selection ──────────────────────────────────────
+# ─── MCP 路徑選擇 ──────────────────────────────────────
 function Invoke-PromptMcpPath {
     if (-not [string]::IsNullOrWhiteSpace($script:UserMcpPath)) {
         $script:InstallDir = $script:UserMcpPath
     } elseif (-not $script:Silent) {
         Write-Host ""
-        Write-Host "  MCP server location" -ForegroundColor White
-        Write-Host "  The MCP server runtime (Python venv + source) will be installed here." -ForegroundColor DarkGray
-        Write-Host "  Shared across all your projects -- only the config files are per-project." -ForegroundColor DarkGray
+        Write-Host "  MCP 伺服器位置" -ForegroundColor White
+        Write-Host "  MCP 伺服器執行環境（Python venv + 原始碼）將安裝在此。" -ForegroundColor DarkGray
+        Write-Host "  跨所有專案共用──僅設定檔為各專案獨立。" -ForegroundColor DarkGray
         Write-Host ""
 
-        $selected = Read-Prompt -PromptText "Install path" -Default $InstallDir
+        $selected = Read-Prompt -PromptText "安裝路徑" -Default $InstallDir
         $script:InstallDir = $selected
     }
 
-    # Update derived paths
+    # 更新衍生路徑
     $script:RepoDir    = Join-Path $script:InstallDir "repo"
     $script:VenvDir    = Join-Path $script:InstallDir ".venv"
     $script:VenvPython = Join-Path $script:VenvDir "Scripts\python.exe"
     $script:McpEntry   = Join-Path $script:RepoDir "databricks-mcp-server\run_server.py"
 }
 
-# ─── Check prerequisites ─────────────────────────────────────
+# ─── 檢查必要條件 ─────────────────────────────────────
 function Test-Dependencies {
     # Git
     if (-not (Get-Command git -ErrorAction SilentlyContinue)) {
-        Write-Err "git required. Install: choco install git -y"
+        Write-Err "需要 git。安裝方式：choco install git -y"
     }
     Write-Ok "git"
 
@@ -699,21 +697,21 @@ function Test-Dependencies {
                 if ([version]$cliVersion -ge [version]$MinCliVersion) {
                     Write-Ok "Databricks CLI v$cliVersion"
                 } else {
-                    Write-Warn "Databricks CLI v$cliVersion is outdated (minimum: v$MinCliVersion)"
+                    Write-Warn "Databricks CLI v$cliVersion 版本過舊（最低需求：v$MinCliVersion）"
                     Write-Msg "  Upgrade: winget upgrade Databricks.DatabricksCLI"
                 }
             } else {
-                Write-Warn "Could not determine Databricks CLI version"
+                Write-Warn "無法確認 Databricks CLI 版本"
             }
         } catch {
-            Write-Warn "Could not determine Databricks CLI version"
+            Write-Warn "無法確認 Databricks CLI 版本"
         }
     } else {
-        Write-Warn "Databricks CLI not found. Install: winget install Databricks.DatabricksCLI"
-        Write-Msg "You can still install, but authentication will require the CLI later."
+        Write-Warn "找不到 Databricks CLI。安裝方式：winget install Databricks.DatabricksCLI"
+        Write-Msg "仍可繼續安裝，但認證需稍後安裝 CLI。"
     }
 
-    # Python package manager
+    # Python 套件管理工具
     if ($script:InstallMcp) {
         if (Get-Command uv -ErrorAction SilentlyContinue) {
             $script:Pkg = "uv"
@@ -722,13 +720,13 @@ function Test-Dependencies {
         } elseif (Get-Command pip -ErrorAction SilentlyContinue) {
             $script:Pkg = "pip"
         } else {
-            Write-Err "Python package manager required. Install Python: choco install python -y"
+            Write-Err "需要 Python 套件管理工具。安裝 Python：choco install python -y"
         }
         Write-Ok $script:Pkg
     }
 }
 
-# ─── Check version ───────────────────────────────────────────
+# ─── 版本檢查 ───────────────────────────────────────────
 function Test-Version {
     $verFile = Join-Path $script:InstallDir "version"
     if ($script:Scope -eq "project") {
@@ -738,7 +736,7 @@ function Test-Version {
     if (-not (Test-Path $verFile)) { return }
     if ($script:Force) { return }
 
-    # Skip version gate if user explicitly wants a different skill profile
+    # 若使用者明確要求不同的 skill 設定檔，略過版本檢查
     if (-not [string]::IsNullOrWhiteSpace($script:SkillsProfile) -or -not [string]::IsNullOrWhiteSpace($script:UserSkills)) {
         $savedProfileFile = Join-Path $script:StateDir ".skills-profile"
         if (-not (Test-Path $savedProfileFile) -and $script:Scope -eq "project") {
@@ -761,23 +759,23 @@ function Test-Version {
 
     if ($remoteVer -and $remoteVer -notmatch '(404|Not Found|error)') {
         if ($localVer -eq $remoteVer) {
-            Write-Ok "Already up to date (v$localVer)"
-            Write-Msg "Use --force to reinstall or --skills-profile to change profiles"
+            Write-Ok "已是最新版本（v$localVer）"
+            Write-Msg "使用 --force 重新安裝，或使用 --skills-profile 更換設定檔"
             exit 0
         }
     }
 }
 
-# ─── Setup MCP server ────────────────────────────────────────
+# ─── 設定 MCP 伺服器 ────────────────────────────────────────
 function Install-McpServer {
-    Write-Step "Setting up MCP server"
+    Write-Step "設定 MCP 伺服器"
 
-    # Native commands (git, pip) write informational messages to stderr.
-    # Temporarily relax error handling so these don't terminate the script.
+    # 原生命令（git、pip）會將資訊訊息寫入 stderr。
+    # 暫時放寬錯誤處理，避免這些訊息終止腳本。
     $prevEAP = $ErrorActionPreference
     $ErrorActionPreference = "Continue"
 
-    # Clone or update repo
+    # 複製或更新 repo
     if (Test-Path (Join-Path $script:RepoDir ".git")) {
         & git -C $script:RepoDir fetch -q --depth 1 origin $Branch 2>&1 | Out-Null
         & git -C $script:RepoDir reset --hard FETCH_HEAD 2>&1 | Out-Null
@@ -793,12 +791,12 @@ function Install-McpServer {
     }
     if ($LASTEXITCODE -ne 0) {
         $ErrorActionPreference = $prevEAP
-        Write-Err "Failed to clone repository"
+        Write-Err "複製 repository 失敗"
     }
-    Write-Ok "Repository cloned ($Branch)"
+    Write-Ok "Repository 複製完成（$Branch）"
 
-    # Create venv and install
-    Write-Msg "Installing Python dependencies..."
+    # 建立 venv 並安裝
+    Write-Msg "安裝 Python 套件中..."
     if ($script:Pkg -eq "uv") {
         & uv venv --python 3.11 --allow-existing $script:VenvDir -q 2>&1 | Out-Null
         if ($LASTEXITCODE -ne 0) {
@@ -812,17 +810,17 @@ function Install-McpServer {
         & $script:VenvPython -m pip install -q -e "$($script:RepoDir)\databricks-tools-core" -e "$($script:RepoDir)\databricks-mcp-server" 2>&1 | Out-Null
     }
 
-    # Verify
+    # 驗證
     & $script:VenvPython -c "import databricks_mcp_server" 2>&1 | Out-Null
     if ($LASTEXITCODE -ne 0) {
         $ErrorActionPreference = $prevEAP
-        Write-Err "MCP server install failed"
+        Write-Err "MCP 伺服器安裝失敗"
     }
 
     $ErrorActionPreference = $prevEAP
-    Write-Ok "MCP server ready"
+    Write-Ok "MCP 伺服器就緒"
 
-    # Check Databricks SDK version
+    # 檢查 Databricks SDK 版本
     try {
         $sdkOutput = & $script:VenvPython -c "from databricks.sdk.version import __version__; print(__version__)" 2>&1
         if ($sdkOutput -match '(\d+\.\d+\.\d+)') {
@@ -830,20 +828,20 @@ function Install-McpServer {
             if ([version]$sdkVersion -ge [version]$MinSdkVersion) {
                 Write-Ok "Databricks SDK v$sdkVersion"
             } else {
-                Write-Warn "Databricks SDK v$sdkVersion is outdated (minimum: v$MinSdkVersion)"
+                Write-Warn "Databricks SDK v$sdkVersion 版本過舊（最低需求：v$MinSdkVersion）"
                 Write-Msg "  Upgrade: $($script:VenvPython) -m pip install --upgrade databricks-sdk"
             }
         } else {
-            Write-Warn "Could not determine Databricks SDK version"
+            Write-Warn "無法確認 Databricks SDK 版本"
         }
     } catch {
-        Write-Warn "Could not determine Databricks SDK version"
+        Write-Warn "無法確認 Databricks SDK 版本"
     }
 }
 
-# ─── Skill profile selection ──────────────────────────────────
+# ─── Skill 設定檔選擇 ──────────────────────────────────
 function Resolve-Skills {
-    # Priority 1: Explicit --skills flag
+    # 優先級 1：明確的 --skills 旗標
     if (-not [string]::IsNullOrWhiteSpace($script:UserSkills)) {
         $userList = $script:UserSkills -split ','
         $dbSkills = @() + $script:CoreSkills
@@ -865,7 +863,7 @@ function Resolve-Skills {
         return
     }
 
-    # Priority 2: --skills-profile flag or interactive selection
+    # 優先級 2：--skills-profile 旗標或互動式選擇
     if ([string]::IsNullOrWhiteSpace($script:SkillsProfile) -or $script:SkillsProfile -eq "all") {
         $script:SelectedSkills = $script:Skills
         $script:SelectedMlflowSkills = $script:MlflowSkills
@@ -873,7 +871,7 @@ function Resolve-Skills {
         return
     }
 
-    # Build union of selected profiles
+    # 建立已選取設定檔的聯集
     $dbSkills = @() + $script:CoreSkills
     $mlflowSkills = @()
     $apxSkills = @()
@@ -897,7 +895,7 @@ function Resolve-Skills {
                 $dbSkills += $script:ProfileAppDeveloper
                 $apxSkills += $script:ApxSkills
             }
-            default { Write-Warn "Unknown skill profile: $profile (ignored)" }
+            default { Write-Warn "未知的 Skill 設定檔：$profile（已略過）" }
         }
     }
 
@@ -907,18 +905,18 @@ function Resolve-Skills {
 }
 
 function Invoke-PromptSkillsProfile {
-    # If provided via --skills or --skills-profile, skip interactive prompt
+    # 若已透過 --skills 或 --skills-profile 提供，略過互動式提示
     if (-not [string]::IsNullOrWhiteSpace($script:UserSkills) -or -not [string]::IsNullOrWhiteSpace($script:SkillsProfile)) {
         return
     }
 
-    # Skip in silent mode
+    # 靜默模式下略過
     if ($script:Silent) {
         $script:SkillsProfile = "all"
         return
     }
 
-    # Check for previous selection (scope-local first, then global fallback for upgrades)
+    # 先檢查範圍本地的上次選取記錄，若無則退回全域（供舊版升級使用）
     $profileFile = Join-Path $script:StateDir ".skills-profile"
     if (-not (Test-Path $profileFile) -and $script:Scope -eq "project") {
         $profileFile = Join-Path $script:InstallDir ".skills-profile"
@@ -928,7 +926,7 @@ function Invoke-PromptSkillsProfile {
         if (-not $script:Force) {
             Write-Host ""
             $displayProfile = $prevProfile -replace ',', ', '
-            $keep = Read-Prompt -PromptText "Previous skill profile: $displayProfile. Keep? (Y/n)" -Default "y"
+            $keep = Read-Prompt -PromptText "上次的 Skill 設定檔：$displayProfile。保留？(Y/n)" -Default "y"
             if ($keep -in @("y", "Y", "yes", "")) {
                 $script:SkillsProfile = $prevProfile
                 return
@@ -937,12 +935,12 @@ function Invoke-PromptSkillsProfile {
     }
 
     Write-Host ""
-    Write-Host "  Select skill profile(s)" -ForegroundColor White
+    Write-Host "  選擇 Skill 設定檔" -ForegroundColor White
 
-    # Custom checkbox with mutual exclusion: "All" deselects others, others deselect "All"
-    $pLabels = @("All Skills", "Data Engineer", "Business Analyst", "AI/ML Engineer", "App Developer", "Custom")
+    # 自訂核取方塊，具互斥邏輯：選取「全部」會取消其他選項，選取其他會取消「全部」
+    $pLabels = @("全部 Skills", "資料工程師", "商業分析師", "AI/ML 工程師", "應用程式開發者", "自訂")
     $pValues = @("all", "data-engineer", "analyst", "ai-ml-engineer", "app-developer", "custom")
-    $pHints  = @("Install everything (34 skills)", "Pipelines, Spark, Jobs, Streaming (14 skills)", "Dashboards, SQL, Genie, Metrics (8 skills)", "Agents, RAG, Vector Search, MLflow (17 skills)", "Apps, Lakebase, Deployment (10 skills)", "Pick individual skills")
+    $pHints  = @("安裝全部（34 個 skills）", "Pipelines、Spark、Jobs、Streaming（14 個 skills）", "儀表板、SQL、Genie、指標（8 個 skills）", "Agents、RAG、向量搜尋、MLflow（17 個 skills）", "應用程式、Lakebase、部署（10 個 skills）", "自行挑選 Skills")
     $pStates = @($true, $false, $false, $false, $false, $false)
     $pCount  = 6
     $pCursor = 0
@@ -951,14 +949,14 @@ function Invoke-PromptSkillsProfile {
     $isInteractive = Test-Interactive
 
     if (-not $isInteractive) {
-        # Fallback: numbered list
+        # 備援模式：編號清單
         Write-Host ""
         for ($j = 0; $j -lt $pCount; $j++) {
             $mark = if ($pStates[$j]) { "[X]" } else { "[ ]" }
             Write-Host "  $($j + 1). $mark $($pLabels[$j])  ($($pHints[$j]))"
         }
         Write-Host ""
-        Write-Host "  Enter numbers to toggle (e.g. 2,4), or press Enter for All: " -NoNewline
+        Write-Host "  輸入數字以切換（例如 2,4），或按 Enter 選擇全部：" -NoNewline
         $input_ = Read-Host
         if (-not [string]::IsNullOrWhiteSpace($input_)) {
             for ($j = 0; $j -lt $pCount; $j++) { $pStates[$j] = $false }
@@ -1022,15 +1020,15 @@ function Invoke-PromptSkillsProfile {
             switch ($key.VirtualKeyCode) {
                 38 { if ($pCursor -gt 0) { $pCursor-- } }
                 40 { if ($pCursor -lt $pCount) { $pCursor++ } }
-                32 { # Space
+                32 { # 空白鍵
                     if ($pCursor -lt $pCount) {
                         $pStates[$pCursor] = -not $pStates[$pCursor]
                         if ($pStates[$pCursor]) {
                             if ($pCursor -eq 0) {
-                                # Selected "All" → deselect others
+                                # 選取「全部」→ 取消其他選項
                                 for ($j = 1; $j -lt $pCount; $j++) { $pStates[$j] = $false }
                             } else {
-                                # Selected individual → deselect "All"
+                                # 選取個別項目 → 取消「全部」
                                 $pStates[0] = $false
                             }
                         }
@@ -1059,7 +1057,7 @@ function Invoke-PromptSkillsProfile {
         try { [Console]::CursorVisible = $true } catch {}
     }
 
-    # Build result from states
+    # 從狀態建立結果
     $selectedProfiles = @()
     for ($j = 0; $j -lt $pCount; $j++) {
         if ($pStates[$j]) { $selectedProfiles += $pValues[$j] }
@@ -1087,7 +1085,7 @@ function Invoke-PromptSkillsProfile {
 function Invoke-PromptCustomSkills {
     param([string]$PreselectedProfiles)
 
-    # Build pre-selection set from any profiles that were also checked
+    # 從已勾選的設定檔建立預選集合
     $preselected = @()
     foreach ($profile in ($PreselectedProfiles -split ' ')) {
         switch ($profile) {
@@ -1099,8 +1097,8 @@ function Invoke-PromptCustomSkills {
     }
 
     Write-Host ""
-    Write-Host "  Select individual skills" -ForegroundColor White
-    Write-Host "  Core skills (config, docs, python-sdk, unity-catalog) are always installed" -ForegroundColor DarkGray
+    Write-Host "  選擇個別 Skills" -ForegroundColor White
+    Write-Host "  核心 Skills（config、docs、python-sdk、unity-catalog）一定安裝" -ForegroundColor DarkGray
 
     $items = @(
         @{ Label = "Spark Pipelines";      Value = "databricks-spark-declarative-pipelines"; State = ($preselected -contains "databricks-spark-declarative-pipelines"); Hint = "SDP/LDP, CDC, SCD Type 2" }
@@ -1139,11 +1137,11 @@ function Invoke-PromptCustomSkills {
     $script:UserSkills = ($selected -split ' ') -join ','
 }
 
-# ─── Install skills ──────────────────────────────────────────
+# ─── 安裝 Skills ──────────────────────────────────────────
 function Install-Skills {
     param([string]$BaseDir)
 
-    Write-Step "Installing skills"
+    Write-Step "安裝 Skills"
 
     $dirs = @()
     foreach ($tool in ($script:Tools -split ' ')) {
@@ -1168,21 +1166,21 @@ function Install-Skills {
     }
     $dirs = $dirs | Select-Object -Unique
 
-    # Count selected skills for display
+    # 統計已選取的 skills 數量供顯示用
     $dbCount = $script:SelectedSkills.Count
     $mlflowCount = $script:SelectedMlflowSkills.Count
     $apxCount = $script:SelectedApxSkills.Count
     $totalCount = $dbCount + $mlflowCount + $apxCount
-    Write-Msg "Installing $totalCount skills"
+    Write-Msg "正在安裝 $totalCount 個 skills"
 
-    # Build set of all skills being installed now
+    # 建立本次安裝的所有 skills 集合
     $allNewSkills = @()
     $allNewSkills += $script:SelectedSkills
     $allNewSkills += $script:SelectedMlflowSkills
     $allNewSkills += $script:SelectedApxSkills
 
-    # Clean up previously installed skills that are no longer selected
-    # Check scope-local manifest first, fall back to global for upgrades from older versions
+    # 清理先前已安裝但已取消選取的 skills
+    # 先檢查範圍本地的清單，若無則退回全域（供舊版升級使用）
     $manifest = Join-Path $script:StateDir ".installed-skills"
     if (-not (Test-Path $manifest) -and $script:Scope -eq "project" -and (Test-Path (Join-Path $script:InstallDir ".installed-skills"))) {
         $manifest = Join-Path $script:InstallDir ".installed-skills"
@@ -1194,25 +1192,25 @@ function Install-Skills {
             if ($parts.Count -ne 2) { continue }
             $prevDir = $parts[0]
             $prevSkill = $parts[1]
-            # Skip if this skill is still selected
+            # 若此 skill 仍在選取清單中則略過
             if ($allNewSkills -contains $prevSkill) { continue }
-            # Only remove if the directory exists
+            # 僅在目錄存在時才刪除
             $prevPath = Join-Path $prevDir $prevSkill
             if (Test-Path $prevPath) {
                 Remove-Item -Recurse -Force $prevPath
-                Write-Msg "Removed deselected skill: $prevSkill"
+                Write-Msg "已移除取消選取的 skill：$prevSkill"
             }
         }
     }
 
-    # Start fresh manifest
+    # 重新建立清單
     $manifestEntries = @()
 
     foreach ($dir in $dirs) {
         if (-not (Test-Path $dir)) {
             New-Item -ItemType Directory -Path $dir -Force | Out-Null
         }
-        # Install Databricks skills from repo
+        # 從 repo 安裝 Databricks skills
         foreach ($skill in $script:SelectedSkills) {
             $src = Join-Path $script:RepoDir "databricks-skills\$skill"
             if (-not (Test-Path $src)) { continue }
@@ -1222,9 +1220,9 @@ function Install-Skills {
             $manifestEntries += "$dir|$skill"
         }
         $shortDir = $dir -replace [regex]::Escape($env:USERPROFILE), '~'
-        Write-Ok "Databricks skills ($dbCount) -> $shortDir"
+        Write-Ok "Databricks skills（$dbCount）→ $shortDir"
 
-        # Install MLflow skills from mlflow/skills repo
+        # 從 mlflow/skills repo 安裝 MLflow skills
         if ($script:SelectedMlflowSkills.Count -gt 0) {
             $prevEAP = $ErrorActionPreference; $ErrorActionPreference = "Continue"
             foreach ($skill in $script:SelectedMlflowSkills) {
@@ -1246,10 +1244,10 @@ function Install-Skills {
                 }
             }
             $ErrorActionPreference = $prevEAP
-            Write-Ok "MLflow skills ($mlflowCount) -> $shortDir"
+            Write-Ok "MLflow skills（$mlflowCount）→ $shortDir"
         }
 
-        # Install APX skills from databricks-solutions/apx repo
+        # 從 databricks-solutions/apx repo 安裝 APX skills
         if ($script:SelectedApxSkills.Count -gt 0) {
             $prevEAP2 = $ErrorActionPreference; $ErrorActionPreference = "Continue"
             foreach ($skill in $script:SelectedApxSkills) {
@@ -1268,22 +1266,22 @@ function Install-Skills {
                     $manifestEntries += "$dir|$skill"
                 } catch {
                     Remove-Item $destDir -ErrorAction SilentlyContinue
-                    Write-Warning "Could not install APX skill '$skill' - consider removing $destDir if it is no longer needed"
+                    Write-Warning "無法安裝 APX skill '$skill'──如不再需要，請考慮移除 $destDir"
                 }
             }
             $ErrorActionPreference = $prevEAP2
-            Write-Ok "APX skills ($apxCount) -> $shortDir"
+            Write-Ok "APX skills（$apxCount）→ $shortDir"
         }
     }
 
-    # Save manifest and profile to scope-local state directory
+    # 將清單與設定檔儲存至範圍本地的狀態目錄
     if (-not (Test-Path $script:StateDir)) {
         New-Item -ItemType Directory -Path $script:StateDir -Force | Out-Null
     }
     $manifest = Join-Path $script:StateDir ".installed-skills"
     Set-Content -Path $manifest -Value ($manifestEntries -join "`n") -Encoding UTF8
 
-    # Save selected profile for future reinstalls
+    # 儲存已選取的設定檔供未來重新安裝使用
     if (-not [string]::IsNullOrWhiteSpace($script:UserSkills)) {
         Set-Content -Path (Join-Path $script:StateDir ".skills-profile") -Value "custom:$($script:UserSkills)" -Encoding UTF8
     } else {
@@ -1292,7 +1290,7 @@ function Install-Skills {
     }
 }
 
-# ─── Write MCP configs ───────────────────────────────────────
+# ─── 寫入 MCP 設定 ───────────────────────────────────────
 function Write-McpJson {
     param([string]$Path)
 
@@ -1301,13 +1299,13 @@ function Write-McpJson {
         New-Item -ItemType Directory -Path $dir -Force | Out-Null
     }
 
-    # Backup existing
+    # 備份現有設定
     if (Test-Path $Path) {
         Copy-Item $Path "$Path.bak" -Force
-        Write-Msg "Backed up $(Split-Path $Path -Leaf) -> $(Split-Path $Path -Leaf).bak"
+        Write-Msg "已備份 $(Split-Path $Path -Leaf) → $(Split-Path $Path -Leaf).bak"
     }
 
-    # Try to merge with existing config
+    # 嘗試合併至現有設定
     if ((Test-Path $Path) -and (Test-Path $script:VenvPython)) {
         try {
             $existing = Get-Content $Path -Raw | ConvertFrom-Json
@@ -1317,7 +1315,7 @@ function Write-McpJson {
     }
 
     if ($existing) {
-        # Merge into existing config — use forward slashes for JSON compatibility
+        # 合併至現有設定 — 使用正斜線以確保 JSON 相容性
         if (-not $existing.mcpServers) {
             $existing | Add-Member -NotePropertyName "mcpServers" -NotePropertyValue ([PSCustomObject]@{}) -Force
         }
@@ -1329,7 +1327,7 @@ function Write-McpJson {
         $existing.mcpServers | Add-Member -NotePropertyName "databricks" -NotePropertyValue $dbEntry -Force
         $existing | ConvertTo-Json -Depth 10 | Set-Content $Path -Encoding UTF8
     } else {
-        # Write fresh config — use forward slashes for cross-platform JSON compatibility
+        # 寫入全新設定 — 使用正斜線以確保跨平台 JSON 相容性
         $pythonPath = $script:VenvPython -replace '\\', '/'
         $entryPath  = $script:McpEntry -replace '\\', '/'
         $json = @"
@@ -1355,13 +1353,13 @@ function Write-CopilotMcpJson {
         New-Item -ItemType Directory -Path $dir -Force | Out-Null
     }
 
-    # Backup existing
+    # 備份現有設定
     if (Test-Path $Path) {
         Copy-Item $Path "$Path.bak" -Force
-        Write-Msg "Backed up $(Split-Path $Path -Leaf) -> $(Split-Path $Path -Leaf).bak"
+        Write-Msg "已備份 $(Split-Path $Path -Leaf) → $(Split-Path $Path -Leaf).bak"
     }
 
-    # Try to merge with existing config
+    # 嘗試合併至現有設定
     if ((Test-Path $Path) -and (Test-Path $script:VenvPython)) {
         try {
             $existing = Get-Content $Path -Raw | ConvertFrom-Json
@@ -1407,12 +1405,12 @@ function Write-McpToml {
         New-Item -ItemType Directory -Path $dir -Force | Out-Null
     }
 
-    # Check if already configured
+    # 檢查是否已設定
     if (Test-Path $Path) {
         $content = Get-Content $Path -Raw
         if ($content -match 'mcp_servers\.databricks') { return }
         Copy-Item $Path "$Path.bak" -Force
-        Write-Msg "Backed up $(Split-Path $Path -Leaf) -> $(Split-Path $Path -Leaf).bak"
+        Write-Msg "已備份 $(Split-Path $Path -Leaf) → $(Split-Path $Path -Leaf).bak"
     }
 
     $pythonPath = $script:VenvPython -replace '\\', '/'
@@ -1434,13 +1432,13 @@ function Write-GeminiMcpJson {
         New-Item -ItemType Directory -Path $dir -Force | Out-Null
     }
 
-    # Backup existing
+    # 備份現有設定
     if (Test-Path $Path) {
         Copy-Item $Path "$Path.bak" -Force
-        Write-Msg "Backed up $(Split-Path $Path -Leaf) -> $(Split-Path $Path -Leaf).bak"
+        Write-Msg "已備份 $(Split-Path $Path -Leaf) → $(Split-Path $Path -Leaf).bak"
     }
 
-    # Try to merge with existing config
+    # 嘗試合併至現有設定
     if ((Test-Path $Path) -and (Test-Path $script:VenvPython)) {
         try {
             $existing = Get-Content $Path -Raw | ConvertFrom-Json
@@ -1520,7 +1518,7 @@ Try asking: "List my SQL warehouses" or "Show my Unity Catalog schemas"
 function Write-McpConfigs {
     param([string]$BaseDir)
 
-    Write-Step "Configuring MCP"
+    Write-Step "設定 MCP"
 
     foreach ($tool in ($script:Tools -split ' ')) {
         switch ($tool) {
@@ -1534,10 +1532,10 @@ function Write-McpConfigs {
             }
             "cursor" {
                 if ($script:Scope -eq "global") {
-                    Write-Warn "Cursor global: manual MCP configuration required"
-                    Write-Msg "  1. Open Cursor -> Settings -> Cursor Settings -> Tools & MCP"
-                    Write-Msg "  2. Click New MCP Server"
-                    Write-Msg "  3. Add the following JSON config:"
+                    Write-Warn "Cursor 全域模式：需手動設定 MCP"
+                    Write-Msg "  1. 開啟 Cursor → 設定 → Cursor Settings → Tools & MCP"
+                    Write-Msg "  2. 點擊 New MCP Server"
+                    Write-Msg "  3. 加入以下 JSON 設定："
                     Write-Msg "     {"
                     Write-Msg "       `"mcpServers`": {"
                     Write-Msg "         `"databricks`": {"
@@ -1551,19 +1549,19 @@ function Write-McpConfigs {
                     Write-McpJson (Join-Path $BaseDir ".cursor\mcp.json")
                     Write-Ok "Cursor MCP config"
                 }
-                Write-Warn "Cursor: MCP servers are disabled by default."
-                Write-Msg "  Enable in: Cursor -> Settings -> Cursor Settings -> Tools & MCP -> Toggle 'databricks'"
+                Write-Warn "Cursor：MCP 伺服器預設停用。"
+                Write-Msg "  啟用方式：Cursor → 設定 → Cursor Settings → Tools & MCP → 切換 'databricks'"
             }
             "copilot" {
                 if ($script:Scope -eq "global") {
-                    Write-Warn "Copilot global: configure MCP in VS Code settings (Ctrl+Shift+P -> 'MCP: Open User Configuration')"
+                    Write-Warn "Copilot 全域模式：請在 VS Code 設定中設定 MCP（Ctrl+Shift+P → 'MCP: Open User Configuration'）"
                     Write-Msg "  Command: $($script:VenvPython) | Args: $($script:McpEntry)"
                 } else {
                     Write-CopilotMcpJson (Join-Path $BaseDir ".vscode\mcp.json")
                     Write-Ok "Copilot MCP config (.vscode/mcp.json)"
                 }
-                Write-Warn "Copilot: MCP servers must be enabled manually."
-                Write-Msg "  In Copilot Chat, click 'Configure Tools' (tool icon, bottom-right) and enable 'databricks'"
+                Write-Warn "Copilot：MCP 伺服器需手動啟用。"
+                Write-Msg "  在 Copilot Chat 中，點擊「設定工具」（右下角工具圖示），啟用 'databricks'"
             }
             "codex" {
                 if ($script:Scope -eq "global") {
@@ -1583,8 +1581,8 @@ function Write-McpConfigs {
             }
             "antigravity" {
                 if ($script:Scope -eq "project") {
-                    Write-Warn "Antigravity only supports global MCP configuration."
-                    Write-Msg "  Config written to ~/.gemini/antigravity/mcp_config.json"
+                    Write-Warn "Antigravity 僅支援全域 MCP 設定。"
+                    Write-Msg "  設定已寫入 ~/.gemini/antigravity/mcp_config.json"
                 }
                 Write-GeminiMcpJson (Join-Path $env:USERPROFILE ".gemini\antigravity\mcp_config.json")
                 Write-Ok "Antigravity MCP config"
@@ -1593,7 +1591,7 @@ function Write-McpConfigs {
     }
 }
 
-# ─── Save version ────────────────────────────────────────────
+# ─── 儲存版本 ────────────────────────────────────────────
 function Save-Version {
     try {
         $ver = (Invoke-WebRequest -Uri "$RawUrl/VERSION" -UseBasicParsing -ErrorAction Stop).Content.Trim()
@@ -1613,53 +1611,53 @@ function Save-Version {
     }
 }
 
-# ─── Summary ─────────────────────────────────────────────────
+# ─── 摘要 ─────────────────────────────────────────────────
 function Show-Summary {
     if ($script:Silent) { return }
 
     Write-Host ""
-    Write-Host "Installation complete!" -ForegroundColor Green
+    Write-Host "安裝完成！" -ForegroundColor Green
     Write-Host "--------------------------------"
-    Write-Msg "Location: $($script:InstallDir)"
-    Write-Msg "Scope:    $($script:Scope)"
-    Write-Msg "Tools:    $(($script:Tools -split ' ') -join ', ')"
+    Write-Msg "位置：$($script:InstallDir)"
+    Write-Msg "範圍：    $($script:Scope)"
+    Write-Msg "工具：    $(($script:Tools -split ' ') -join ', ')"
     Write-Host ""
-    Write-Msg "Next steps:"
+    Write-Msg "後續步驟："
     $step = 1
     if ($script:Tools -match 'cursor') {
-        Write-Msg "$step. Enable MCP in Cursor: Cursor -> Settings -> Cursor Settings -> Tools & MCP -> Toggle 'databricks'"
+        Write-Msg "$step. 啟用 Cursor MCP：Cursor → 設定 → Cursor Settings → Tools & MCP → 切換 'databricks'"
         $step++
     }
     if ($script:Tools -match 'copilot') {
-        Write-Msg "$step. In Copilot Chat, click 'Configure Tools' (tool icon, bottom-right) and enable 'databricks'"
+        Write-Msg "$step. 在 Copilot Chat 中，點擊「設定工具」（右下角工具圖示），啟用 'databricks'"
         $step++
-        Write-Msg "$step. Use Copilot in Agent mode to access Databricks skills and MCP tools"
+        Write-Msg "$step. 使用 Copilot Agent 模式存取 Databricks skills 及 MCP 工具"
         $step++
     }
     if ($script:Tools -match 'gemini') {
-        Write-Msg "$step. Launch Gemini CLI in your project: gemini"
+        Write-Msg "$step. 在專案中啟動 Gemini CLI：gemini"
         $step++
     }
     if ($script:Tools -match 'antigravity') {
-        Write-Msg "$step. Open your project in Antigravity to use Databricks skills and MCP tools"
+        Write-Msg "$step. 在 Antigravity 中開啟專案以使用 Databricks skills 及 MCP 工具"
         $step++
     }
-    Write-Msg "$step. Open your project in your tool of choice"
+    Write-Msg "$step. 以您選擇的工具開啟專案"
     $step++
-    Write-Msg "$step. Try: `"List my SQL warehouses`""
+    Write-Msg "$step. 試試看：`"列出我的 SQL Warehouses`""
     Write-Host ""
 }
 
-# ─── Scope prompt ─────────────────────────────────────────────
+# ─── 範圍選擇 ─────────────────────────────────────────────
 function Invoke-PromptScope {
     if ($script:Silent) { return }
 
     Write-Host ""
-    Write-Host "  Select installation scope" -ForegroundColor White
+    Write-Host "  選擇安裝範圍" -ForegroundColor White
     
-    $labels = @("Project", "Global")
+    $labels = @("專案", "全域")
     $values = @("project", "global")
-    $hints = @("Install in current directory (.cursor/, .claude/, .gemini/)", "Install in home directory (~/.cursor/, ~/.claude/, ~/.gemini/)")
+    $hints = @("安裝至目前目錄（.cursor/、.claude/、.gemini/）", "安裝至家目錄（~/.cursor/、~/.claude/、~/.gemini/）")
     $count = 2
     $selected = 0
     $cursor = 0
@@ -1667,12 +1665,12 @@ function Invoke-PromptScope {
     $isInteractive = Test-Interactive
     
     if (-not $isInteractive) {
-        # Fallback: numbered list
+        # 備援模式：編號清單
         Write-Host ""
-        Write-Host "  1. (*) Project  Install in current directory (.cursor/, .claude/, .gemini/)"
-        Write-Host "  2. ( ) Global   Install in home directory (~/.cursor/, ~/.claude/, ~/.gemini/)"
+        Write-Host "  1. (*) 專案  安裝至目前目錄（.cursor/、.claude/、.gemini/）"
+        Write-Host "  2. ( ) 全域   安裝至家目錄（~/.cursor/、~/.claude/、~/.gemini/）"
         Write-Host ""
-        Write-Host "  Enter number to select (or press Enter for default): " -NoNewline
+        Write-Host "  輸入數字選擇（或按 Enter 接受預設值）：" -NoNewline
         $input_ = Read-Host
         if (-not [string]::IsNullOrWhiteSpace($input_) -and $input_ -eq "2") {
             $selected = 1
@@ -1681,9 +1679,9 @@ function Invoke-PromptScope {
         return
     }
     
-    # Interactive mode
+    # 互動模式
     Write-Host ""
-    Write-Host "  Up/Down navigate, Enter select" -ForegroundColor DarkGray
+    Write-Host "  ↑/↓ 導覽，Enter 確認" -ForegroundColor DarkGray
     Write-Host ""
     
     $totalRows = $count
@@ -1719,7 +1717,7 @@ function Invoke-PromptScope {
         }
     }
     
-    # Reserve lines
+    # 預留行數
     for ($j = 0; $j -lt $totalRows; $j++) { Write-Host "" }
     & $drawScope
     
@@ -1746,11 +1744,11 @@ function Invoke-PromptScope {
     $script:Scope = $values[$selected]
 }
 
-# ─── Auth prompt ──────────────────────────────────────────────
+# ─── 認證提示 ──────────────────────────────────────────────
 function Invoke-PromptAuth {
     if ($script:Silent) { return }
 
-    # Check if profile already has a token
+    # 檢查 profile 是否已設定 token
     $cfgFile = Join-Path $env:USERPROFILE ".databrickscfg"
     if (Test-Path $cfgFile) {
         $inProfile = $false
@@ -1758,157 +1756,157 @@ function Invoke-PromptAuth {
             if ($line -match '^\[([a-zA-Z0-9_-]+)\]$') {
                 $inProfile = $Matches[1] -eq $script:Profile_
             } elseif ($inProfile -and $line -match '^token\s*=') {
-                Write-Ok "Profile $($script:Profile_) already has a token configured -- skipping auth"
+                Write-Ok "Profile $($script:Profile_) 已設定 token，略過認證"
                 return
             }
         }
     }
 
-    # Check env var
+    # 檢查環境變數
     if ($env:DATABRICKS_TOKEN) {
-        Write-Ok "DATABRICKS_TOKEN is set -- skipping auth"
+        Write-Ok "已設定 DATABRICKS_TOKEN，略過認證"
         return
     }
 
-    # Check for CLI
+    # 檢查 CLI 是否已安裝
     if (-not (Get-Command databricks -ErrorAction SilentlyContinue)) {
-        Write-Warn "Databricks CLI not installed -- cannot run OAuth login"
-        Write-Msg "  Install it, then run: databricks auth login --profile $($script:Profile_)"
+        Write-Warn "未安裝 Databricks CLI，無法執行 OAuth 登入"
+        Write-Msg "  請先安裝，然後執行：databricks auth login --profile $($script:Profile_)"
         return
     }
 
     Write-Host ""
-    Write-Msg "Authentication"
-    Write-Msg "This will run OAuth login for profile $($script:Profile_)"
-    Write-Msg "A browser window will open for you to authenticate with your Databricks workspace."
+    Write-Msg "認證"
+    Write-Msg "即將為 Profile $($script:Profile_) 執行 OAuth 登入"
+    Write-Msg "將開啟瀏覽器視窗，供您登入 Databricks workspace。"
     Write-Host ""
-    $runAuth = Read-Prompt -PromptText "Run databricks auth login --profile $($script:Profile_) now? (y/n)" -Default "y"
+    $runAuth = Read-Prompt -PromptText "立即執行 databricks auth login --profile $($script:Profile_)？(y/n)" -Default "y"
     if ($runAuth -in @("y", "Y", "yes")) {
         Write-Host ""
         & databricks auth login --profile $script:Profile_
     }
 }
 
-# ─── Main ─────────────────────────────────────────────────────
+# ─── 主函式 ─────────────────────────────────────────────────────
 function Invoke-Main {
     if (-not $script:Silent) {
         Write-Host ""
-        Write-Host "Databricks AI Dev Kit Installer" -ForegroundColor White
+        Write-Host "Databricks AI Dev Kit 安裝程式" -ForegroundColor White
         Write-Host "--------------------------------"
     }
 
-    # Check dependencies
-    Write-Step "Checking prerequisites"
+    # 檢查必要條件
+    Write-Step "檢查必要條件"
     Test-Dependencies
 
-    # Tool selection
-    Write-Step "Selecting tools"
+    # 工具選擇
+    Write-Step "選擇工具"
     Invoke-DetectTools
-    Write-Ok "Selected: $(($script:Tools -split ' ') -join ', ')"
+    Write-Ok "已選擇：$(($script:Tools -split ' ') -join ', ')"
 
-    # Profile selection
-    Write-Step "Databricks profile"
+    # Profile 選擇
+    Write-Step "Databricks Profile"
     Invoke-PromptProfile
-    Write-Ok "Profile: $($script:Profile_)"
+    Write-Ok "Profile：$($script:Profile_)"
 
-    # Scope selection
+    # 範圍選擇
     if (-not $script:ScopeExplicit) {
         Invoke-PromptScope
-        Write-Ok "Scope: $($script:Scope)"
+        Write-Ok "範圍：$($script:Scope)"
     }
 
-    # Set state directory based on scope (for profile/manifest storage)
+    # 依範圍設定狀態目錄（用於儲存設定檔/清單）
     if ($script:Scope -eq "global") {
         $script:StateDir = $script:InstallDir
     } else {
         $script:StateDir = Join-Path (Get-Location) ".ai-dev-kit"
     }
 
-    # Skill profile selection
+    # Skill 設定檔選擇
     if ($script:InstallSkills) {
-        Write-Step "Skill profiles"
+        Write-Step "Skill 設定檔"
         Invoke-PromptSkillsProfile
         Resolve-Skills
         $skCount = $script:SelectedSkills.Count + $script:SelectedMlflowSkills.Count + $script:SelectedApxSkills.Count
         if (-not [string]::IsNullOrWhiteSpace($script:UserSkills)) {
-            Write-Ok "Custom selection ($skCount skills)"
+            Write-Ok "自訂選擇（$skCount 個 skills）"
         } else {
             $profileDisplay = if ([string]::IsNullOrWhiteSpace($script:SkillsProfile)) { "all" } else { $script:SkillsProfile }
-            Write-Ok "Profile: $profileDisplay ($skCount skills)"
+            Write-Ok "設定檔：$profileDisplay（$skCount 個 skills）"
         }
     }
 
-    # MCP path
+    # MCP 路徑
     if ($script:InstallMcp) {
         Invoke-PromptMcpPath
-        Write-Ok "MCP path: $($script:InstallDir)"
+        Write-Ok "MCP 路徑：$($script:InstallDir)"
     }
 
-    # Confirmation summary
+    # 確認摘要
     if (-not $script:Silent) {
         Write-Host ""
-        Write-Host "  Summary" -ForegroundColor White
+        Write-Host "  摘要" -ForegroundColor White
         Write-Host "  ------------------------------------"
-        Write-Host "  Tools:       " -NoNewline; Write-Host "$(($script:Tools -split ' ') -join ', ')" -ForegroundColor Green
-        Write-Host "  Profile:     " -NoNewline; Write-Host $script:Profile_ -ForegroundColor Green
-        Write-Host "  Scope:       " -NoNewline; Write-Host $script:Scope -ForegroundColor Green
+        Write-Host "  工具：       " -NoNewline; Write-Host "$(($script:Tools -split ' ') -join ', ')" -ForegroundColor Green
+        Write-Host "  Profile：     " -NoNewline; Write-Host $script:Profile_ -ForegroundColor Green
+        Write-Host "  範圍：       " -NoNewline; Write-Host $script:Scope -ForegroundColor Green
         if ($script:InstallMcp) {
-            Write-Host "  MCP server:  " -NoNewline; Write-Host $script:InstallDir -ForegroundColor Green
+            Write-Host "  MCP 伺服器：  " -NoNewline; Write-Host $script:InstallDir -ForegroundColor Green
         }
         if ($script:InstallSkills) {
             $skTotal = $script:SelectedSkills.Count + $script:SelectedMlflowSkills.Count + $script:SelectedApxSkills.Count
             if (-not [string]::IsNullOrWhiteSpace($script:UserSkills)) {
-                Write-Host "  Skills:      " -NoNewline; Write-Host "自訂選擇（$skTotal 個 skills）" -ForegroundColor Green
+                Write-Host "  Skills：      " -NoNewline; Write-Host "自訂選擇（$skTotal 個 skills）" -ForegroundColor Green
             } else {
                 $profileDisplay = if ([string]::IsNullOrWhiteSpace($script:SkillsProfile)) { "all" } else { $script:SkillsProfile }
-                Write-Host "  Skills:      " -NoNewline; Write-Host "$profileDisplay ($skTotal skills)" -ForegroundColor Green
+                Write-Host "  Skills：      " -NoNewline; Write-Host "$profileDisplay（$skTotal 個 skills）" -ForegroundColor Green
             }
         }
         if ($script:InstallMcp) {
-            Write-Host "  MCP 設定:   " -NoNewline; Write-Host "是" -ForegroundColor Green
+            Write-Host "  MCP 設定：   " -NoNewline; Write-Host "是" -ForegroundColor Green
         }
         Write-Host ""
     }
 
     if (-not $script:Silent) {
-        $confirm = Read-Prompt -PromptText "Proceed with installation? (y/n)" -Default "y"
+        $confirm = Read-Prompt -PromptText "確認開始安裝？(y/n)" -Default "y"
         if ($confirm -notin @("y", "Y", "yes")) {
             Write-Host ""
-            Write-Msg "Installation cancelled."
+            Write-Msg "安裝已取消。"
             return
         }
     }
 
-    # Version check
+    # 版本檢查
     Test-Version
 
-    # Determine base directory
+    # 決定基礎目錄
     if ($script:Scope -eq "global") {
         $baseDir = $env:USERPROFILE
     } else {
         $baseDir = (Get-Location).Path
     }
 
-    # Setup MCP server
+    # 設定 MCP 伺服器
     if ($script:InstallMcp) {
         Install-McpServer
     } elseif (-not (Test-Path $script:RepoDir)) {
-        Write-Step "Downloading sources"
+        Write-Step "下載原始碼"
         if (-not (Test-Path $script:InstallDir)) {
             New-Item -ItemType Directory -Path $script:InstallDir -Force | Out-Null
         }
         $prevEAP = $ErrorActionPreference; $ErrorActionPreference = "Continue"
         & git -c advice.detachedHead=false clone -q --depth 1 --branch $Branch $RepoUrl $script:RepoDir 2>&1 | Out-Null
         $ErrorActionPreference = $prevEAP
-        Write-Ok "Repository cloned ($Branch)"
+        Write-Ok "Repository 複製完成（$Branch）"
     }
 
-    # Install skills
+    # 安裝 skills
     if ($script:InstallSkills) {
         Install-Skills -BaseDir $baseDir
     }
 
-    # Write GEMINI.md if gemini is selected
+    # 若已選擇 gemini，寫入 GEMINI.md
     if ($script:Tools -match 'gemini') {
         if ($script:Scope -eq "global") {
             Write-GeminiMd (Join-Path $env:USERPROFILE "GEMINI.md")
@@ -1917,18 +1915,18 @@ function Invoke-Main {
         }
     }
 
-    # Write MCP configs
+    # 寫入 MCP 設定
     if ($script:InstallMcp) {
         Write-McpConfigs -BaseDir $baseDir
     }
 
-    # Save version
+    # 儲存版本
     Save-Version
 
-    # Auth prompt
+    # 認證提示
     Invoke-PromptAuth
 
-    # Summary
+    # 摘要
     Show-Summary
 }
 

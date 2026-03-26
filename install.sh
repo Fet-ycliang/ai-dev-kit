@@ -4,39 +4,39 @@
 #
 # 安裝 skills、MCP 伺服器及設定，支援 Claude Code、Cursor、OpenAI Codex、GitHub Copilot、Gemini CLI 及 Antigravity。
 #
-# 用法：bash <(curl -sL https://raw.githubusercontent.com/Fet-ycliang/ai-dev-kit/main/install.sh) [OPTIONS]
+# 用法：bash <(curl -sL https://raw.githubusercontent.com/databricks-solutions/ai-dev-kit/main/install.sh) [OPTIONS]
 #
 # 範例：
 #   # 基本安裝（專案範圍，互動提示，使用最新版本）
-#   bash <(curl -sL https://raw.githubusercontent.com/Fet-ycliang/ai-dev-kit/main/install.sh)
+#   bash <(curl -sL https://raw.githubusercontent.com/databricks-solutions/ai-dev-kit/main/install.sh)
 #
 #   # 全域安裝並強制重新安裝
-#   bash <(curl -sL https://raw.githubusercontent.com/Fet-ycliang/ai-dev-kit/main/install.sh) --global --force
+#   bash <(curl -sL https://raw.githubusercontent.com/databricks-solutions/ai-dev-kit/main/install.sh) --global --force
 #
 #   # 指定 profile 並強制重新安裝
-#   bash <(curl -sL https://raw.githubusercontent.com/Fet-ycliang/ai-dev-kit/main/install.sh) --profile DEFAULT --force
+#   bash <(curl -sL https://raw.githubusercontent.com/databricks-solutions/ai-dev-kit/main/install.sh) --profile DEFAULT --force
 #
 #   # 僅安裝指定工具
-#   bash <(curl -sL https://raw.githubusercontent.com/Fet-ycliang/ai-dev-kit/main/install.sh) --tools cursor,codex,copilot,gemini
+#   bash <(curl -sL https://raw.githubusercontent.com/databricks-solutions/ai-dev-kit/main/install.sh) --tools cursor,codex,copilot,gemini
 #
 #   # 僅安裝 Skills（略過 MCP 伺服器）
-#   bash <(curl -sL https://raw.githubusercontent.com/Fet-ycliang/ai-dev-kit/main/install.sh) --skills-only
+#   bash <(curl -sL https://raw.githubusercontent.com/databricks-solutions/ai-dev-kit/main/install.sh) --skills-only
 #
 #   # 安裝指定 profile 的 skills
-#   bash <(curl -sL https://raw.githubusercontent.com/Fet-ycliang/ai-dev-kit/main/install.sh) --skills-profile data-engineer
+#   bash <(curl -sL https://raw.githubusercontent.com/databricks-solutions/ai-dev-kit/main/install.sh) --skills-profile data-engineer
 #
 #   # 安裝多個 profiles
-#   bash <(curl -sL https://raw.githubusercontent.com/Fet-ycliang/ai-dev-kit/main/install.sh) --skills-profile data-engineer,ai-ml-engineer
+#   bash <(curl -sL https://raw.githubusercontent.com/databricks-solutions/ai-dev-kit/main/install.sh) --skills-profile data-engineer,ai-ml-engineer
 #
 #   # 僅安裝指定 skills
-#   bash <(curl -sL https://raw.githubusercontent.com/Fet-ycliang/ai-dev-kit/main/install.sh) --skills databricks-jobs,databricks-dbsql
+#   bash <(curl -sL https://raw.githubusercontent.com/databricks-solutions/ai-dev-kit/main/install.sh) --skills databricks-jobs,databricks-dbsql
 #
 #   # 列出可用的 skills 及設定檔
-#   bash <(curl -sL https://raw.githubusercontent.com/Fet-ycliang/ai-dev-kit/main/install.sh) --list-skills
+#   bash <(curl -sL https://raw.githubusercontent.com/databricks-solutions/ai-dev-kit/main/install.sh) --list-skills
 #
 # 替代方式：使用環境變數
-#   DEVKIT_TOOLS=cursor curl -sL https://raw.githubusercontent.com/Fet-ycliang/ai-dev-kit/main/install.sh | bash
-#   DEVKIT_FORCE=true DEVKIT_PROFILE=DEFAULT curl -sL https://raw.githubusercontent.com/Fet-ycliang/ai-dev-kit/main/install.sh | bash
+#   DEVKIT_TOOLS=cursor curl -sL https://raw.githubusercontent.com/databricks-solutions/ai-dev-kit/main/install.sh | bash
+#   DEVKIT_FORCE=true DEVKIT_PROFILE=DEFAULT curl -sL https://raw.githubusercontent.com/databricks-solutions/ai-dev-kit/main/install.sh | bash
 #
 
 set -e
@@ -61,7 +61,7 @@ USER_SKILLS="${DEVKIT_SKILLS:-}"
 # 檢查 scope 是否透過環境變數明確設定
 [ -n "${DEVKIT_SCOPE:-}" ] && SCOPE_EXPLICIT=true
 
-OWNER="Fet-ycliang"
+OWNER="databricks-solutions"
 REPO="ai-dev-kit"
 
 if [ -n "${DEVKIT_BRANCH:-}" ]; then
@@ -96,7 +96,7 @@ MLFLOW_RAW_URL="https://raw.githubusercontent.com/mlflow/skills/main"
 
 # APX skills（從 databricks-solutions/apx repo 下載）
 APX_SKILLS="databricks-app-apx"
-APX_RAW_URL="https://raw.githubusercontent.com/Fet-ycliang/apx/main/skills/apx"
+APX_RAW_URL="https://raw.githubusercontent.com/databricks-solutions/apx/main/skills/apx"
 
 # ─── Skill 設定檔 ──────────────────────────────────────────
 # 無論選擇哪個 profile，核心 skills 一定安裝
@@ -242,8 +242,8 @@ if [ "${LIST_SKILLS:-false}" = true ]; then
 fi
 
 # 解析 branch 參數後設定設定 URL
-REPO_URL="https://github.com/Fet-ycliang/ai-dev-kit.git"
-RAW_URL="https://raw.githubusercontent.com/Fet-ycliang/ai-dev-kit/${BRANCH}"
+REPO_URL="https://github.com/databricks-solutions/ai-dev-kit.git"
+RAW_URL="https://raw.githubusercontent.com/databricks-solutions/ai-dev-kit/${BRANCH}"
 INSTALL_DIR="${AIDEVKIT_HOME:-$HOME/.ai-dev-kit}"
 REPO_DIR="$INSTALL_DIR/repo"
 VENV_DIR="$INSTALL_DIR/.venv"
@@ -1057,7 +1057,7 @@ setup_mcp() {
     
     # 建立 venv 並安裝
     # 在 Rosetta 下的 Apple Silicon，強制使用 arm64 避免與 universal2 Python 二進位檔的架構不符
-    # （詳見：github.com/Fet-ycliang/ai-dev-kit/issues/115）
+    # （詳見：github.com/databricks-solutions/ai-dev-kit/issues/115）
     local arch_prefix=""
     if [ "$(sysctl -n hw.optional.arm64 2>/dev/null)" = "1" ] && [ "$(uname -m)" = "x86_64" ]; then
         if arch -arm64 python3 -c "pass" 2>/dev/null; then
