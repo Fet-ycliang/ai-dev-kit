@@ -1,50 +1,50 @@
 #!/bin/bash
 #
-# Databricks AI Dev Kit - Unified Installer
+# Databricks AI Dev Kit - 統一安裝程式
 #
-# Installs skills, MCP server, and configuration for Claude Code, Cursor, OpenAI Codex, GitHub Copilot, Gemini CLI, and Antigravity.
+# 安裝 skills、MCP 伺服器及設定，支援 Claude Code、Cursor、OpenAI Codex、GitHub Copilot、Gemini CLI 及 Antigravity。
 #
-# Usage: bash <(curl -sL https://raw.githubusercontent.com/databricks-solutions/ai-dev-kit/main/install.sh) [OPTIONS]
+# 用法：bash <(curl -sL https://raw.githubusercontent.com/databricks-solutions/ai-dev-kit/main/install.sh) [OPTIONS]
 #
-# Examples:
-#   # Basic installation (project scoped, prompts for inputs, uses latest release)
+# 範例：
+#   # 基本安裝（專案範圍，互動提示，使用最新版本）
 #   bash <(curl -sL https://raw.githubusercontent.com/databricks-solutions/ai-dev-kit/main/install.sh)
 #
-#   # Global installation with force reinstall
+#   # 全域安裝並強制重新安裝
 #   bash <(curl -sL https://raw.githubusercontent.com/databricks-solutions/ai-dev-kit/main/install.sh) --global --force
 #
-#   # Specify profile and force reinstall
+#   # 指定 profile 並強制重新安裝
 #   bash <(curl -sL https://raw.githubusercontent.com/databricks-solutions/ai-dev-kit/main/install.sh) --profile DEFAULT --force
 #
-#   # Install for specific tools only
+#   # 僅安裝指定工具
 #   bash <(curl -sL https://raw.githubusercontent.com/databricks-solutions/ai-dev-kit/main/install.sh) --tools cursor,codex,copilot,gemini
 #
-#   # Skills only (skip MCP server)
+#   # 僅安裝 Skills（略過 MCP 伺服器）
 #   bash <(curl -sL https://raw.githubusercontent.com/databricks-solutions/ai-dev-kit/main/install.sh) --skills-only
 #
-#   # Install skills for a specific profile
+#   # 安裝指定 profile 的 skills
 #   bash <(curl -sL https://raw.githubusercontent.com/databricks-solutions/ai-dev-kit/main/install.sh) --skills-profile data-engineer
 #
-#   # Install multiple profiles
+#   # 安裝多個 profiles
 #   bash <(curl -sL https://raw.githubusercontent.com/databricks-solutions/ai-dev-kit/main/install.sh) --skills-profile data-engineer,ai-ml-engineer
 #
-#   # Install specific skills only
+#   # 僅安裝指定 skills
 #   bash <(curl -sL https://raw.githubusercontent.com/databricks-solutions/ai-dev-kit/main/install.sh) --skills databricks-jobs,databricks-dbsql
 #
-#   # List available skills and profiles
+#   # 列出可用的 skills 及設定檔
 #   bash <(curl -sL https://raw.githubusercontent.com/databricks-solutions/ai-dev-kit/main/install.sh) --list-skills
 #
-# Alternative: Use environment variables
+# 替代方式：使用環境變數
 #   DEVKIT_TOOLS=cursor curl -sL https://raw.githubusercontent.com/databricks-solutions/ai-dev-kit/main/install.sh | bash
 #   DEVKIT_FORCE=true DEVKIT_PROFILE=DEFAULT curl -sL https://raw.githubusercontent.com/databricks-solutions/ai-dev-kit/main/install.sh | bash
 #
 
 set -e
 
-# Defaults (can be overridden by environment variables or command-line arguments)
+# 預設值（可由環境變數或命令列參數覆蓋）
 PROFILE="${DEVKIT_PROFILE:-DEFAULT}"
 SCOPE="${DEVKIT_SCOPE:-project}"
-SCOPE_EXPLICIT=false  # Track if --global was explicitly passed
+SCOPE_EXPLICIT=false  # 追蹤是否明確傳入 --global
 FORCE="${DEVKIT_FORCE:-false}"
 IS_UPDATE=false
 SILENT="${DEVKIT_SILENT:-false}"
@@ -54,11 +54,11 @@ USER_MCP_PATH="${DEVKIT_MCP_PATH:-}"
 SKILLS_PROFILE="${DEVKIT_SKILLS_PROFILE:-}"
 USER_SKILLS="${DEVKIT_SKILLS:-}"
 
-# Convert string booleans from env vars to actual booleans
+# 將環境變數的字串布林值轉換為實際布林值
 [ "$FORCE" = "true" ] || [ "$FORCE" = "1" ] && FORCE=true || FORCE=false
 [ "$SILENT" = "true" ] || [ "$SILENT" = "1" ] && SILENT=true || SILENT=false
 
-# Check if scope was explicitly set via env var
+# 檢查 scope 是否透過環境變數明確設定
 [ -n "${DEVKIT_SCOPE:-}" ] && SCOPE_EXPLICIT=true
 
 OWNER="databricks-solutions"
@@ -72,56 +72,56 @@ else
     | grep '"tag_name"' \
     | sed -E 's/.*"tag_name": *"([^"]+)".*/\1/'
   )"
-  # Fallback to main if we couldn't fetch the latest release
+  # 若無法取得最新版本，回退至 main
   [ -z "$BRANCH" ] && BRANCH="main"
 fi
 
-# Installation mode defaults
+# 安裝模式預設值
 INSTALL_MCP=true
 INSTALL_SKILLS=true
 
-# Minimum required versions
+# 最低版本需求
 MIN_CLI_VERSION="0.278.0"
 MIN_SDK_VERSION="0.85.0"
 
-# Colors
+# 顏色設定
 G='\033[0;32m' Y='\033[1;33m' R='\033[0;31m' BL='\033[0;34m' B='\033[1m' D='\033[2m' N='\033[0m'
 
-# Databricks skills (bundled in repo)
+# Databricks skills（打包於 repo 中）
 SKILLS="databricks-agent-bricks databricks-ai-functions databricks-aibi-dashboards databricks-app-python databricks-bundles databricks-config databricks-dbsql databricks-docs databricks-genie databricks-iceberg databricks-jobs databricks-lakebase-autoscale databricks-lakebase-provisioned databricks-metric-views databricks-mlflow-evaluation databricks-model-serving databricks-python-sdk databricks-spark-declarative-pipelines databricks-spark-structured-streaming databricks-synthetic-data-gen databricks-unity-catalog databricks-unstructured-pdf-generation databricks-vector-search databricks-zerobus-ingest spark-python-data-source"
 
-# MLflow skills (fetched from mlflow/skills repo)
+# MLflow skills（從 mlflow/skills repo 下載）
 MLFLOW_SKILLS="agent-evaluation analyze-mlflow-chat-session analyze-mlflow-trace instrumenting-with-mlflow-tracing mlflow-onboarding querying-mlflow-metrics retrieving-mlflow-traces searching-mlflow-docs"
 MLFLOW_RAW_URL="https://raw.githubusercontent.com/mlflow/skills/main"
 
-# APX skills (fetched from databricks-solutions/apx repo)
+# APX skills（從 databricks-solutions/apx repo 下載）
 APX_SKILLS="databricks-app-apx"
 APX_RAW_URL="https://raw.githubusercontent.com/databricks-solutions/apx/main/skills/apx"
 
-# ─── Skill profiles ──────────────────────────────────────────
-# Core skills always installed regardless of profile selection
+# ─── Skill 設定檔 ──────────────────────────────────────────
+# 無論選擇哪個 profile，核心 skills 一定安裝
 CORE_SKILLS="databricks-config databricks-docs databricks-python-sdk databricks-unity-catalog"
 
-# Profile definitions (non-core skills only — core skills are always added)
+# Profile 定義（僅非核心 skills──核心 skills 一定加入）
 PROFILE_DATA_ENGINEER="databricks-spark-declarative-pipelines databricks-spark-structured-streaming databricks-jobs databricks-bundles databricks-dbsql databricks-iceberg databricks-zerobus-ingest spark-python-data-source databricks-metric-views databricks-synthetic-data-gen"
 PROFILE_ANALYST="databricks-aibi-dashboards databricks-dbsql databricks-genie databricks-metric-views"
 PROFILE_AIML_ENGINEER="databricks-agent-bricks databricks-ai-functions databricks-vector-search databricks-model-serving databricks-genie databricks-unstructured-pdf-generation databricks-mlflow-evaluation databricks-synthetic-data-gen databricks-jobs"
 PROFILE_AIML_MLFLOW="agent-evaluation analyze-mlflow-chat-session analyze-mlflow-trace instrumenting-with-mlflow-tracing mlflow-onboarding querying-mlflow-metrics retrieving-mlflow-traces searching-mlflow-docs"
 PROFILE_APP_DEVELOPER="databricks-app-python databricks-app-apx databricks-lakebase-autoscale databricks-lakebase-provisioned databricks-model-serving databricks-dbsql databricks-jobs databricks-bundles"
 
-# Selected skills (populated during profile selection)
+# 已選取的 skills（在 profile 選取期間填入）
 SELECTED_SKILLS=""
 SELECTED_MLFLOW_SKILLS=""
 SELECTED_APX_SKILLS=""
 
-# Output helpers
+# 輸出輔助函式
 msg()  { [ "$SILENT" = true ] || echo -e "  $*"; }
 ok()   { [ "$SILENT" = true ] || echo -e "  ${G}✓${N} $*"; }
 warn() { [ "$SILENT" = true ] || echo -e "  ${Y}!${N} $*"; }
-die()  { echo -e "  ${R}✗${N} $*" >&2; exit 1; }  # Always show errors
+die()  { echo -e "  ${R}✗${N} $*" >&2; exit 1; }  # 一律顯示錯誤
 step() { [ "$SILENT" = true ] || echo -e "\n${B}$*${N}"; }
 
-# Parse arguments
+# 解析參數
 while [ $# -gt 0 ]; do
     case $1 in
         -p|--profile)     PROFILE="$2"; shift 2 ;;
@@ -137,99 +137,99 @@ while [ $# -gt 0 ]; do
         --tools)          USER_TOOLS="$2"; shift 2 ;;
         -f|--force)       FORCE=true; shift ;;
         -h|--help)        
-            echo "Databricks AI Dev Kit Installer"
+            echo "Databricks AI Dev Kit 安裝程式"
             echo ""
             echo "Usage: bash <(curl -sL .../install.sh) [OPTIONS]"
             echo ""
-            echo "Options:"
-            echo "  -p, --profile NAME    Databricks profile (default: DEFAULT)"
-            echo "  -b, --branch NAME     Git branch/tag to install (default: latest release)"
-            echo "  -g, --global          Install globally for all projects"
-            echo "  --skills-only         Skip MCP server setup"
-            echo "  --mcp-only            Skip skills installation"
-            echo "  --mcp-path PATH       Path to MCP server installation (default: ~/.ai-dev-kit)"
-            echo "  --silent              Silent mode (no output except errors)"
-            echo "  --tools LIST          Comma-separated: claude,cursor,copilot,codex,gemini,antigravity"
-            echo "  --skills-profile LIST Comma-separated profiles: all,data-engineer,analyst,ai-ml-engineer,app-developer"
-            echo "  --skills LIST         Comma-separated skill names to install (overrides profile)"
-            echo "  --list-skills         List available skills and profiles, then exit"
-            echo "  -f, --force           Force reinstall"
-            echo "  -h, --help            Show this help"
+            echo "選項："
+            echo "  -p, --profile NAME    Databricks profile（預設：DEFAULT）"
+            echo "  -b, --branch NAME     要安裝的 Git 分支/標籤（預設：最新版本）"
+            echo "  -g, --global          全域安裝（適用所有專案）"
+            echo "  --skills-only         略過 MCP 伺服器設定"
+            echo "  --mcp-only            略過 Skills 安裝"
+            echo "  --mcp-path PATH       MCP 伺服器安裝路徑（預設：~/.ai-dev-kit）"
+            echo "  --silent              靜默模式（僅顯示錯誤）"
+            echo "  --tools LIST          以逗號分隔：claude,cursor,copilot,codex,gemini,antigravity"
+            echo "  --skills-profile LIST 以逗號分隔的設定檔：all,data-engineer,analyst,ai-ml-engineer,app-developer"
+            echo "  --skills LIST         以逗號分隔的 skill 名稱（覆蓋設定檔）"
+            echo "  --list-skills         列出可用的 skills 及設定檔後離開"
+            echo "  -f, --force           強制重新安裝"
+            echo "  -h, --help            顯示此說明"
             echo ""
-            echo "Environment Variables (alternative to flags):"
-            echo "  DEVKIT_PROFILE        Databricks config profile"
-            echo "  DEVKIT_BRANCH         Git branch/tag to install (default: latest release)"
-            echo "  DEVKIT_SCOPE          'project' or 'global'"
-            echo "  DEVKIT_TOOLS          Comma-separated list of tools"
-            echo "  DEVKIT_FORCE          Set to 'true' to force reinstall"
-            echo "  DEVKIT_MCP_PATH       Path to MCP server installation"
-            echo "  DEVKIT_SKILLS_PROFILE Comma-separated skill profiles"
-            echo "  DEVKIT_SKILLS         Comma-separated skill names"
-            echo "  DEVKIT_SILENT         Set to 'true' for silent mode"
-            echo "  AIDEVKIT_HOME         Installation directory (default: ~/.ai-dev-kit)"
+            echo "環境變數（旗標的替代方式）："
+            echo "  DEVKIT_PROFILE        Databricks 設定 profile"
+            echo "  DEVKIT_BRANCH         要安裝的 Git 分支/標籤（預設：最新版本）"
+            echo "  DEVKIT_SCOPE          'project' 或 'global'"
+            echo "  DEVKIT_TOOLS          以逗號分隔的工具清單"
+            echo "  DEVKIT_FORCE          設定為 'true' 強制重新安裝"
+            echo "  DEVKIT_MCP_PATH       MCP 伺服器安裝路徑"
+            echo "  DEVKIT_SKILLS_PROFILE 以逗號分隔的 skill 設定檔"
+            echo "  DEVKIT_SKILLS         以逗號分隔的 skill 名稱"
+            echo "  DEVKIT_SILENT         設定為 'true' 啟用靜默模式"
+            echo "  AIDEVKIT_HOME         安裝目錄（預設：~/.ai-dev-kit）"
             echo ""
-            echo "Examples:"
-            echo "  # Using environment variables"
+            echo "範例："
+            echo "  # 使用環境變數"
             echo "  DEVKIT_TOOLS=cursor curl -sL .../install.sh | bash"
             echo ""
             exit 0 ;;
-        *) die "Unknown option: $1 (use -h for help)" ;;
+        *) die "未知選項：$1（使用 -h 取得說明）" ;;
     esac
 done
 
-# ─── --list-skills handler ─────────────────────────────────────
+# ─── --list-skills 處理器 ─────────────────────────────────────
 if [ "${LIST_SKILLS:-false}" = true ]; then
     echo ""
-    echo -e "${B}Available Skill Profiles${N}"
+    echo -e "${B}可用的 Skill 設定檔${N}"
     echo "────────────────────────────────"
     echo ""
-    echo -e "  ${B}all${N}              All 34 skills (default)"
-    echo -e "  ${B}data-engineer${N}    Pipelines, Spark, Jobs, Streaming (14 skills)"
-    echo -e "  ${B}analyst${N}          Dashboards, SQL, Genie, Metrics (8 skills)"
-    echo -e "  ${B}ai-ml-engineer${N}   Agents, RAG, Vector Search, MLflow (17 skills)"
-    echo -e "  ${B}app-developer${N}    Apps, Lakebase, Deployment (10 skills)"
+    echo -e "  ${B}all${N}              全部 34 個 skills（預設）"
+    echo -e "  ${B}data-engineer${N}    Pipelines、Spark、Jobs、Streaming（14 個 skills）"
+    echo -e "  ${B}analyst${N}          儀表板、SQL、Genie、指標（8 個 skills）"
+    echo -e "  ${B}ai-ml-engineer${N}   Agents、RAG、向量搜尋、MLflow（17 個 skills）"
+    echo -e "  ${B}app-developer${N}    應用程式、Lakebase、部署（10 個 skills）"
     echo ""
-    echo -e "${B}Core Skills${N} (always installed)"
+    echo -e "${B}核心 Skills${N}（一定安裝）"
     echo "────────────────────────────────"
     for skill in $CORE_SKILLS; do
         echo -e "  ${G}✓${N} $skill"
     done
     echo ""
-    echo -e "${B}Data Engineer${N}"
+    echo -e "${B}資料工程師${N}"
     echo "────────────────────────────────"
     for skill in $PROFILE_DATA_ENGINEER; do
         echo -e "    $skill"
     done
     echo ""
-    echo -e "${B}Business Analyst${N}"
+    echo -e "${B}商業分析師${N}"
     echo "────────────────────────────────"
     for skill in $PROFILE_ANALYST; do
         echo -e "    $skill"
     done
     echo ""
-    echo -e "${B}AI/ML Engineer${N}"
+    echo -e "${B}AI/ML 工程師${N}"
     echo "────────────────────────────────"
     for skill in $PROFILE_AIML_ENGINEER; do
         echo -e "    $skill"
     done
-    echo -e "  ${D}+ MLflow skills:${N}"
+    echo -e "  ${D}+ MLflow skills：${N}"
     for skill in $PROFILE_AIML_MLFLOW; do
         echo -e "    $skill"
     done
     echo ""
-    echo -e "${B}App Developer${N}"
+    echo -e "${B}應用程式開發者${N}"
     echo "────────────────────────────────"
     for skill in $PROFILE_APP_DEVELOPER; do
         echo -e "    $skill"
     done
     echo ""
-    echo -e "${B}MLflow Skills${N} (from mlflow/skills repo)"
+    echo -e "${B}MLflow Skills${N}（來自 mlflow/skills repo）"
     echo "────────────────────────────────"
     for skill in $MLFLOW_SKILLS; do
         echo -e "    $skill"
     done
     echo ""
-    echo -e "${B}APX Skills${N} (from databricks-solutions/apx repo)"
+    echo -e "${B}APX Skills${N}（來自 databricks-solutions/apx repo）"
     echo "────────────────────────────────"
     for skill in $APX_SKILLS; do
         echo -e "    $skill"
@@ -241,7 +241,7 @@ if [ "${LIST_SKILLS:-false}" = true ]; then
     exit 0
 fi
 
-# Set configuration URLs after parsing branch argument
+# 解析 branch 參數後設定設定 URL
 REPO_URL="https://github.com/databricks-solutions/ai-dev-kit.git"
 RAW_URL="https://raw.githubusercontent.com/databricks-solutions/ai-dev-kit/${BRANCH}"
 INSTALL_DIR="${AIDEVKIT_HOME:-$HOME/.ai-dev-kit}"
@@ -250,10 +250,10 @@ VENV_DIR="$INSTALL_DIR/.venv"
 VENV_PYTHON="$VENV_DIR/bin/python"
 MCP_ENTRY="$REPO_DIR/databricks-mcp-server/run_server.py"
 
-# ─── Interactive helpers ────────────────────────────────────────
-# Reads from /dev/tty so prompts work even when piped via curl | bash
+# ─── 互動輔助函式 ────────────────────────────────────────
+# 從 /dev/tty 讀取，使提示在透過 curl | bash 執行時也能正常運作
 
-# Simple text prompt with default value
+# 簡單文字提示（含預設值）
 prompt() {
     local prompt_text=$1
     local default_value=$2
@@ -282,11 +282,11 @@ prompt() {
     fi
 }
 
-# Interactive checkbox selector using arrow keys + space/enter + "Done" button
-# Outputs space-separated selected values to stdout
-# Args: "Label|value|on_or_off|hint" ...
+# 使用方向鍵 + 空白鍵/Enter 的互動核取方塊選擇器
+# 輸出以空白鍵分隔的已選取值至 stdout
+# 參數："Label|value|on_or_off|hint" ...
 checkbox_select() {
-    # Parse items
+    # 解析項目
     local -a labels=()
     local -a values=()
     local -a states=()
@@ -307,9 +307,9 @@ checkbox_select() {
     done
 
     local cursor=0
-    local total_rows=$((count + 2))  # items + blank line + Done button
+    local total_rows=$((count + 2))  # 項目 + 空白行 + Done 按鈕
 
-    # Draw the checkbox list + Done button
+    # 繪製核取方塊清單 + Done 按鈕
     _checkbox_draw() {
         local i
         for i in $(seq 0 $((count - 1))); do
@@ -321,9 +321,9 @@ checkbox_select() {
             [ "${states[$i]}" = "1" ] && hint_style="\033[0;32m"
             printf "\033[2K  %b[%b] %-16s %b%s\033[0m\n" "$arrow" "$check" "${labels[$i]}" "$hint_style" "${hints[$i]}" > /dev/tty
         done
-        # Blank separator line
+        # 空白分隔行
         printf "\033[2K\n" > /dev/tty
-        # Done button
+        # Done 按鈕
         if [ "$cursor" = "$count" ]; then
             printf "\033[2K  \033[0;34m❯\033[0m \033[1;32m[ Confirm ]\033[0m\n" > /dev/tty
         else
@@ -331,25 +331,25 @@ checkbox_select() {
         fi
     }
 
-    # Print instructions
-    printf "\n  \033[2m↑/↓ navigate · space/enter select · enter on Confirm to finish\033[0m\n\n" > /dev/tty
+    # 顯示操作說明
+    printf "\n  \033[2m↑/↓ 導覽 · 空白鍵/Enter 切換選取 · 在確認時按 Enter 完成\033[0m\n\n" > /dev/tty
 
-    # Hide cursor
+    # 隱藏游標
     printf "\033[?25l" > /dev/tty
 
-    # Restore cursor on exit (Ctrl+C safety)
+    # 結束時恢復游標（Ctrl+C 安全處理）
     trap 'printf "\033[?25h" > /dev/tty 2>/dev/null' EXIT
 
-    # Initial draw
+    # 初始繪製
     _checkbox_draw
 
-    # Input loop
+    # 輸入迴圈
     while true; do
-        # Move back to top of drawn area and redraw
+        # 移回繪製區頂端並重新繪製
         printf "\033[%dA" "$total_rows" > /dev/tty
         _checkbox_draw
 
-        # Read input
+        # 讀取輸入
         local key=""
         IFS= read -rsn1 key < /dev/tty 2>/dev/null
 
@@ -359,21 +359,21 @@ checkbox_select() {
             read -rsn1 s2 < /dev/tty 2>/dev/null
             if [ "$s1" = "[" ]; then
                 case "$s2" in
-                    A) [ "$cursor" -gt 0 ] && cursor=$((cursor - 1)) ;;  # Up
-                    B) [ "$cursor" -lt "$count" ] && cursor=$((cursor + 1)) ;;  # Down (can go to Done)
+                    A) [ "$cursor" -gt 0 ] && cursor=$((cursor - 1)) ;;  # 上
+                    B) [ "$cursor" -lt "$count" ] && cursor=$((cursor + 1)) ;;  # 下（可移至 Done）
                 esac
             fi
         elif [ "$key" = " " ] || [ "$key" = "" ]; then
-            # Space or Enter
+            # 空白鍵或 Enter
             if [ "$cursor" -lt "$count" ]; then
-                # On a checkbox item — toggle it
+                # 在核取方塊項目上──切換狀態
                 if [ "${states[$cursor]}" = "1" ]; then
                     states[$cursor]=0
                 else
                     states[$cursor]=1
                 fi
             else
-                # On the Confirm button — done
+                # 在 Confirm 按鈕上──完成
                 printf "\033[%dA" "$total_rows" > /dev/tty
                 _checkbox_draw
                 break
@@ -381,11 +381,11 @@ checkbox_select() {
         fi
     done
 
-    # Show cursor again
+    # 再次顯示游標
     printf "\033[?25h" > /dev/tty
     trap - EXIT
 
-    # Build result
+    # 建立結果
     local selected=""
     for i in $(seq 0 $((count - 1))); do
         if [ "${states[$i]}" = "1" ]; then
@@ -396,11 +396,11 @@ checkbox_select() {
     echo "$selected"
 }
 
-# Interactive single-select using arrow keys + enter + "Confirm" button
-# Outputs the selected value to stdout
-# Args: "Label|value|selected|hint" ...  (exactly one should have selected=on)
+# 使用方向鍵 + Enter 的互動單選器
+# 輸出已選取的值至 stdout
+# 參數："Label|value|selected|hint" ...（恰好一個應設定 selected=on）
 radio_select() {
-    # Parse items
+    # 解析項目
     local -a labels=()
     local -a values=()
     local -a hints=()
@@ -417,7 +417,7 @@ radio_select() {
     done
 
     local cursor=0
-    local total_rows=$((count + 2))  # items + blank line + Confirm button
+    local total_rows=$((count + 2))  # 項目 + 空白行 + Confirm 按鈕
 
     _radio_draw() {
         local i
@@ -439,7 +439,7 @@ radio_select() {
         fi
     }
 
-    printf "\n  \033[2m↑/↓ navigate · enter confirm · space preview\033[0m\n\n" > /dev/tty
+    printf "\n  \033[2m↑/↓ 導覽 · Enter 確認 · 空白鍵預覽\033[0m\n\n" > /dev/tty
     printf "\033[?25l" > /dev/tty
     trap 'printf "\033[?25h" > /dev/tty 2>/dev/null' EXIT
 
@@ -463,7 +463,7 @@ radio_select() {
                 esac
             fi
         elif [ "$key" = "" ]; then
-            # Enter — select current item and confirm immediately
+            # Enter──選取目前項目並立即確認
             if [ "$cursor" -lt "$count" ]; then
                 selected=$cursor
             fi
@@ -471,7 +471,7 @@ radio_select() {
             _radio_draw
             break
         elif [ "$key" = " " ]; then
-            # Space — select but keep browsing
+            # 空白鍵──選取但繼續瀏覽
             if [ "$cursor" -lt "$count" ]; then
                 selected=$cursor
             fi
@@ -484,19 +484,19 @@ radio_select() {
     echo "${values[$selected]}"
 }
 
-# ─── Tool detection & selection ─────────────────────────────────
+# ─── 工具偵測與選擇 ─────────────────────────────────
 detect_tools() {
-    # If provided via --tools flag or TOOLS env var, skip detection and prompts
+    # 若已透過 --tools 旗標或 TOOLS 環境變數提供，略過偵測和提示
     if [ -n "$USER_TOOLS" ]; then
         TOOLS=$(echo "$USER_TOOLS" | tr ',' ' ')
         return
     elif [ -n "$TOOLS" ]; then
-        # TOOLS env var already set, just normalize it
+        # TOOLS 環境變數已設定，僅正規化格式
         TOOLS=$(echo "$TOOLS" | tr ',' ' ')
         return
     fi
 
-    # Auto-detect what's installed
+    # 自動偵測已安裝的工具
     local has_claude=false
     local has_cursor=false
     local has_codex=false
@@ -511,26 +511,26 @@ detect_tools() {
     { command -v gemini >/dev/null 2>&1 || [ -f "$HOME/.gemini/local/gemini" ]; } && has_gemini=true
     { [ -d "/Applications/Antigravity.app" ] || command -v antigravity >/dev/null 2>&1; } && has_antigravity=true
 
-    # Build checkbox items: "Label|value|on_or_off|hint"
+    # 建立核取方塊項目："Label|value|on_or_off|hint"
     local claude_state="off" cursor_state="off" codex_state="off" copilot_state="off" gemini_state="off" antigravity_state="off"
-    local claude_hint="not found" cursor_hint="not found" codex_hint="not found" copilot_hint="not found" gemini_hint="not found" antigravity_hint="not found"
-    [ "$has_claude" = true ]        && claude_state="on"        && claude_hint="detected"
-    [ "$has_cursor" = true ]        && cursor_state="on"        && cursor_hint="detected"
-    [ "$has_codex" = true ]         && codex_state="on"         && codex_hint="detected"
-    [ "$has_copilot" = true ]       && copilot_state="on"       && copilot_hint="detected"
-    [ "$has_gemini" = true ]        && gemini_state="on"        && gemini_hint="detected"
-    [ "$has_antigravity" = true ]   && antigravity_state="on"   && antigravity_hint="detected"
+    local claude_hint="未找到" cursor_hint="未找到" codex_hint="未找到" copilot_hint="未找到" gemini_hint="未找到" antigravity_hint="未找到"
+    [ "$has_claude" = true ]        && claude_state="on"        && claude_hint="已偵測"
+    [ "$has_cursor" = true ]        && cursor_state="on"        && cursor_hint="已偵測"
+    [ "$has_codex" = true ]         && codex_state="on"         && codex_hint="已偵測"
+    [ "$has_copilot" = true ]       && copilot_state="on"       && copilot_hint="已偵測"
+    [ "$has_gemini" = true ]        && gemini_state="on"        && gemini_hint="已偵測"
+    [ "$has_antigravity" = true ]   && antigravity_state="on"   && antigravity_hint="已偵測"
 
-    # If nothing detected, pre-select claude as default
+    # 若未偵測到任何工具，預先選取 claude 作為預設
     if [ "$has_claude" = false ] && [ "$has_cursor" = false ] && [ "$has_codex" = false ] && [ "$has_copilot" = false ] && [ "$has_gemini" = false ] && [ "$has_antigravity" = false ]; then
         claude_state="on"
-        claude_hint="default"
+        claude_hint="預設"
     fi
 
-    # Interactive or fallback
+    # 互動模式或回退模式
     if [ "$SILENT" = false ] && [ -e /dev/tty ]; then
         [ "$SILENT" = false ] && echo ""
-        [ "$SILENT" = false ] && echo -e "  ${B}Select tools to install for:${N}"
+        [ "$SILENT" = false ] && echo -e "  ${B}選擇要安裝的工具：${N}"
 
         TOOLS=$(checkbox_select \
             "Claude Code|claude|${claude_state}|${claude_hint}" \
@@ -541,7 +541,7 @@ detect_tools() {
             "Antigravity|antigravity|${antigravity_state}|${antigravity_hint}" \
         )
     else
-        # Silent: use detected defaults
+        # 靜默模式：使用偵測到的預設值
         local tools=""
         [ "$has_claude" = true ]        && tools="claude"
         [ "$has_cursor" = true ]        && tools="${tools:+$tools }cursor"
@@ -553,32 +553,32 @@ detect_tools() {
         TOOLS="$tools"
     fi
 
-    # Validate we have at least one
+    # 驗證至少選取一個工具
     if [ -z "$TOOLS" ]; then
-        warn "No tools selected, defaulting to Claude Code"
+        warn "未選取任何工具，預設使用 Claude Code"
         TOOLS="claude"
     fi
 }
 
-# ─── Databricks profile selection ─────────────────────────────
+# ─── Databricks Profile 選擇 ─────────────────────────────
 prompt_profile() {
-    # If provided via --profile flag (non-default), skip prompt
+    # 若已透過 --profile 旗標提供（非預設值），略過提示
     if [ "$PROFILE" != "DEFAULT" ]; then
         return
     fi
 
-    # Skip in silent mode or non-interactive
+    # 靜默模式或非互動環境下略過
     if [ "$SILENT" = true ] || [ ! -e /dev/tty ]; then
         return
     fi
 
-    # Detect existing profiles from ~/.databrickscfg
+    # 從 ~/.databrickscfg 偵測現有的 profiles
     local cfg_file="$HOME/.databrickscfg"
     local -a profiles=()
 
     if [ -f "$cfg_file" ]; then
         while IFS= read -r line; do
-            # Match [PROFILE_NAME] sections
+            # 比對 [PROFILE_NAME] 區段
             if [[ "$line" =~ ^\[([a-zA-Z0-9_-]+)\]$ ]]; then
                 profiles+=("${BASH_REMATCH[1]}")
             fi
@@ -586,22 +586,22 @@ prompt_profile() {
     fi
 
     echo ""
-    echo -e "  ${B}Select Databricks profile${N}"
+    echo -e "  ${B}選擇 Databricks Profile${N}"
 
     if [ ${#profiles[@]} -gt 0 ] && [ -e /dev/tty ]; then
-        # Build radio items: "Label|value|on_or_off|hint"
+        # 建立單選項目："Label|value|on_or_off|hint"
         local -a items=()
         for p in "${profiles[@]}"; do
             local state="off"
             local hint=""
-            [ "$p" = "DEFAULT" ] && state="on" && hint="default"
+            [ "$p" = "DEFAULT" ] && state="on" && hint="預設"
             items+=("${p}|${p}|${state}|${hint}")
         done
         
-        # Add custom profile option at the end
-        items+=("Custom profile name...|__CUSTOM__|off|Enter a custom profile name")
+        # 在最後加入自訂 profile 選項
+        items+=("自訂 Profile 名稱...|__CUSTOM__|off|輸入自訂 Profile 名稱")
 
-        # If no DEFAULT profile exists, pre-select the first one
+        # 若不存在 DEFAULT profile，預先選取第一個
         local has_default=false
         for p in "${profiles[@]}"; do
             [ "$p" = "DEFAULT" ] && has_default=true
@@ -613,60 +613,60 @@ prompt_profile() {
         local selected_profile
         selected_profile=$(radio_select "${items[@]}")
         
-        # If custom was selected, prompt for name
+        # 若選取了自訂，提示輸入名稱
         if [ "$selected_profile" = "__CUSTOM__" ]; then
             echo ""
             local custom_name
-            custom_name=$(prompt "Enter profile name" "DEFAULT")
+            custom_name=$(prompt "輸入 Profile 名稱" "DEFAULT")
             PROFILE="$custom_name"
         else
             PROFILE="$selected_profile"
         fi
     else
-        echo -e "  ${D}No ~/.databrickscfg found. You can authenticate after install.${N}"
+        echo -e "  ${D}找不到 ~/.databrickscfg，可在安裝後執行認證。${N}"
         echo ""
         local selected
-        selected=$(prompt "Profile name" "DEFAULT")
+        selected=$(prompt "Profile 名稱" "DEFAULT")
         PROFILE="$selected"
     fi
 }
 
-# ─── MCP path selection ────────────────────────────────────────
+# ─── MCP 路徑選擇 ────────────────────────────────────────
 prompt_mcp_path() {
-    # If provided via --mcp-path flag, skip prompt
+    # 若已透過 --mcp-path 旗標提供，略過提示
     if [ -n "$USER_MCP_PATH" ]; then
         INSTALL_DIR="$USER_MCP_PATH"
     elif [ "$SILENT" = false ] && [ -e /dev/tty ]; then
         [ "$SILENT" = false ] && echo ""
-        [ "$SILENT" = false ] && echo -e "  ${B}MCP server location${N}"
-        [ "$SILENT" = false ] && echo -e "  ${D}The MCP server runtime (Python venv + source) will be installed here.${N}"
-        [ "$SILENT" = false ] && echo -e "  ${D}Shared across all your projects — only the config files are per-project.${N}"
+        [ "$SILENT" = false ] && echo -e "  ${B}MCP 伺服器位置${N}"
+        [ "$SILENT" = false ] && echo -e "  ${D}MCP 伺服器執行環境（Python venv + 原始碼）將安裝在此。${N}"
+        [ "$SILENT" = false ] && echo -e "  ${D}跨所有專案共用──僅設定檔為各專案獨立。${N}"
         [ "$SILENT" = false ] && echo ""
 
         local selected
-        selected=$(prompt "Install path" "$INSTALL_DIR")
+        selected=$(prompt "安裝路徑" "$INSTALL_DIR")
 
-        # Expand ~ to $HOME
+        # 展開 ~ 為 $HOME
         INSTALL_DIR="${selected/#\~/$HOME}"
     fi
 
-    # Update derived paths
+    # 更新衍生路徑
     REPO_DIR="$INSTALL_DIR/repo"
     VENV_DIR="$INSTALL_DIR/.venv"
     VENV_PYTHON="$VENV_DIR/bin/python"
     MCP_ENTRY="$REPO_DIR/databricks-mcp-server/run_server.py"
 }
 
-# ─── Skill profile selection ──────────────────────────────────
-# Resolve selected skills from profile names or explicit skill list
+# ─── Skill 設定檔選擇 ──────────────────────────────────
+# 從 profile 名稱或明確指定的 skill 清單解析已選取的 skills
 resolve_skills() {
     local db_skills="" mlflow_skills="" apx_skills=""
 
-    # Priority 1: Explicit --skills flag (comma-separated skill names)
+    # 優先順序 1：明確的 --skills 旗標（以逗號分隔的 skill 名稱）
     if [ -n "$USER_SKILLS" ]; then
         local user_list
         user_list=$(echo "$USER_SKILLS" | tr ',' ' ')
-        # Separate into DB, MLflow, and APX buckets, always include core
+        # 分類至 DB、MLflow、APX 各組，且一定包含核心 skills
         db_skills="$CORE_SKILLS"
         for skill in $user_list; do
             if echo "$MLFLOW_SKILLS" | grep -qw "$skill"; then
@@ -677,14 +677,14 @@ resolve_skills() {
                 db_skills="${db_skills:+$db_skills }$skill"
             fi
         done
-        # Deduplicate
+        # 去除重複
         SELECTED_SKILLS=$(echo "$db_skills" | tr ' ' '\n' | sort -u | tr '\n' ' ')
         SELECTED_MLFLOW_SKILLS=$(echo "$mlflow_skills" | tr ' ' '\n' | sort -u | tr '\n' ' ')
         SELECTED_APX_SKILLS=$(echo "$apx_skills" | tr ' ' '\n' | sort -u | tr '\n' ' ')
         return
     fi
 
-    # Priority 2: --skills-profile flag or interactive selection
+    # 優先順序 2：--skills-profile 旗標或互動選擇
     if [ -z "$SKILLS_PROFILE" ] || [ "$SKILLS_PROFILE" = "all" ]; then
         SELECTED_SKILLS="$SKILLS"
         SELECTED_MLFLOW_SKILLS="$MLFLOW_SKILLS"
@@ -692,7 +692,7 @@ resolve_skills() {
         return
     fi
 
-    # Build union of selected profiles (comma-separated)
+    # 建立已選取 profiles 的聯集（以逗號分隔）
     db_skills="$CORE_SKILLS"
     mlflow_skills=""
     apx_skills=""
@@ -722,31 +722,31 @@ resolve_skills() {
                 apx_skills="$apx_skills $APX_SKILLS"
                 ;;
             *)
-                warn "Unknown skill profile: $profile (ignored)"
+                warn "未知的 Skill 設定檔：$profile（已略過）"
                 ;;
         esac
     done
 
-    # Deduplicate
+    # 去除重複
     SELECTED_SKILLS=$(echo "$db_skills" | tr ' ' '\n' | sort -u | tr '\n' ' ')
     SELECTED_MLFLOW_SKILLS=$(echo "$mlflow_skills" | tr ' ' '\n' | sort -u | tr '\n' ' ')
     SELECTED_APX_SKILLS=$(echo "$apx_skills" | tr ' ' '\n' | sort -u | tr '\n' ' ')
 }
 
-# Interactive skill profile selection (multi-select)
+# 互動式 Skill 設定檔選擇（多選）
 prompt_skills_profile() {
-    # If provided via --skills or --skills-profile, skip interactive prompt
+    # 若已透過 --skills 或 --skills-profile 提供，略過互動提示
     if [ -n "$USER_SKILLS" ] || [ -n "$SKILLS_PROFILE" ]; then
         return
     fi
 
-    # Skip in silent mode or non-interactive
+    # 靜默模式或非互動環境下略過
     if [ "$SILENT" = true ] || [ ! -e /dev/tty ]; then
         SKILLS_PROFILE="all"
         return
     fi
 
-    # Check for previous selection (scope-local first, then global fallback for upgrades)
+    # 檢查上次的選擇（優先使用範圍本地設定，升級時回退至全域）
     local profile_file="$STATE_DIR/.skills-profile"
     [ ! -f "$profile_file" ] && [ "$SCOPE" = "project" ] && profile_file="$INSTALL_DIR/.skills-profile"
     if [ -f "$profile_file" ]; then
@@ -757,7 +757,7 @@ prompt_skills_profile() {
             local display_profile
             display_profile=$(echo "$prev_profile" | tr ',' ', ')
             local keep
-            keep=$(prompt "Previous skill profile: ${B}${display_profile}${N}. Keep? ${D}(Y/n)${N}" "y")
+            keep=$(prompt "上次的 Skill 設定檔：${B}${display_profile}${N}。保留？${D}(Y/n)${N}" "y")
             if [ "$keep" = "y" ] || [ "$keep" = "Y" ] || [ "$keep" = "yes" ] || [ -z "$keep" ]; then
                 SKILLS_PROFILE="$prev_profile"
                 return
@@ -766,13 +766,13 @@ prompt_skills_profile() {
     fi
 
     echo ""
-    echo -e "  ${B}Select skill profile(s)${N}"
+    echo -e "  ${B}選擇 Skill 設定檔${N}"
 
-    # Custom checkbox with mutual exclusion: "All" deselects others, others deselect "All"
-    local -a p_labels=("All Skills" "Data Engineer" "Business Analyst" "AI/ML Engineer" "App Developer" "Custom")
+    # 自訂核取方塊（互斥邏輯）："All" 取消其他選項，其他選項取消 "All"
+    local -a p_labels=("全部 Skills" "資料工程師" "商業分析師" "AI/ML 工程師" "應用程式開發者" "自訂")
     local -a p_values=("all" "data-engineer" "analyst" "ai-ml-engineer" "app-developer" "custom")
-    local -a p_hints=("Install everything (34 skills)" "Pipelines, Spark, Jobs, Streaming (14 skills)" "Dashboards, SQL, Genie, Metrics (8 skills)" "Agents, RAG, Vector Search, MLflow (17 skills)" "Apps, Lakebase, Deployment (10 skills)" "Pick individual skills")
-    local -a p_states=(1 0 0 0 0 0)  # "All" selected by default
+    local -a p_hints=("安裝全部（34 個 skills）" "Pipelines、Spark、Jobs、Streaming（14 個 skills）" "儀表板、SQL、Genie、指標（8 個 skills）" "Agents、RAG、向量搜尋、MLflow（17 個 skills）" "應用程式、Lakebase、部署（10 個 skills）" "自行挑選 Skills")
+    local -a p_states=(1 0 0 0 0 0)  # 預設選取 "All"
     local p_count=6
     local p_cursor=0
     local p_total_rows=$((p_count + 2))
@@ -796,7 +796,7 @@ prompt_skills_profile() {
         fi
     }
 
-    printf "\n  \033[2m↑/↓ navigate · space/enter select · enter on Confirm to finish\033[0m\n\n" > /dev/tty
+    printf "\n  \033[2m↑/↓ 導覽 · 空白鍵/Enter 切換選取 · 在確認時按 Enter 完成\033[0m\n\n" > /dev/tty
     printf "\033[?25l" > /dev/tty
     trap 'printf "\033[?25h" > /dev/tty 2>/dev/null' EXIT
 
@@ -821,22 +821,22 @@ prompt_skills_profile() {
             fi
         elif [ "$key" = " " ] || [ "$key" = "" ]; then
             if [ "$p_cursor" -lt "$p_count" ]; then
-                # Toggle the current item
+                # 切換目前項目狀態
                 if [ "${p_states[$p_cursor]}" = "1" ]; then
                     p_states[$p_cursor]=0
                 else
                     p_states[$p_cursor]=1
-                    # Mutual exclusion: "All" (index 0) vs individual profiles (1-5)
+                    # 互斥邏輯："All"（索引 0）與個別 profiles（1-5）
                     if [ "$p_cursor" = "0" ]; then
-                        # Selected "All" → deselect all others
+                        # 選取 "All" → 取消選取所有其他項目
                         for j in $(seq 1 $((p_count - 1))); do p_states[$j]=0; done
                     else
-                        # Selected an individual profile → deselect "All"
+                        # 選取個別 profile → 取消選取 "All"
                         p_states[0]=0
                     fi
                 fi
             else
-                # On Confirm — done
+                # 在 Confirm 上──完成
                 printf "\033[%dA" "$p_total_rows" > /dev/tty
                 _profile_draw
                 break
@@ -847,7 +847,7 @@ prompt_skills_profile() {
     printf "\033[?25h" > /dev/tty
     trap - EXIT
 
-    # Build result
+    # 建立結果
     local selected=""
     for i in $(seq 0 $((p_count - 1))); do
         if [ "${p_states[$i]}" = "1" ]; then
@@ -855,33 +855,33 @@ prompt_skills_profile() {
         fi
     done
 
-    # Handle empty selection — default to all
+    # 若未選取任何項目，預設為 all
     if [ -z "$selected" ]; then
         SKILLS_PROFILE="all"
         return
     fi
 
-    # Check if "all" is selected
+    # 檢查是否選取了 "all"
     if echo "$selected" | grep -qw "all"; then
         SKILLS_PROFILE="all"
         return
     fi
 
-    # Check if "custom" is selected — show individual skill picker
+    # 檢查是否選取了 "custom"──顯示個別 skill 選擇器
     if echo "$selected" | grep -qw "custom"; then
         prompt_custom_skills "$selected"
         return
     fi
 
-    # Store comma-separated profile names
+    # 儲存以逗號分隔的 profile 名稱
     SKILLS_PROFILE=$(echo "$selected" | tr ' ' ',')
 }
 
-# Custom individual skill picker
+# 自訂個別 skill 選擇器
 prompt_custom_skills() {
     local preselected_profiles="$1"
 
-    # Build pre-selection set from any profiles that were also checked
+    # 從已勾選的 profiles 建立預先選取集合
     local preselected=""
     for profile in $preselected_profiles; do
         case $profile in
@@ -897,8 +897,8 @@ prompt_custom_skills() {
     }
 
     echo ""
-    echo -e "  ${B}Select individual skills${N}"
-    echo -e "  ${D}Core skills (config, docs, python-sdk, unity-catalog) are always installed${N}"
+    echo -e "  ${B}選擇個別 Skills${N}"
+    echo -e "  ${D}核心 Skills（config、docs、python-sdk、unity-catalog）一定安裝${N}"
 
     local selected
     selected=$(checkbox_select \
@@ -934,76 +934,76 @@ prompt_custom_skills() {
         "Search MLflow Docs|searching-mlflow-docs|$(_is_preselected searching-mlflow-docs)|MLflow documentation" \
     )
 
-    # Use explicit skills list — set USER_SKILLS so resolve_skills handles it
+    # 使用明確的 skills 清單──設定 USER_SKILLS 讓 resolve_skills 處理
     USER_SKILLS=$(echo "$selected" | tr ' ' ',')
 }
 
-# Compare semantic versions (returns 0 if $1 >= $2)
+# 比較語意版本號（若 $1 >= $2 則回傳 0）
 version_gte() {
     printf '%s\n%s' "$2" "$1" | sort -V -C
 }
 
-# Check Databricks CLI version meets minimum requirement
+# 檢查 Databricks CLI 版本是否符合最低需求
 check_cli_version() {
     local cli_version
     cli_version=$(databricks --version 2>/dev/null | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' | head -1)
 
     if [ -z "$cli_version" ]; then
-        warn "Could not determine Databricks CLI version"
+        warn "無法確認 Databricks CLI 版本"
         return
     fi
 
     if version_gte "$cli_version" "$MIN_CLI_VERSION"; then
         ok "Databricks CLI v${cli_version}"
     else
-        warn "Databricks CLI v${cli_version} is outdated (minimum: v${MIN_CLI_VERSION})"
-        msg "  ${B}Upgrade:${N} curl -fsSL https://raw.githubusercontent.com/databricks/setup-cli/main/install.sh | sh"
+        warn "Databricks CLI v${cli_version} 版本過舊（最低需求：v${MIN_CLI_VERSION}）"
+        msg "  ${B}升級：${N} curl -fsSL https://raw.githubusercontent.com/databricks/setup-cli/main/install.sh | sh"
     fi
 }
 
-# Check Databricks SDK version in the MCP venv
+# 檢查 MCP venv 中的 Databricks SDK 版本
 check_sdk_version() {
     local sdk_version
     sdk_version=$("$VENV_PYTHON" -c "from databricks.sdk.version import __version__; print(__version__)" 2>/dev/null)
 
     if [ -z "$sdk_version" ]; then
-        warn "Could not determine Databricks SDK version"
+        warn "無法確認 Databricks SDK 版本"
         return
     fi
 
     if version_gte "$sdk_version" "$MIN_SDK_VERSION"; then
         ok "Databricks SDK v${sdk_version}"
     else
-        warn "Databricks SDK v${sdk_version} is outdated (minimum: v${MIN_SDK_VERSION})"
-        msg "  ${B}Upgrade:${N} $VENV_PYTHON -m pip install --upgrade databricks-sdk"
+        warn "Databricks SDK v${sdk_version} 版本過舊（最低需求：v${MIN_SDK_VERSION}）"
+        msg "  ${B}升級：${N} $VENV_PYTHON -m pip install --upgrade databricks-sdk"
     fi
 }
 
-# Check prerequisites
+# 檢查必要條件
 check_deps() {
-    command -v git >/dev/null 2>&1 || die "git required"
+    command -v git >/dev/null 2>&1 || die "需要 git"
     ok "git"
 
     if command -v databricks >/dev/null 2>&1; then
         check_cli_version
     else
-        warn "Databricks CLI not found. Install: ${B}curl -fsSL https://raw.githubusercontent.com/databricks/setup-cli/main/install.sh | sh${N}"
-        msg "${D}You can still install, but authentication will require the CLI later.${N}"
+        warn "找不到 Databricks CLI。安裝方式：${B}curl -fsSL https://raw.githubusercontent.com/databricks/setup-cli/main/install.sh | sh${N}"
+        msg "${D}仍可繼續安裝，但認證需稍後安裝 CLI。${N}"
     fi
 
     if [ "$INSTALL_MCP" = true ]; then
         if command -v uv >/dev/null 2>&1; then
             PKG="uv"
-            ok "$PKG ($(uv --version 2>/dev/null || echo 'unknown version'))"
+            ok "$PKG ($(uv --version 2>/dev/null || echo '未知版本'))"
         else
-            die "uv is required but not found on your PATH.
-   Install it with: ${B}curl -LsSf https://astral.sh/uv/install.sh | sh${N}
-   Then re-run this installer."
+            die "找不到 uv，請先安裝。
+   安裝方式：${B}curl -LsSf https://astral.sh/uv/install.sh | sh${N}
+   安裝後重新執行此安裝程式。"
         fi
     fi
 }
 
-# Check if update needed
+# 檢查是否需要更新
 check_version() {
     local ver_file="$INSTALL_DIR/version"
     [ "$SCOPE" = "project" ] && ver_file=".ai-dev-kit/version"
@@ -1011,7 +1011,7 @@ check_version() {
     [ ! -f "$ver_file" ] && return
     [ "$FORCE" = true ] && return
 
-    # Skip version gate if user explicitly wants a different skill profile
+    # 若使用者明確要求不同的 skill profile，略過版本檢查
     if [ -n "$SKILLS_PROFILE" ] || [ -n "$USER_SKILLS" ]; then
         local saved_profile_file="$STATE_DIR/.skills-profile"
         [ ! -f "$saved_profile_file" ] && [ "$SCOPE" = "project" ] && saved_profile_file="$INSTALL_DIR/.skills-profile"
@@ -1025,24 +1025,24 @@ check_version() {
     fi
 
     local local_ver=$(cat "$ver_file")
-    # Use -f to fail on HTTP errors (like 404)
+    # 使用 -f 讓 HTTP 錯誤（如 404）時失敗
     local remote_ver=$(curl -fsSL "$RAW_URL/VERSION" 2>/dev/null || echo "")
 
-    # Validate remote version format (should not contain "404" or other error text)
+    # 驗證遠端版本格式（不應包含 "404" 或其他錯誤文字）
     if [ -n "$remote_ver" ] && [[ ! "$remote_ver" =~ (404|Not Found|error) ]]; then
         if [ "$local_ver" = "$remote_ver" ]; then
-            ok "Already up to date (v${local_ver})"
-            msg "${D}Use --force to reinstall or --skills-profile to change profiles${N}"
+            ok "已是最新版本（v${local_ver}）"
+            msg "${D}使用 --force 重新安裝，或使用 --skills-profile 更換設定檔${N}"
             exit 0
         fi
     fi
 }
 
-# Setup MCP server
+# 設定 MCP 伺服器
 setup_mcp() {
-    step "Setting up MCP server"
+    step "設定 MCP 伺服器"
     
-    # Clone or update repo
+    # 複製或更新 repo
     if [ -d "$REPO_DIR/.git" ]; then
         git -C "$REPO_DIR" fetch -q --depth 1 origin "$BRANCH" 2>/dev/null || true
         git -C "$REPO_DIR" reset --hard FETCH_HEAD 2>/dev/null || {
@@ -1053,35 +1053,35 @@ setup_mcp() {
         mkdir -p "$INSTALL_DIR"
         git -c advice.detachedHead=false clone -q --depth 1 --branch "$BRANCH" "$REPO_URL" "$REPO_DIR"
     fi
-    ok "Repository cloned ($BRANCH)"
+    ok "Repository 複製完成（$BRANCH）"
     
-    # Create venv and install
-    # On Apple Silicon under Rosetta, force arm64 to avoid architecture mismatch
-    # with universal2 Python binaries (see: github.com/databricks-solutions/ai-dev-kit/issues/115)
+    # 建立 venv 並安裝
+    # 在 Rosetta 下的 Apple Silicon，強制使用 arm64 避免與 universal2 Python 二進位檔的架構不符
+    # （詳見：github.com/databricks-solutions/ai-dev-kit/issues/115）
     local arch_prefix=""
     if [ "$(sysctl -n hw.optional.arm64 2>/dev/null)" = "1" ] && [ "$(uname -m)" = "x86_64" ]; then
         if arch -arm64 python3 -c "pass" 2>/dev/null; then
             arch_prefix="arch -arm64"
-            warn "Rosetta detected on Apple Silicon — forcing arm64 for Python"
+            warn "偵測到 Apple Silicon 上的 Rosetta，強制使用 arm64 執行 Python"
         fi
     fi
 
-    msg "Installing Python dependencies..."
+    msg "安裝 Python 套件中..."
     $arch_prefix uv venv --python 3.11 --allow-existing "$VENV_DIR" -q 2>/dev/null || $arch_prefix uv venv --allow-existing "$VENV_DIR" -q
     $arch_prefix uv pip install --python "$VENV_PYTHON" -e "$REPO_DIR/databricks-tools-core" -e "$REPO_DIR/databricks-mcp-server" -q
 
-    "$VENV_PYTHON" -c "import databricks_mcp_server" 2>/dev/null || die "MCP server install failed"
-    ok "MCP server ready"
+    "$VENV_PYTHON" -c "import databricks_mcp_server" 2>/dev/null || die "MCP 伺服器安裝失敗"
+    ok "MCP 伺服器就緒"
 }
 
-# Install skills
+# 安裝 skills
 install_skills() {
-    step "Installing skills"
+    step "安裝 Skills"
 
     local base_dir=$1
     local dirs=()
 
-    # Determine target directories (array so paths with spaces work)
+    # 確定目標目錄（陣列格式，以支援含空白的路徑）
     for tool in $TOOLS; do
         case $tool in
             claude) dirs+=("$base_dir/.claude/skills") ;;
@@ -1099,51 +1099,51 @@ install_skills() {
         esac
     done
 
-    # Dedupe: one element per line, sort -u, read back into array
+    # 去除重複：每行一個元素，sort -u 後讀回陣列
     local unique=()
     while IFS= read -r d; do
         unique+=("$d")
     done < <(printf '%s\n' "${dirs[@]}" | sort -u)
     dirs=("${unique[@]}")
 
-    # Count selected skills for display
+    # 統計已選取 skills 數量以供顯示
     local db_count=0 mlflow_count=0 apx_count=0
     for _ in $SELECTED_SKILLS; do db_count=$((db_count + 1)); done
     for _ in $SELECTED_MLFLOW_SKILLS; do mlflow_count=$((mlflow_count + 1)); done
     for _ in $SELECTED_APX_SKILLS; do apx_count=$((apx_count + 1)); done
     local total_count=$((db_count + mlflow_count + apx_count))
-    msg "Installing ${B}${total_count}${N} skills"
+    msg "正在安裝 ${B}${total_count}${N} 個 skills"
 
-    # Build set of all skills being installed now
+    # 建立本次安裝的所有 skills 集合
     local all_new_skills="$SELECTED_SKILLS $SELECTED_MLFLOW_SKILLS $SELECTED_APX_SKILLS"
 
-    # Clean up previously installed skills that are no longer selected
-    # Check scope-local manifest first, fall back to global for upgrades from older versions
+    # 清除先前安裝但已取消選取的 skills
+    # 優先檢查範圍本地 manifest，升級舊版本時回退至全域
     local manifest="$STATE_DIR/.installed-skills"
     [ ! -f "$manifest" ] && [ "$SCOPE" = "project" ] && [ -f "$INSTALL_DIR/.installed-skills" ] && manifest="$INSTALL_DIR/.installed-skills"
     if [ -f "$manifest" ]; then
         while IFS='|' read -r prev_dir prev_skill; do
             [ -z "$prev_skill" ] && continue
-            # Skip if this skill is still selected
+            # 若此 skill 仍在選取清單中，略過
             if echo " $all_new_skills " | grep -qw "$prev_skill"; then
                 continue
             fi
-            # Only remove if the directory exists
+            # 僅在目錄存在時移除
             if [ -d "$prev_dir/$prev_skill" ]; then
                 rm -rf "$prev_dir/$prev_skill"
-                msg "${D}Removed deselected skill: $prev_skill${N}"
+                msg "${D}已移除取消選取的 skill：$prev_skill${N}"
             fi
         done < "$manifest"
     fi
 
-    # Start fresh manifest (always write to scope-local state dir)
+    # 開始新的 manifest（一律寫入範圍本地狀態目錄）
     manifest="$STATE_DIR/.installed-skills"
     mkdir -p "$STATE_DIR"
     : > "$manifest.tmp"
 
     for dir in "${dirs[@]}"; do
         mkdir -p "$dir"
-        # Install Databricks skills from repo
+        # 從 repo 安裝 Databricks skills
         for skill in $SELECTED_SKILLS; do
             local src="$REPO_DIR/databricks-skills/$skill"
             [ ! -d "$src" ] && continue
@@ -1153,14 +1153,14 @@ install_skills() {
         done
         ok "Databricks skills ($db_count) → ${dir#$HOME/}"
 
-        # Install MLflow skills from mlflow/skills repo
+        # 從 mlflow/skills repo 安裝 MLflow skills
         if [ -n "$SELECTED_MLFLOW_SKILLS" ]; then
             for skill in $SELECTED_MLFLOW_SKILLS; do
                 local dest_dir="$dir/$skill"
                 mkdir -p "$dest_dir"
                 local url="$MLFLOW_RAW_URL/$skill/SKILL.md"
                 if curl -fsSL "$url" -o "$dest_dir/SKILL.md" 2>/dev/null; then
-                    # Try to fetch optional reference files
+                    # 嘗試下載選用的 MLflow 參考檔案
                     for ref in reference.md examples.md api.md; do
                         curl -fsSL "$MLFLOW_RAW_URL/$skill/$ref" -o "$dest_dir/$ref" 2>/dev/null || true
                     done
@@ -1172,30 +1172,30 @@ install_skills() {
             ok "MLflow skills ($mlflow_count) → ${dir#$HOME/}"
         fi
 
-        # Install APX skills from databricks-solutions/apx repo
+        # 從 databricks-solutions/apx repo 安裝 APX skills
         if [ -n "$SELECTED_APX_SKILLS" ]; then
             for skill in $SELECTED_APX_SKILLS; do
                 local dest_dir="$dir/$skill"
                 mkdir -p "$dest_dir"
                 local url="$APX_RAW_URL/SKILL.md"
                 if curl -fsSL "$url" -o "$dest_dir/SKILL.md" 2>/dev/null; then
-                    # Try to fetch optional reference files
+                    # 嘗試下載選用的 APX 參考檔案
                     for ref in backend-patterns.md frontend-patterns.md; do
                         curl -fsSL "$APX_RAW_URL/$ref" -o "$dest_dir/$ref" 2>/dev/null || true
                     done
                     echo "$dir|$skill" >> "$manifest.tmp"
                 else
-                    rmdir "$dest_dir" 2>/dev/null || warn "Could not install APX skill '$skill' — consider removing $dest_dir if it is no longer needed"
+                    rmdir "$dest_dir" 2>/dev/null || warn "無法安裝 APX skill '$skill'，若不再需要可考慮移除 $dest_dir"
                 fi
             done
             ok "APX skills ($apx_count) → ${dir#$HOME/}"
         fi
     done
 
-    # Save manifest of installed skills (for cleanup on profile change)
+    # 儲存已安裝 skills 的 manifest（在切換 profile 時用於清理）
     mv "$manifest.tmp" "$manifest"
 
-    # Save selected profile for future reinstalls (scope-local)
+    # 儲存已選取的 profile 以供未來重新安裝使用（範圍本地）
     if [ -n "$USER_SKILLS" ]; then
         echo "custom:$USER_SKILLS" > "$STATE_DIR/.skills-profile"
     else
@@ -1203,18 +1203,18 @@ install_skills() {
     fi
 }
 
-# Write MCP configs
+# 寫入 MCP 設定檔
 write_mcp_json() {
     local path=$1
     mkdir -p "$(dirname "$path")"
 
-    # Backup existing file before any modifications
+    # 修改前先備份現有檔案
     if [ -f "$path" ]; then
         cp "$path" "${path}.bak"
-        msg "${D}Backed up ${path##*/} → ${path##*/}.bak${N}"
+        msg "${D}已備份 ${path##*/} → ${path##*/}.bak${N}"
     fi
 
-    if [ -f "$VENV_PYTHON" ]; then
+    if [ -f "$VENV_PYTHON" ];then
         "$VENV_PYTHON" -c "
 import json, sys
 try:
@@ -1225,10 +1225,10 @@ with open('$path', 'w') as f: json.dump(cfg, f, indent=2); f.write('\n')
 " 2>/dev/null && return
     fi
 
-    # Fallback: only safe for new files — refuse to overwrite existing files
-    # that may contain other settings (e.g. ~/.claude.json)
+    # 回退方案：僅適用於新檔案──拒絕覆蓋可能包含其他設定的現有檔案
+    # （如 ~/.claude.json）
     if [ -f "$path" ]; then
-        warn "Cannot merge MCP config into $path without Python. Add manually."
+        warn "無 Python 環境，無法合併 MCP 設定至 $path，請手動新增。"
         return
     fi
 
@@ -1250,10 +1250,10 @@ write_copilot_mcp_json() {
     local path=$1
     mkdir -p "$(dirname "$path")"
 
-    # Backup existing file before any modifications
+    # 修改前先備份現有檔案
     if [ -f "$path" ]; then
         cp "$path" "${path}.bak"
-        msg "${D}Backed up ${path##*/} → ${path##*/}.bak${N}"
+        msg "${D}已備份 ${path##*/} → ${path##*/}.bak${N}"
     fi
 
     if [ -f "$path" ] && [ -f "$VENV_PYTHON" ]; then
@@ -1286,7 +1286,7 @@ write_mcp_toml() {
     grep -q "mcp_servers.databricks" "$path" 2>/dev/null && return
     if [ -f "$path" ]; then
         cp "$path" "${path}.bak"
-        msg "${D}Backed up ${path##*/} → ${path##*/}.bak${N}"
+        msg "${D}已備份 ${path##*/} → ${path##*/}.bak${N}"
     fi
     cat >> "$path" << EOF
 
@@ -1300,10 +1300,10 @@ write_gemini_mcp_json() {
     local path=$1
     mkdir -p "$(dirname "$path")"
 
-    # Backup existing file before any modifications
+    # 修改前先備份現有檔案
     if [ -f "$path" ]; then
         cp "$path" "${path}.bak"
-        msg "${D}Backed up ${path##*/} → ${path##*/}.bak${N}"
+        msg "${D}已備份 ${path##*/} → ${path##*/}.bak${N}"
     fi
 
     if [ -f "$path" ] && [ -f "$VENV_PYTHON" ]; then
@@ -1332,7 +1332,7 @@ EOF
 
 write_gemini_md() {
     local path=$1
-    [ -f "$path" ] && return  # Don't overwrite existing file
+    [ -f "$path" ] && return  # 不覆蓋現有檔案
     cat > "$path" << 'GEMINIEOF'
 # Databricks AI Dev Kit
 
@@ -1371,7 +1371,7 @@ write_claude_hook() {
     local script=$2
     mkdir -p "$(dirname "$path")"
 
-    # Merge into existing settings.json if present, using Python for safe JSON handling
+    # 若存在 settings.json，使用 Python 安全合併
     if [ -f "$path" ] && [ -f "$VENV_PYTHON" ]; then
         "$VENV_PYTHON" -c "
 import json
@@ -1383,19 +1383,19 @@ try:
 except: cfg = {}
 hooks = cfg.setdefault('hooks', {})
 session_hooks = hooks.setdefault('SessionStart', [])
-# Check if hook already exists
+# 檢查 hook 是否已存在
 for group in session_hooks:
     for h in group.get('hooks', []):
         if 'check_update.sh' in h.get('command', ''):
-            exit(0)  # Already configured
-# Append new hook group
+            exit(0)  # 已設定
+# 附加新的 hook 群組
 session_hooks.append({'hooks': [hook_entry]})
 with open(path, 'w') as f: json.dump(cfg, f, indent=2); f.write('\n')
 " 2>/dev/null && return
     fi
 
-    # Fallback: write new file (only if no existing file)
-    [ -f "$path" ] && return  # Don't overwrite existing settings without Python
+    # 回退方案：寫入新檔案（僅在無現有檔案時）
+    [ -f "$path" ] && return  # 未有 Python 時不覆蓋現有設定
     cat > "$path" << EOF
 {
   "hooks": {
@@ -1416,29 +1416,29 @@ EOF
 }
 
 write_mcp_configs() {
-    step "Configuring MCP"
+    step "設定 MCP"
     
     local base_dir=$1
     for tool in $TOOLS; do
         case $tool in
             claude)
                 [ "$SCOPE" = "global" ] && write_mcp_json "$HOME/.claude.json" || write_mcp_json "$base_dir/.mcp.json"
-                ok "Claude MCP config"
-                # Add version check hook to Claude settings
+                ok "Claude MCP 設定"
+                # 為 Claude 設定加入版本檢查 hook
                 local check_script="$REPO_DIR/.claude-plugin/check_update.sh"
                 if [ "$SCOPE" = "global" ]; then
                     write_claude_hook "$HOME/.claude/settings.json" "$check_script"
                 else
                     write_claude_hook "$base_dir/.claude/settings.json" "$check_script"
                 fi
-                ok "Claude update check hook"
+                ok "Claude 版本檢查 hook"
                 ;;
             cursor)
                 if [ "$SCOPE" = "global" ]; then
-                    warn "Cursor global: manual MCP configuration required"
-                    msg "  1. Open ${B}Cursor → Settings → Cursor Settings → Tools & MCP${N}"
-                    msg "  2. Click ${B}New MCP Server${N}"
-                    msg "  3. Add the following JSON config:"
+                    warn "Cursor 全域模式：需手動設定 MCP"
+                    msg "  1. 開啟 ${B}Cursor → 設定 → Cursor Settings → Tools & MCP${N}"
+                    msg "  2. 點擊 ${B}New MCP Server${N}"
+                    msg "  3. 加入以下 JSON 設定："
                     msg "     {"
                     msg "       \"mcpServers\": {"
                     msg "         \"databricks\": {"
@@ -1450,25 +1450,25 @@ write_mcp_configs() {
                     msg "     }"
                 else
                     write_mcp_json "$base_dir/.cursor/mcp.json"
-                    ok "Cursor MCP config"
+                    ok "Cursor MCP 設定"
                 fi
-                warn "Cursor: MCP servers are disabled by default."
-                msg "  Enable in: ${B}Cursor → Settings → Cursor Settings → Tools & MCP → Toggle 'databricks'${N}"
+                warn "Cursor：MCP 伺服器預設停用。"
+                msg "  啟用方式：${B}Cursor → 設定 → Cursor Settings → Tools & MCP → 切換 'databricks'${N}"
                 ;;
             copilot)
                 if [ "$SCOPE" = "global" ]; then
-                    warn "Copilot global: configure MCP in VS Code settings (Ctrl+Shift+P → 'MCP: Open User Configuration')"
+                    warn "Copilot 全域模式：請在 VS Code 設定中設定 MCP（Ctrl+Shift+P → 'MCP: Open User Configuration'）"
                     msg "  Command: $VENV_PYTHON | Args: $MCP_ENTRY"
                 else
                     write_copilot_mcp_json "$base_dir/.vscode/mcp.json"
-                    ok "Copilot MCP config (.vscode/mcp.json)"
+                    ok "Copilot MCP 設定（.vscode/mcp.json）"
                 fi
-                warn "Copilot: MCP servers must be enabled manually."
-                msg "  In Copilot Chat, click ${B}Configure Tools${N} (tool icon, bottom-right) and enable ${B}databricks${N}"
+                warn "Copilot：MCP 伺服器需手動啟用。"
+                msg "  在 Copilot Chat 中，點擊 ${B}設定工具${N}（右下角工具圖示），啟用 ${B}databricks${N}"
                 ;;
             codex)
                 [ "$SCOPE" = "global" ] && write_mcp_toml "$HOME/.codex/config.toml" || write_mcp_toml "$base_dir/.codex/config.toml"
-                ok "Codex MCP config"
+                ok "Codex MCP 設定"
                 ;;
             gemini)
                 if [ "$SCOPE" = "global" ]; then
@@ -1476,25 +1476,25 @@ write_mcp_configs() {
                 else
                     write_gemini_mcp_json "$base_dir/.gemini/settings.json"
                 fi
-                ok "Gemini CLI MCP config"
+                ok "Gemini CLI MCP 設定"
                 ;;
             antigravity)
                 if [ "$SCOPE" = "project" ]; then
-                    warn "Antigravity only supports global MCP configuration."
-                    msg "  Config written to ${B}~/.gemini/antigravity/mcp_config.json${N}"
+                    warn "Antigravity 僅支援全域 MCP 設定。"
+                    msg "  設定已寫入 ${B}~/.gemini/antigravity/mcp_config.json${N}"
                 fi
                 write_gemini_mcp_json "$HOME/.gemini/antigravity/mcp_config.json"
-                ok "Antigravity MCP config"
+                ok "Antigravity MCP 設定"
                 ;;
         esac
     done
 }
 
-# Save version
+# 儲存版本
 save_version() {
-    # Use -f to fail on HTTP errors (like 404)
+    # 使用 -f 讓 HTTP 錯誤（如 404）時失敗
     local ver=$(curl -fsSL "$RAW_URL/VERSION" 2>/dev/null || echo "dev")
-    # Validate version format
+    # 驗證版本格式
     [[ "$ver" =~ (404|Not Found|error) ]] && ver="dev"
     echo "$ver" > "$INSTALL_DIR/version"
     if [ "$SCOPE" = "project" ]; then
@@ -1503,56 +1503,56 @@ save_version() {
     fi
 }
 
-# Print summary
+# 顯示摘要
 summary() {
     if [ "$SILENT" = false ]; then
         echo ""
-        echo -e "${G}${B}Installation complete!${N}"
+        echo -e "${G}${B}安裝完成！${N}"
         echo "────────────────────────────────"
-        msg "Location: $INSTALL_DIR"
-        msg "Scope:    $SCOPE"
-        msg "Tools:    $(echo "$TOOLS" | tr ' ' ', ')"
+        msg "位置：$INSTALL_DIR"
+        msg "範圍：    $SCOPE"
+        msg "工具：    $(echo "$TOOLS" | tr ' ' ', ')"
         echo ""
-        msg "${B}Next steps:${N}"
+        msg "${B}後續步驟：${N}"
         local step=1
         if echo "$TOOLS" | grep -q cursor; then
-            msg "${R}${step}. Enable MCP in Cursor: ${B}Cursor → Settings → Cursor Settings → Tools & MCP → Toggle 'databricks'${N}"
+            msg "${R}${step}. 啟用 Cursor MCP：${B}Cursor → 設定 → Cursor Settings → Tools & MCP → 切換 'databricks'${N}"
             step=$((step + 1))
         fi
         if echo "$TOOLS" | grep -q copilot; then
-            msg "${step}. In Copilot Chat, click ${B}Configure Tools${N} (tool icon, bottom-right) and enable ${B}databricks${N}"
+            msg "${step}. 在 Copilot Chat 中，點擊 ${B}設定工具${N}（右下角工具圖示），啟用 ${B}databricks${N}"
             step=$((step + 1))
-            msg "${step}. Use Copilot in ${B}Agent mode${N} to access Databricks skills and MCP tools"
+            msg "${step}. 使用 Copilot ${B}Agent 模式${N}存取 Databricks skills 及 MCP 工具"
             step=$((step + 1))
         fi
         if echo "$TOOLS" | grep -q gemini; then
-            msg "${step}. Launch Gemini CLI in your project: ${B}gemini${N}"
+            msg "${step}. 在專案中啟動 Gemini CLI：${B}gemini${N}"
             step=$((step + 1))
         fi
         if echo "$TOOLS" | grep -q antigravity; then
-            msg "${step}. Open your project in Antigravity to use Databricks skills and MCP tools"
+            msg "${step}. 在 Antigravity 中開啟專案以使用 Databricks skills 及 MCP 工具"
             step=$((step + 1))
         fi
-        msg "${step}. Open your project in your tool of choice"
+        msg "${step}. 以您選擇的工具開啟專案"
         step=$((step + 1))
-        msg "${step}. Try: \"List my SQL warehouses\""
+        msg "${step}. 試試看：\"列出我的 SQL Warehouses\""
         echo ""
     fi
 }
 
-# Prompt for installation scope
+# 提示選擇安裝範圍
 prompt_scope() {
     if [ "$SILENT" = true ] || [ ! -e /dev/tty ]; then
         return
     fi
 
     echo ""
-    echo -e "  ${B}Select installation scope${N}"
+    echo -e "  ${B}選擇安裝範圍${N}"
     
-    # Simple radio selector without Confirm button
-    local -a labels=("Project" "Global")
+    # 無 Confirm 按鈕的簡單單選器
+    local -a labels=("專案" "全域")
     local -a values=("project" "global")
-    local -a hints=("Install in current directory (.cursor/, .claude/, .gemini/)" "Install in home directory (~/.cursor/, ~/.claude/, ~/.gemini/)")
+    local -a hints=("安裝至目前目錄（.cursor/、.claude/、.gemini/）" "安裝至家目錄（~/.cursor/、~/.claude/、~/.gemini/）")
     local count=2
     local selected=0
     local cursor=0
@@ -1570,7 +1570,7 @@ prompt_scope() {
         done
     }
     
-    printf "\n  \033[2m↑/↓ navigate · enter select\033[0m\n\n" > /dev/tty
+    printf "\n  \033[2m↑/↓ 導覽 · Enter 確認\033[0m\n\n" > /dev/tty
     printf "\033[?25l" > /dev/tty
     trap 'printf "\033[?25h" > /dev/tty 2>/dev/null' EXIT
     
@@ -1609,162 +1609,162 @@ prompt_scope() {
     SCOPE="${values[$selected]}"
 }
 
-# Prompt to run auth
+# 提示執行認證
 prompt_auth() {
     if [ "$SILENT" = true ] || [ ! -e /dev/tty ]; then
         return
     fi
 
-    # Check if profile already has a token configured
+    # 檢查 profile 是否已設定 token
     local cfg_file="$HOME/.databrickscfg"
     if [ -f "$cfg_file" ]; then
-        # Read the token value under the selected profile section
+        # 讀取所選 profile 區段下的 token 值
         local in_profile=false
         while IFS= read -r line; do
             if [[ "$line" =~ ^\[([a-zA-Z0-9_-]+)\]$ ]]; then
                 [ "${BASH_REMATCH[1]}" = "$PROFILE" ] && in_profile=true || in_profile=false
             elif [ "$in_profile" = true ] && [[ "$line" =~ ^token[[:space:]]*= ]]; then
-                ok "Profile ${B}$PROFILE${N} already has a token configured — skipping auth"
+                ok "Profile ${B}$PROFILE${N} 已設定 token，略過認證"
                 return
             fi
         done < "$cfg_file"
     fi
 
-    # Also skip if env vars are set
+    # 若已設定環境變數，也略過
     if [ -n "$DATABRICKS_TOKEN" ]; then
-        ok "DATABRICKS_TOKEN is set — skipping auth"
+        ok "已設定 DATABRICKS_TOKEN，略過認證"
         return
     fi
 
-    # Databricks CLI is required for OAuth login
+    # OAuth 登入需要 Databricks CLI
     if ! command -v databricks >/dev/null 2>&1; then
-        warn "Databricks CLI not installed — cannot run OAuth login"
-        msg "  Install it, then run: ${B}${BL}databricks auth login --profile $PROFILE${N}"
+        warn "未安裝 Databricks CLI，無法執行 OAuth 登入"
+        msg "  請先安裝，然後執行：${B}${BL}databricks auth login --profile $PROFILE${N}"
         return
     fi
 
     echo ""
-    msg "${B}Authentication${N}"
-    msg "This will run OAuth login for profile ${B}${BL}$PROFILE${N}"
-    msg "${D}A browser window will open for you to authenticate with your Databricks workspace.${N}"
+    msg "${B}認證${N}"
+    msg "即將為 Profile ${B}${BL}$PROFILE${N} 執行 OAuth 登入"
+    msg "${D}將開啟瀏覽器視窗，供您登入 Databricks workspace。${N}"
     echo ""
     local run_auth
-    run_auth=$(prompt "Run ${B}databricks auth login --profile $PROFILE${N} now? ${D}(y/n)${N}" "y")
+    run_auth=$(prompt "立即執行 ${B}databricks auth login --profile $PROFILE${N}？${D}(y/n)${N}" "y")
     if [ "$run_auth" = "y" ] || [ "$run_auth" = "Y" ] || [ "$run_auth" = "yes" ]; then
         echo ""
         databricks auth login --profile "$PROFILE"
     fi
 }
 
-# Main
+# 主程式
 main() {
     if [ "$SILENT" = false ]; then
         echo ""
-        echo -e "${B}Databricks AI Dev Kit Installer${N}"
+        echo -e "${B}Databricks AI Dev Kit 安裝程式${N}"
         echo "────────────────────────────────"
     fi
     
-    # Check dependencies
-    step "Checking prerequisites"
+    # 檢查相依套件
+    step "檢查必要條件"
     check_deps
 
-    # ── Step 2: Interactive tool selection ──
-    step "Selecting tools"
+    # ── 步驟 2：互動式工具選擇 ──
+    step "選擇工具"
     detect_tools
-    ok "Selected: $(echo "$TOOLS" | tr ' ' ', ')"
+    ok "已選擇：$(echo "$TOOLS" | tr ' ' ', ')"
 
-    # ── Step 3: Interactive profile selection ──
-    step "Databricks profile"
+    # ── 步驟 3：互動式 profile 選擇 ──
+    step "Databricks Profile"
     prompt_profile
-    ok "Profile: $PROFILE"
+    ok "Profile：$PROFILE"
 
-    # ── Step 3.5: Interactive scope selection ──
+    # ── 步驟 3.5：互動式範圍選擇 ──
     if [ "$SCOPE_EXPLICIT" = false ]; then
         prompt_scope
-        ok "Scope: $SCOPE"
+        ok "範圍：$SCOPE"
     fi
 
-    # Set state directory based on scope (for profile/manifest storage)
+    # 根據範圍設定狀態目錄（用於 profile 及 manifest 儲存）
     if [ "$SCOPE" = "global" ]; then
         STATE_DIR="$INSTALL_DIR"
     else
         STATE_DIR="$(pwd)/.ai-dev-kit"
     fi
 
-    # ── Step 4: Skill profile selection ──
+    # ── 步驟 4：Skill 設定檔選擇 ──
     if [ "$INSTALL_SKILLS" = true ]; then
-        step "Skill profiles"
+        step "Skill 設定檔"
         prompt_skills_profile
         resolve_skills
-        # Count for display
+        # 統計以供顯示
         local sk_count=0
         for _ in $SELECTED_SKILLS $SELECTED_MLFLOW_SKILLS $SELECTED_APX_SKILLS; do sk_count=$((sk_count + 1)); done
         if [ -n "$USER_SKILLS" ]; then
-            ok "Custom selection ($sk_count skills)"
+            ok "自訂選擇（$sk_count 個 skills）"
         else
-            ok "Profile: ${SKILLS_PROFILE:-all} ($sk_count skills)"
+            ok "設定檔：${SKILLS_PROFILE:-all}（$sk_count 個 skills）"
         fi
     fi
 
-    # ── Step 5: Interactive MCP path ──
+    # ── 步驟 5：互動式 MCP 路徑 ──
     if [ "$INSTALL_MCP" = true ]; then
         prompt_mcp_path
-        ok "MCP path: $INSTALL_DIR"
+        ok "MCP 路徑：$INSTALL_DIR"
     fi
 
-    # ── Step 6: Confirm before proceeding ──
+    # ── 步驟 6：確認後繼續 ──
     if [ "$SILENT" = false ]; then
         echo ""
-        echo -e "  ${B}Summary${N}"
+        echo -e "  ${B}摘要${N}"
         echo -e "  ────────────────────────────────────"
-        echo -e "  Tools:       ${G}$(echo "$TOOLS" | tr ' ' ', ')${N}"
-        echo -e "  Profile:     ${G}${PROFILE}${N}"
-        echo -e "  Scope:       ${G}${SCOPE}${N}"
-        [ "$INSTALL_MCP" = true ]    && echo -e "  MCP server:  ${G}${INSTALL_DIR}${N}"
+        echo -e "  工具：       ${G}$(echo "$TOOLS" | tr ' ' ', ')${N}"
+        echo -e "  Profile：     ${G}${PROFILE}${N}"
+        echo -e "  範圍：       ${G}${SCOPE}${N}"
+        [ "$INSTALL_MCP" = true ]    && echo -e "  MCP 伺服器：  ${G}${INSTALL_DIR}${N}"
         if [ "$INSTALL_SKILLS" = true ]; then
             if [ -n "$USER_SKILLS" ]; then
-                echo -e "  Skills:      ${G}custom selection${N}"
+                echo -e "  Skills：      ${G}自訂選擇${N}"
             else
                 local sk_total=0
                 for _ in $SELECTED_SKILLS $SELECTED_MLFLOW_SKILLS $SELECTED_APX_SKILLS; do sk_total=$((sk_total + 1)); done
-                echo -e "  Skills:      ${G}${SKILLS_PROFILE:-all} ($sk_total skills)${N}"
+                echo -e "  Skills：      ${G}${SKILLS_PROFILE:-all}（$sk_total 個 skills）${N}"
             fi
         fi
-        [ "$INSTALL_MCP" = true ]    && echo -e "  MCP config:  ${G}yes${N}"
+        [ "$INSTALL_MCP" = true ]    && echo -e "  MCP 設定：  ${G}是${N}"
         echo ""
     fi
 
     if [ "$SILENT" = false ] && [ -e /dev/tty ]; then
         local confirm
-        confirm=$(prompt "Proceed with installation? ${D}(y/n)${N}" "y")
+        confirm=$(prompt "確認開始安裝？${D}(y/n)${N}" "y")
         if [ "$confirm" != "y" ] && [ "$confirm" != "Y" ] && [ "$confirm" != "yes" ]; then
             echo ""
-            msg "Installation cancelled."
+            msg "安裝已取消。"
             exit 0
         fi
     fi
 
-    # ── Step 7: Version check (may exit early if up to date) ──
+    # ── 步驟 7：版本檢查（若已是最新版本可能提前結束）──
     check_version
     
-    # Determine base directory
+    # 確定基礎目錄
     local base_dir
     [ "$SCOPE" = "global" ] && base_dir="$HOME" || base_dir="$(pwd)"
     
-    # Setup MCP server
+    # 設定 MCP 伺服器
     if [ "$INSTALL_MCP" = true ]; then
         setup_mcp
     elif [ ! -d "$REPO_DIR" ]; then
-        step "Downloading sources"
+        step "下載原始碼"
         mkdir -p "$INSTALL_DIR"
         git -c advice.detachedHead=false clone -q --depth 1 --branch "$BRANCH" "$REPO_URL" "$REPO_DIR"
-        ok "Repository cloned ($BRANCH)"
+        ok "Repository 複製完成（$BRANCH）"
     fi
     
-    # Install skills
+    # 安裝 skills
     [ "$INSTALL_SKILLS" = true ] && install_skills "$base_dir"
 
-    # Write GEMINI.md if gemini is selected
+    # 若選取 gemini，寫入 GEMINI.md
     if echo "$TOOLS" | grep -q gemini; then
         if [ "$SCOPE" = "global" ]; then
             write_gemini_md "$HOME/GEMINI.md"
@@ -1773,16 +1773,16 @@ main() {
         fi
     fi
 
-    # Write MCP configs
+    # 寫入 MCP 設定
     [ "$INSTALL_MCP" = true ] && write_mcp_configs "$base_dir"
     
-    # Save version
+    # 儲存版本
     save_version
     
-    # Prompt to run auth
+    # 提示執行認證
     prompt_auth
     
-    # Done
+    # 完成
     summary
 }
 
