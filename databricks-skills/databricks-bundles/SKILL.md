@@ -321,5 +321,5 @@ databricks bundle destroy -t prod --auto-approve
 - [Bundle 資源參考](https://docs.databricks.com/dev-tools/bundles/resources)
 - [Bundle 設定參考](https://docs.databricks.com/dev-tools/bundles/settings)
 - [支援的資源類型](https://docs.databricks.com/aws/en/dev-tools/bundles/resources#resource-types)
-- [範例儲存庫 1](https://github.com/databricks-solutions/databricks-dab-examples)
+- [範例儲存庫 1](https://github.com/Fet-ycliang/databricks-dab-examples)
 - [範例儲存庫 2](https://github.com/databricks/bundle-examples)

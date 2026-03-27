@@ -8,16 +8,16 @@
 
 ```bash
 # 安裝所有 Skills（Databricks + MLflow）
-curl -sSL https://raw.githubusercontent.com/databricks-solutions/ai-dev-kit/main/databricks-skills/install_skills.sh | bash
+curl -sSL https://raw.githubusercontent.com/Fet-ycliang/ai-dev-kit/main/databricks-skills/install_skills.sh | bash
 
 # 安裝特定 Skills
-curl -sSL https://raw.githubusercontent.com/databricks-solutions/ai-dev-kit/main/databricks-skills/install_skills.sh | bash -s -- databricks-bundles agent-evaluation
+curl -sSL https://raw.githubusercontent.com/Fet-ycliang/ai-dev-kit/main/databricks-skills/install_skills.sh | bash -s -- databricks-bundles agent-evaluation
 
 # 將 MLflow Skills 固定在特定版本
-curl -sSL https://raw.githubusercontent.com/databricks-solutions/ai-dev-kit/main/databricks-skills/install_skills.sh | bash -s -- --mlflow-version v1.0.0
+curl -sSL https://raw.githubusercontent.com/Fet-ycliang/ai-dev-kit/main/databricks-skills/install_skills.sh | bash -s -- --mlflow-version v1.0.0
 
 # 列出所有可用 Skills
-curl -sSL https://raw.githubusercontent.com/databricks-solutions/ai-dev-kit/main/databricks-skills/install_skills.sh | bash -s -- --list
+curl -sSL https://raw.githubusercontent.com/Fet-ycliang/ai-dev-kit/main/databricks-skills/install_skills.sh | bash -s -- --list
 ```
 
 安裝後會建立 `.claude/skills/` 目錄並下載所有 Skills，Claude Code 會自動載入。

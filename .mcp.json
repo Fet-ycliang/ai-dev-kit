@@ -1,18 +1,4 @@
 {
-  "mcpServers": {
-    "databricks": {
-      "command": "${CLAUDE_PLUGIN_ROOT}/.venv/bin/python",
-      "args": ["${CLAUDE_PLUGIN_ROOT}/databricks-mcp-server/run_server.py"],
-      "defer_loading": true,
-      "env": {
-        "DATABRICKS_CONFIG_PROFILE": "azure-rag-bst"
-      }
-    },
-    "databricks-genie": {
-      "type": "stdio",
-      "command": "cmd",
-      "args": ["/c", "npx", "mcp-remote", "https://adb-2654999172504234.14.azuredatabricks.net/api/2.0/mcp/genie/01f109d210d111548bdc9254d6bc148f", "--header", "Authorization:Bearer %ANTHROPIC_AUTH_TOKEN%"]
-    },
     "azure-devops": {
       "type": "stdio",
       "command": "cmd",

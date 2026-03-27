@@ -6,7 +6,7 @@ This repository is maintained by Databricks and intended for contributions from 
 
 1. Clone the repository:
    ```bash
-   git clone https://github.com/databricks-solutions/ai-dev-kit.git
+   git clone https://github.com/Fet-ycliang/ai-dev-kit.git
    cd ai-dev-kit
    ```
 

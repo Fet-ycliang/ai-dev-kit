@@ -3,15 +3,15 @@
 #
 # 安裝 skills、MCP 伺服器及設定，支援 Claude Code、Cursor、OpenAI Codex、GitHub Copilot、Gemini CLI 及 Antigravity。
 #
-# Usage: irm https://raw.githubusercontent.com/databricks-solutions/ai-dev-kit/main/install.ps1 -OutFile install.ps1
+# Usage: irm https://raw.githubusercontent.com/Fet-ycliang/ai-dev-kit/main/install.ps1 -OutFile install.ps1
 #        .\install.ps1 [OPTIONS]
 #
 # 範例：
 #   # 基本安裝（使用 DEFAULT profile、專案範圍、最新版本）
-#   irm https://raw.githubusercontent.com/databricks-solutions/ai-dev-kit/main/install.ps1 | iex
+#   irm https://raw.githubusercontent.com/Fet-ycliang/ai-dev-kit/main/install.ps1 | iex
 #
 #   # 下載並以選項執行
-#   irm https://raw.githubusercontent.com/databricks-solutions/ai-dev-kit/main/install.ps1 -OutFile install.ps1
+#   irm https://raw.githubusercontent.com/Fet-ycliang/ai-dev-kit/main/install.ps1 -OutFile install.ps1
 #
 #   # 全域安裝並強制重新安裝
 #   .\install.ps1 -Global -Force
@@ -32,7 +32,7 @@
 $ErrorActionPreference = "Stop"
 
 # ─── 設定 ────────────────────────────────────────────────────
-$Owner = "databricks-solutions"
+$Owner = "Fet-ycliang"
 $Repo  = "ai-dev-kit"
 
 # 決定要使用的分支/標籤
@@ -96,9 +96,9 @@ $script:MlflowSkills = @(
 )
 $MlflowRawUrl = "https://raw.githubusercontent.com/mlflow/skills/main"
 
-# APX skills（從 databricks-solutions/apx repo 下載）
+# APX skills（從 Fet-ycliang/apx repo 下載）
 $script:ApxSkills = @("databricks-app-apx")
-$ApxRawUrl = "https://raw.githubusercontent.com/databricks-solutions/apx/main/skills/apx"
+$ApxRawUrl = "https://raw.githubusercontent.com/Fet-ycliang/apx/main/skills/apx"
 
 # ─── Skill 設定檔 ──────────────────────────────────────────
 $script:CoreSkills = @("databricks-config", "databricks-docs", "databricks-python-sdk", "databricks-unity-catalog")
@@ -171,7 +171,7 @@ if ($script:ListSkills) {
     Write-Host "--------------------------------"
     foreach ($s in $script:MlflowSkills) { Write-Host "    $s" }
     Write-Host ""
-    Write-Host "APX Skills（來自 databricks-solutions/apx repo）" -ForegroundColor White
+    Write-Host "APX Skills（來自 Fet-ycliang/apx repo）" -ForegroundColor White
     Write-Host "--------------------------------"
     foreach ($s in $script:ApxSkills) { Write-Host "    $s" }
     Write-Host ""
@@ -223,7 +223,7 @@ while ($i -lt $args.Count) {
         { $_ -in "-h", "--help", "-Help" } {
             Write-Host "Databricks AI Dev Kit 安裝程式（Windows）"
             Write-Host ""
-            Write-Host "Usage: irm https://raw.githubusercontent.com/databricks-solutions/ai-dev-kit/main/install.ps1 -OutFile install.ps1"
+            Write-Host "Usage: irm https://raw.githubusercontent.com/Fet-ycliang/ai-dev-kit/main/install.ps1 -OutFile install.ps1"
             Write-Host "       .\install.ps1 [OPTIONS]"
             Write-Host ""
             Write-Host "選項："
@@ -246,10 +246,10 @@ while ($i -lt $args.Count) {
             Write-Host ""
             Write-Host "範例："
             Write-Host "  # 基本安裝"
-            Write-Host "  irm https://raw.githubusercontent.com/databricks-solutions/ai-dev-kit/main/install.ps1 | iex"
+            Write-Host "  irm https://raw.githubusercontent.com/Fet-ycliang/ai-dev-kit/main/install.ps1 | iex"
             Write-Host ""
             Write-Host "  # 下載並以選項執行"
-            Write-Host "  irm https://raw.githubusercontent.com/databricks-solutions/ai-dev-kit/main/install.ps1 -OutFile install.ps1"
+            Write-Host "  irm https://raw.githubusercontent.com/Fet-ycliang/ai-dev-kit/main/install.ps1 -OutFile install.ps1"
             Write-Host "  .\install.ps1 -Global -Force"
             Write-Host ""
             Write-Host "  # 指定 profile 並強制重新安裝"
@@ -1247,7 +1247,7 @@ function Install-Skills {
             Write-Ok "MLflow skills（$mlflowCount）→ $shortDir"
         }
 
-        # 從 databricks-solutions/apx repo 安裝 APX skills
+        # 從 Fet-ycliang/apx repo 安裝 APX skills
         if ($script:SelectedApxSkills.Count -gt 0) {
             $prevEAP2 = $ErrorActionPreference; $ErrorActionPreference = "Continue"
             foreach ($skill in $script:SelectedApxSkills) {

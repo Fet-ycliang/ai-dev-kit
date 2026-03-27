@@ -16,7 +16,7 @@
 #   - Run with elevated privileges
 #   - Access your Databricks workspace (until you authenticate)
 #
-# Source: https://github.com/databricks-solutions/ai-dev-kit
+# Source: https://github.com/Fet-ycliang/ai-dev-kit
 # ============================================================
 
 set -e
