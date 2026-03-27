@@ -7,10 +7,10 @@
 #
 # 用法：
 #   # 安裝所有 Skills（Databricks + MLflow + APX）
-#   curl -sSL https://raw.githubusercontent.com/databricks-solutions/ai-dev-kit/main/databricks-skills/install_skills.sh | bash
+#   curl -sSL https://raw.githubusercontent.com/Fet-ycliang/ai-dev-kit/main/databricks-skills/install_skills.sh | bash
 #
 #   # 安裝特定 Skills（可混合 Databricks 與 MLflow Skills）
-#   curl -sSL https://raw.githubusercontent.com/databricks-solutions/ai-dev-kit/main/databricks-skills/install_skills.sh | bash -s -- databricks-bundles agent-evaluation
+#   curl -sSL https://raw.githubusercontent.com/Fet-ycliang/ai-dev-kit/main/databricks-skills/install_skills.sh | bash -s -- databricks-bundles agent-evaluation
 #
 #   # 或在本地執行
 #   ./install_skills.sh                              # 安裝所有 Skills
@@ -31,8 +31,8 @@ BLUE='\033[0;34m'
 NC='\033[0m' # 無顏色
 
 # 設定
-REPO_URL="https://github.com/databricks-solutions/ai-dev-kit"
-REPO_RAW_URL="https://raw.githubusercontent.com/databricks-solutions/ai-dev-kit/main"
+REPO_URL="https://github.com/Fet-ycliang/ai-dev-kit"
+REPO_RAW_URL="https://raw.githubusercontent.com/Fet-ycliang/ai-dev-kit/main"
 SKILLS_DIR=".claude/skills"
 INSTALL_FROM_LOCAL=false
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -47,8 +47,8 @@ DATABRICKS_SKILLS="databricks-agent-bricks databricks-ai-functions databricks-ai
 # MLflow Skills（從 mlflow/skills 儲存庫取得）
 MLFLOW_SKILLS="agent-evaluation analyze-mlflow-chat-session analyze-mlflow-trace instrumenting-with-mlflow-tracing mlflow-onboarding querying-mlflow-metrics retrieving-mlflow-traces searching-mlflow-docs"
 
-# APX Skills 設定（從 databricks-solutions/apx 儲存庫取得）
-APX_REPO_RAW_URL="https://raw.githubusercontent.com/databricks-solutions/apx"
+# APX Skills 設定（從 Fet-ycliang/apx 儲存庫取得）
+APX_REPO_RAW_URL="https://raw.githubusercontent.com/Fet-ycliang/apx"
 APX_REPO_REF="main"
 APX_REPO_SKILL_PATH="skills/apx"
 
@@ -97,7 +97,7 @@ get_skill_description() {
         "querying-mlflow-metrics") echo "Aggregated metrics and time-series analysis" ;;
         "retrieving-mlflow-traces") echo "Trace search and filtering" ;;
         "searching-mlflow-docs") echo "Search MLflow documentation" ;;
-        # APX skills (from databricks-solutions/apx repo)
+        # APX skills (from Fet-ycliang/apx repo)
         "databricks-app-apx") echo "Databricks Apps with React/Next.js (APX framework)" ;;
         *) echo "Unknown skill" ;;
     esac
@@ -202,7 +202,7 @@ show_help() {
         echo "  - $skill: $(get_skill_description "$skill")"
     done
     echo ""
-    echo -e "${GREEN}APX Skills (from github.com/databricks-solutions/apx):${NC}"
+    echo -e "${GREEN}APX Skills (from github.com/Fet-ycliang/apx):${NC}"
     for skill in $APX_SKILLS; do
         echo "  - $skill: $(get_skill_description "$skill")"
     done
@@ -225,7 +225,7 @@ list_skills() {
         echo -e "    $(get_skill_description "$skill")"
     done
     echo ""
-    echo -e "${GREEN}APX Skills (from github.com/databricks-solutions/apx):${NC}"
+    echo -e "${GREEN}APX Skills (from github.com/Fet-ycliang/apx):${NC}"
     for skill in $APX_SKILLS; do
         echo -e "  ${GREEN}$skill${NC}"
         echo -e "    $(get_skill_description "$skill")"
@@ -417,7 +417,7 @@ download_skill() {
         download_mlflow_skill "$skill_name"
     elif is_apx_skill "$skill_name"; then
         if [ "$INSTALL_FROM_LOCAL" = true ]; then
-            echo -e "  ${RED}✗${NC} APX skills cannot be installed from local (they are fetched from github.com/databricks-solutions/apx)"
+            echo -e "  ${RED}✗${NC} APX skills cannot be installed from local (they are fetched from github.com/Fet-ycliang/apx)"
             rm -rf "$skill_dir"
             return 1
         fi

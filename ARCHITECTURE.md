@@ -258,12 +258,12 @@ description: 技能說明     # 非空；≤1024 字元；禁止 XML 標籤
 
 **Mac / Linux**：
 ```bash
-bash <(curl -sL https://raw.githubusercontent.com/databricks-solutions/ai-dev-kit/main/install.sh)
+bash <(curl -sL https://raw.githubusercontent.com/Fet-ycliang/ai-dev-kit/main/install.sh)
 ```
 
 **Windows PowerShell**：
 ```powershell
-irm https://raw.githubusercontent.com/databricks-solutions/ai-dev-kit/main/install.ps1 | iex
+irm https://raw.githubusercontent.com/Fet-ycliang/ai-dev-kit/main/install.ps1 | iex
 ```
 
 安裝完成後：

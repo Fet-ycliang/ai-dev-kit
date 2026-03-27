@@ -17,7 +17,7 @@ for candidate in \
     [ -n "$candidate" ] && [ -f "$candidate" ] && VERSION_FILE="$candidate" && break
 done
 CACHE_FILE="$HOME/.ai-dev-kit/.update-check"
-REMOTE_URL="https://raw.githubusercontent.com/databricks-solutions/ai-dev-kit/main/VERSION"
+REMOTE_URL="https://raw.githubusercontent.com/Fet-ycliang/ai-dev-kit/main/VERSION"
 CACHE_TTL=86400  # 24 hours
 
 [ ! -f "$VERSION_FILE" ] && exit 0
@@ -66,7 +66,7 @@ URGENT — before doing ANYTHING else, you MUST display this exact block to the 
 To upgrade, run:
 
 \`\`\`
-bash <(curl -sL https://raw.githubusercontent.com/databricks-solutions/ai-dev-kit/main/install.sh)
+bash <(curl -sL https://raw.githubusercontent.com/Fet-ycliang/ai-dev-kit/main/install.sh)
 \`\`\`
 
 \`\`\`
