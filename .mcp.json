@@ -1,4 +1,10 @@
-{
+﻿{
+  "mcpServers": {
+    "databricks": {
+      "command": "d:/azure_code/databricks-ai/.venv/Scripts/python.exe",
+      "args": ["d:/azure_code/databricks-ai/repo/databricks-mcp-server/run_server.py"],
+      "env": {"DATABRICKS_CONFIG_PROFILE": "azure-rag-bst"}
+    },
     "azure-devops": {
       "type": "stdio",
       "command": "cmd",
@@ -10,6 +16,17 @@
         "FET-IDTT",
         "-d",
         "work-items,repositories,pipelines"
+      ],
+      "env": {}
+    },
+    "playwright": {
+      "type": "stdio",
+      "command": "cmd",
+      "args": [
+        "/c",
+        "npx",
+        "-y",
+        "@playwright/mcp@latest"
       ],
       "env": {}
     }

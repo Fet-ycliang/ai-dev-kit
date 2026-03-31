@@ -126,13 +126,8 @@ if sys.platform == "win32":
 # 在 Windows 上停用 FastMCP 內建的 task worker。
 # docket worker 使用 fakeredis XREADGROUP BLOCK，會讓
 # ProactorEventLoop 發生 deadlock，導致 asyncio.to_thread() callback 無法執行。
-# 雙重保險：傳入 tasks=False，並覆寫 _docket_lifespan，
-# 因為單靠 tasks=False 並無法阻止 worker 啟動。
-_fastmcp_kwargs = {}
-if sys.platform == "win32":
-    _fastmcp_kwargs["tasks"] = False
-
-mcp = FastMCP("Databricks MCP Server", **_fastmcp_kwargs)
+# 透過覆寫 _docket_lifespan 來阻止 worker 啟動（見下方）。
+mcp = FastMCP("Databricks MCP Server")
 
 if sys.platform == "win32":
 
