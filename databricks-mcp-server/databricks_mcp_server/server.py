@@ -55,15 +55,27 @@ def _patch_subprocess_stdin():
     subprocess.Popen = _PatchedPopen
 
 
-def _patch_tool_decorator_for_windows():
-    """在 Windows 上以 asyncio.to_thread() 包裝同步工具函式。
+def _filter_supported_tool_kwargs(tool_callable, kwargs):
+    """過濾目前 FastMCP.tool 支援的 decorator kwargs。"""
+    signature = inspect.signature(tool_callable)
+    if any(param.kind == inspect.Parameter.VAR_KEYWORD for param in signature.parameters.values()):
+        return kwargs
+
+    supported_kwargs = set(signature.parameters)
+    return {key: value for key, value in kwargs.items() if key in supported_kwargs}
+
+
+def _patch_tool_decorator():
+    """替 @mcp.tool 加上相容層，並在 Windows 上包裝同步工具函式。
 
     FastMCP 的 FunctionTool.run() 會直接在 asyncio 事件迴圈執行緒上
     呼叫同步函式，這會阻塞 stdio transport 的 I/O 工作。在 Windows
     （ProactorEventLoop）上，這會造成 deadlock——所有 MCP 工具都會無限期卡住。
 
-    此修補會攔截 @mcp.tool 的註冊流程，包裝同步函式，使其在
-    執行緒集區中執行，把 I/O 所需的控制權交還給事件迴圈。
+    此修補會攔截 @mcp.tool 的註冊流程：
+    1. 過濾當前 FastMCP 版本不支援的 decorator kwargs（例如 timeout）
+    2. 在 Windows 上包裝同步函式，使其於執行緒集區中執行，
+       把 I/O 所需的控制權交還給事件迴圈
 
     參見: https://github.com/modelcontextprotocol/python-sdk/issues/671
     """
@@ -71,22 +83,24 @@ def _patch_tool_decorator_for_windows():
 
     @functools.wraps(original_tool)
     def patched_tool(fn=None, *args, **kwargs):
+        filtered_kwargs = _filter_supported_tool_kwargs(original_tool, kwargs)
+
         # 處理 @mcp.tool("name")——會回傳一個 decorator
         if fn is None or isinstance(fn, str):
-            decorator = original_tool(fn, *args, **kwargs)
+            decorator = original_tool(fn, *args, **filtered_kwargs)
 
             @functools.wraps(decorator)
             def wrapper(func):
-                if not inspect.iscoroutinefunction(func):
+                if sys.platform == "win32" and not inspect.iscoroutinefunction(func):
                     func = _wrap_sync_in_thread(func)
                 return decorator(func)
 
             return wrapper
 
         # 處理 @mcp.tool（裸 decorator，fn 就是函式本身）
-        if not inspect.iscoroutinefunction(fn):
+        if sys.platform == "win32" and not inspect.iscoroutinefunction(fn):
             fn = _wrap_sync_in_thread(fn)
-        return original_tool(fn, *args, **kwargs)
+        return original_tool(fn, *args, **filtered_kwargs)
 
     mcp.tool = patched_tool
 
@@ -112,13 +126,8 @@ if sys.platform == "win32":
 # 在 Windows 上停用 FastMCP 內建的 task worker。
 # docket worker 使用 fakeredis XREADGROUP BLOCK，會讓
 # ProactorEventLoop 發生 deadlock，導致 asyncio.to_thread() callback 無法執行。
-# 雙重保險：傳入 tasks=False，並覆寫 _docket_lifespan，
-# 因為單靠 tasks=False 並無法阻止 worker 啟動。
-_fastmcp_kwargs = {}
-if sys.platform == "win32":
-    _fastmcp_kwargs["tasks"] = False
-
-mcp = FastMCP("Databricks MCP Server", **_fastmcp_kwargs)
+# 透過覆寫 _docket_lifespan 來阻止 worker 啟動（見下方）。
+mcp = FastMCP("Databricks MCP Server")
 
 if sys.platform == "win32":
 
@@ -132,8 +141,7 @@ if sys.platform == "win32":
 # 註冊 middleware（各項細節請見 middleware.py）
 mcp.add_middleware(TimeoutHandlingMiddleware())
 
-if sys.platform == "win32":
-    _patch_tool_decorator_for_windows()
+_patch_tool_decorator()
 
 # 匯入並註冊所有工具（具副作用的匯入：各模組都會註冊 @mcp.tool decorator）
 from .tools import (  # noqa: F401, E402

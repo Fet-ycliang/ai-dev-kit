@@ -9,6 +9,7 @@ Claude 連線逾時。當工具超過 SAFE_EXECUTION_THRESHOLD 時，
 """
 
 import asyncio
+import inspect
 import json
 import logging
 import threading
@@ -75,7 +76,13 @@ def _get_all_sdk_tools():
     # 包裝所有 Databricks MCP 工具
     for name, mcp_tool in mcp._tool_manager._tools.items():
         input_schema = _convert_schema(mcp_tool.parameters)
-        sdk_tool = _make_wrapper(name, mcp_tool.description, input_schema, mcp_tool.fn)
+        fn = mcp_tool.fn
+        # 解包 Windows async 包裝器（來自 server.py 的 _wrap_sync_in_thread），
+        # 取得原始同步函式以便在執行緒池中正確執行。
+        # functools.wraps 會設定 __wrapped__ 指向原始函式。
+        if inspect.iscoroutinefunction(fn) and hasattr(fn, '__wrapped__') and not inspect.iscoroutinefunction(fn.__wrapped__):
+            fn = fn.__wrapped__
+        sdk_tool = _make_wrapper(name, mcp_tool.description, input_schema, fn)
         sdk_tools.append(sdk_tool)
         tool_names.append(f'mcp__databricks__{name}')
 

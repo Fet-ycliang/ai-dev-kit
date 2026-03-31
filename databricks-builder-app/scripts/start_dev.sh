@@ -14,9 +14,13 @@ echo "正在啟動開發伺服器..."
 
 # 終止佔用指定埠號的現有程序
 echo "正在檢查現有程序..."
-lsof -ti:8000 | xargs kill -9 2>/dev/null || true
-lsof -ti:3000 | xargs kill -9 2>/dev/null || true
+# lsof -ti:8000 | xargs kill -9 2>/dev/null || true
+# lsof -ti:3000 | xargs kill -9 2>/dev/null || true
 sleep 1
+
+# 先同步主要相依套件以確保 .venv 存在
+echo "正在同步相依套件..."
+uv sync --quiet
 
 # 安裝同層套件（databricks-tools-core 與 databricks-mcp-server）
 echo "正在安裝 Databricks MCP 套件..."
